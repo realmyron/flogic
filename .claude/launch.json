@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flogic",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\Users\\greyi\\AppData\\Local\\Temp\\claude\\C--Users-greyi-AppData-Roaming-Claude-scratch-workspaces-99b195f1-a27a-4f81-94b8-94a2299cb138-2f07bead-0f7f-478c-aee1-f7693aaf9e53-scratch-2026-10-17-f6ee1d\\3f187122-df8d-457d-a165-972d8d49075e\\scratchpad\\serve.ps1", "-Port", "8765"],
+      "port": 8765
+    }
+  ]
+}

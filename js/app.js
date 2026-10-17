@@ -1,7 +1,7 @@
 'use strict';
 /* Flogic: interaction layer (pointer, keyboard, menus, editing, publishing, boot). */
 
-let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null;
+let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null, EG = null;
 const TOUCH = new Map();
 const pointerInVp = () => PTR.x >= VR.left && PTR.x <= VR.left + VR.width && PTR.y >= VR.top && PTR.y <= VR.top + VR.height;
 const capture = e => { try { vp.setPointerCapture(e.pointerId); } catch (_) {} };
@@ -198,6 +198,14 @@ nodesWrap.addEventListener('paste', e => {
 });
 
 /* ===================== node operations ===================== */
+/* Each environment holds at most NODE_LIMIT nodes unless the limit is switched off in Settings. */
+function roomFor(k = 1) {
+  if (CFG.noLimit) return true;
+  const have = env().nodes.length;
+  if (have + k <= NODE_LIMIT) return true;
+  toast(`This environment is at the ${NODE_LIMIT.toLocaleString()}-node limit. You can turn the limit off in Settings.`, { type: 'err', ms: 5000, actions: [{ label: 'Settings', fn: openSettings }] });
+  return false;
+}
 function addNodeRaw(type, x, y) {
   const n = makeNode(type);
   n.x = clamp(x, -WORLD, WORLD); n.y = clamp(y, -WORLD, WORLD);
@@ -205,6 +213,7 @@ function addNodeRaw(type, x, y) {
   return n;
 }
 function createNode(type, wx, wy, o = {}) {
+  if (!roomFor(1)) return null;
   endEdit(); checkpoint();
   let x = wx - NODE_W[type] / 2, y = wy - 28;
   if (!o.free) { x = snapV(x); y = snapV(y); }
@@ -268,7 +277,7 @@ function copySel(silent) {
 function pasteData(data, at) {
   if (!data || !Array.isArray(data.nodes) || !data.nodes.length) return;
   const tmp = migrate({ envs: [{ id: 'x', name: 'x', nodes: clone(data.nodes), edges: clone(data.edges || []), groups: [] }] }).envs[0];
-  if (!tmp.nodes.length) return;
+  if (!tmp.nodes.length || !roomFor(tmp.nodes.length)) return;
   endEdit(); checkpoint();
   const e = env(), map = {}, bb = bboxOf(tmp.nodes, true);
   const dx = at ? snapV(at.x - bb.x - bb.w / 2) : GAP, dy = at ? snapV(at.y - bb.y - bb.h / 2) : GAP;
@@ -334,6 +343,22 @@ function ungroupSel() {
   checkpoint();
   e.groups = e.groups.filter(g => !gs.includes(g));
   structureChanged(); refreshSel();
+}
+/* Hide or show nodes. If any of them is visible they all get hidden, otherwise they all come back.
+   Hidden nodes are saved that way, so visitors don't see them either. */
+function toggleHidden(ids) {
+  const ns = ids.map(nodeById).filter(Boolean);
+  if (!ns.length) return;
+  endEdit(); checkpoint();
+  const hide = ns.some(n => !n.hidden);
+  ns.forEach(n => {
+    if (hide) { n.hidden = true; S.sel.delete(n.id); } else delete n.hidden;
+    const el = NODE_EL.get(n.id);
+    if (el) el.classList.toggle('is-hidden', hide);
+  });
+  if (!hide) S.sel = new Set(ns.map(n => n.id));
+  refreshSel(); changed();
+  toast(hide ? `Hidden ${ns.length > 1 ? ns.length + ' nodes' : '“' + nodeName(ns[0]) + '”'}` : 'Shown again', hide ? { actions: [{ label: 'Undo', fn: undo }] } : {});
 }
 function renameGroup(gid) {
   const g = env().groups.find(x => x.id === gid);
@@ -469,6 +494,7 @@ function duplicateBlock(n, i) {
   renderNode(n); landed(n, i + 1); changed();
 }
 function extractBlock(n, i) {
+  if (!roomFor(1)) return;
   endEdit(); checkpoint();
   const [b] = n.blocks.splice(i, 1), r = rectOf(n, true);
   const s = addNodeRaw('sub', snapV(r.x + r.w + GAP), snapV(r.y));
@@ -587,6 +613,7 @@ async function fileToDataUrl(file) {
 }
 async function addImageFiles(files, at, target) {
   for (const f of files) {
+    if (!target && !roomFor(1)) return;
     const url = await fileToDataUrl(f);
     checkpoint();
     if (target) {
@@ -636,6 +663,7 @@ document.addEventListener('paste', e => {
   if (CLIP && (!CLIP.sys || !text)) { e.preventDefault(); pasteData(CLIP, at); return; }
   if (!text.trim()) return;
   e.preventDefault();
+  if (!roomFor(1)) return;
   endEdit(); checkpoint();
   const url = /^\s*\S+\s*$/.test(text) ? safeUrl(text) : '';
   const isImg = url && /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(url);
@@ -684,7 +712,11 @@ function onDown(e) {
     return;
   }
   const eg = t.closest('[data-e]');
-  if (eg) { selectEdge(eg.dataset.e); return; }
+  if (eg) {
+    selectEdge(eg.dataset.e);
+    if (S.canEdit) EG = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY };
+    return;
+  }
   if (ne) {
     const id = ne.dataset.id;
     if (t.closest('button, a, input, textarea, select, [data-act], .src-form')) { if (!S.sel.has(id)) selectNodes(groupOrNode(id)); return; }
@@ -718,12 +750,14 @@ function onMove(e) {
   if (BD) return moveBlockDrag(e);
   if (RZ) return moveResize(e);
   if (TB) return moveTB(e);
+  if (EG) return moveEdgeGrab(e);
 }
 function onUp(e) {
   if (e.pointerType === 'touch') {
     TOUCH.delete(e.pointerId);
     if (PINCH) { if (TOUCH.size < 2) PINCH = null; return; }
   }
+  EG = null;
   if (PAN) { PAN = null; document.body.classList.remove('panning'); }
   if (DRAG) endDrag();
   if (MQ) endMarquee();
@@ -756,7 +790,7 @@ function movePinch() {
 
 /* drag nodes */
 function startDrag(e, lead, narrow) {
-  const ids = [...S.sel].filter(id => nodeById(id));
+  const ids = [...S.sel].filter(id => { const n = nodeById(id); return n && !n.hidden; });
   if (!ids.length) return;
   DRAG = {
     lead, ids, set: new Set(ids), sx: e.clientX, sy: e.clientY, moved: false, narrow,
@@ -798,7 +832,7 @@ function endDrag() {
 function snapRect(r, ex) {
   const thr = 8 / V.z, others = [];
   for (const n of env().nodes) {
-    if (ex.has(n.id)) continue;
+    if (ex.has(n.id) || n.hidden) continue;
     const o = rectOf(n, true);
     if (Math.abs(o.x - r.x) < 2600 && Math.abs(o.y - r.y) < 2600) others.push(o);
   }
@@ -846,7 +880,7 @@ function moveMarquee(e) {
   Object.assign(m.style, { display: 'block', left: x1 - VR.left + 'px', top: y1 - VR.top + 'px', width: x2 - x1 + 'px', height: y2 - y1 + 'px' });
   const a = toWorld(x1, y1), b = toWorld(x2, y2);
   S.sel = new Set(MQ.base); S.edgeSel = null;
-  for (const n of env().nodes) { const r = rectOf(n, true); if (r.x < b.x && r.x + r.w > a.x && r.y < b.y && r.y + r.h > a.y) S.sel.add(n.id); }
+  for (const n of env().nodes) { if (n.hidden) continue; const r = rectOf(n, true); if (r.x < b.x && r.x + r.w > a.x && r.y < b.y && r.y + r.h > a.y) S.sel.add(n.id); }
   refreshSel(true);
 }
 function endMarquee() { $('#marquee').style.display = 'none'; const m = MQ; MQ = null; if (m.moved) refreshSel(); }
@@ -859,6 +893,29 @@ function startConnect(e, id, side) {
   if (!S.sel.has(id)) selectNodes([id]);
   moveConnect(e);
 }
+/* Grab an existing connection and pull: the end nearer the cursor comes loose and follows it.
+   Drop it on a node to reconnect, or anywhere else to remove the connection. */
+function moveEdgeGrab(e) {
+  if (Math.hypot(e.clientX - EG.sx, e.clientY - EG.sy) < 6) return;
+  const ed = env().edges.find(x => x.id === EG.id);
+  EG = null;
+  if (!ed) return;
+  const a = nodeById(ed.from), b = nodeById(ed.to);
+  if (!a || !b) return;
+  const w = toWorld(e.clientX, e.clientY), pa = portPos(a, ed.fs), pb = portPos(b, ed.ts);
+  const loseFrom = Math.hypot(pa.x - w.x, pa.y - w.y) < Math.hypot(pb.x - w.x, pb.y - w.y);
+  checkpoint();
+  env().edges = env().edges.filter(x => x !== ed);
+  S.edgeSel = null;
+  CONN = {
+    from: loseFrom ? ed.to : ed.from, side: loseFrom ? ed.ts : ed.fs, target: null, key: '',
+    detached: { reverse: loseFrom, label: ed.label, arrow: ed.arrow, dashed: ed.dashed },
+  };
+  capture(e);
+  document.body.classList.add('connecting');
+  drawEdges(); renderInspector();
+  moveConnect(e);
+}
 function clearConnHL() { $$('.port.magnet').forEach(p => p.classList.remove('magnet')); $$('.node.conn-target').forEach(x => x.classList.remove('conn-target')); }
 function moveConnect(e) {
   const w = toWorld(e.clientX, e.clientY), src = nodeById(CONN.from);
@@ -866,7 +923,7 @@ function moveConnect(e) {
   const p0 = portPos(src, CONN.side);
   let best = null, bd = 48 / V.z;
   for (const n of env().nodes) {
-    if (n.id === CONN.from) continue;
+    if (n.id === CONN.from || n.hidden) continue;
     for (const s of SIDES) { const p = portPos(n, s), d = Math.hypot(p.x - w.x, p.y - w.y); if (d < bd) { bd = d; best = { id: n.id, side: s, p }; } }
   }
   if (!best) {
@@ -891,10 +948,20 @@ function endConnect(e) {
   CONN = null;
   document.body.classList.remove('connecting');
   clearConnHL();
+  const d = c.detached;
   if (c.target) {
     connPreview.setAttribute('d', '');
-    checkpoint();
-    if (addEdge(c.from, c.side, c.target.id, c.target.side)) { drawEdges(); changed(); }
+    if (!d) checkpoint();
+    const ok = d && d.reverse ? addEdge(c.target.id, c.target.side, c.from, c.side) : addEdge(c.from, c.side, c.target.id, c.target.side);
+    if (ok && d) { const es = env().edges; Object.assign(es[es.length - 1], { label: d.label, arrow: d.arrow, dashed: d.dashed }); }
+    if (ok || d) { drawEdges(); renderInspector(); changed(); }
+    if (!ok && d) toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
+    return;
+  }
+  if (d) {
+    connPreview.setAttribute('d', '');
+    drawEdges(); renderInspector(); changed();
+    toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
     return;
   }
   const src = nodeById(c.from), hit = document.elementFromPoint(e.clientX, e.clientY);
@@ -908,6 +975,7 @@ function endConnect(e) {
   ], { onClose: () => connPreview.setAttribute('d', ''), keys: { n: 1, s: 2, t: 3 } });
 }
 function createConnected(type, c, w) {
+  if (!roomFor(1)) return;
   endEdit(); checkpoint();
   const src = nodeById(c.from), p0 = portPos(src, c.side), side = facingSide(p0, w);
   const W = NODE_W[type], Hh = type === 'sub' ? 84 : type === 'title' ? 130 : 120;
@@ -986,6 +1054,7 @@ function endBlockDrag(e) {
   document.body.classList.remove('dragging-block');
   if (!d.target) return;
   if (d.target.canvas) {
+    if (!roomFor(1)) return;
     checkpoint();
     d.n.blocks.splice(d.bi, 1);
     const w = toWorld(e.clientX, e.clientY);
@@ -1104,7 +1173,7 @@ function fitRect(bb, o = {}) {
   if (o.instant) { V.x = tx; V.y = ty; V.z = tz; applyView(); } else animateView(tx, ty, tz);
 }
 function fitAll(instant) {
-  const ns = env().nodes;
+  const ns = env().nodes.filter(n => !n.hidden);
   if (!ns.length) { if (instant) { V.x = VR.width / 2; V.y = VR.height / 2; V.z = 1; applyView(); } else animateView(VR.width / 2, VR.height / 2, 1); return; }
   fitRect(bboxOf(ns, true), { instant });
 }
@@ -1173,7 +1242,7 @@ vp.addEventListener('contextmenu', e => {
     { label: 'Sub-note', icon: 'sub', kbd: 'S', fn: () => createNode('sub', w.x, w.y) },
     '-',
     { label: 'Paste', icon: 'copy', kbd: MOD + 'V', disabled: !CLIP, fn: () => pasteData(CLIP, w) },
-    { label: 'Select all', icon: 'cursor', kbd: MOD + 'A', disabled: !env().nodes.length, fn: () => selectNodes(env().nodes.map(n => n.id)) },
+    { label: 'Select all', icon: 'cursor', kbd: MOD + 'A', disabled: !env().nodes.length, fn: () => selectNodes(env().nodes.filter(n => !n.hidden).map(n => n.id)) },
     { label: 'Tidy up everything', icon: 'tidy', disabled: env().nodes.length < 2, fn: () => { S.sel.clear(); tidySel(); } },
     { label: 'Fit to screen', icon: 'fit', kbd: '⇧1', fn: () => fitAll() },
   ], { keys: { t: 2, n: 3, s: 4 } });
@@ -1196,6 +1265,7 @@ function nodeMenu(x, y) {
     multi && { label: 'Group', icon: 'group', kbd: MOD + 'G', fn: groupSel },
     inGroup && { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: ungroupSel },
     multi && { label: 'Tidy up', icon: 'tidy', fn: tidySel },
+    { label: 'Hide', icon: 'eyeoff', kbd: MOD + '⇧H', fn: () => toggleHidden(ns.map(m => m.id)) },
     { label: 'Bring to front', icon: 'front', fn: () => reorder(true) },
     { label: 'Send to back', icon: 'back', fn: () => reorder(false) },
     '-',
@@ -1270,10 +1340,11 @@ window.addEventListener('keydown', e => {
   }
   if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (mod && k === 'y') { e.preventDefault(); redo(); return; }
-  if (mod && k === 'a') { e.preventDefault(); selectNodes(env().nodes.map(n => n.id)); return; }
+  if (mod && k === 'a') { e.preventDefault(); selectNodes(env().nodes.filter(n => !n.hidden).map(n => n.id)); return; }
   if (mod && k === 'c') { copySel(); return; }
   if (mod && k === 'x') { copySel(true); deleteSel(); return; }
   if (mod && k === 'd') { e.preventDefault(); duplicateSel(); return; }
+  if (mod && e.shiftKey && k === 'h') { e.preventDefault(); toggleHidden([...S.sel]); return; }
   if (mod && k === 'g') { e.preventDefault(); e.shiftKey ? ungroupSel() : groupSel(); return; }
   if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSel(); return; }
   if (e.key.startsWith('Arrow')) {
@@ -1394,12 +1465,21 @@ function deleteEnv(id) {
   if (DOC.envs.length < 2) return toast('You need at least one environment');
   const e = DOC.envs.find(x => x.id === id);
   if (!e) return;
-  if (e.nodes.length && !confirm(`Delete “${e.name}” and its ${e.nodes.length} node${e.nodes.length > 1 ? 's' : ''}?`)) return;
-  checkpoint();
-  DOC.envs = DOC.envs.filter(x => x.id !== id);
-  changed();
-  if (S.envId === id) switchEnv(DOC.envs[0].id); else renderEnvs();
-  toast(`Deleted “${e.name}”`, { actions: [{ label: 'Undo', fn: undo }] });
+  const k = e.nodes.length;
+  const m = openModal(`<div class="mhead"><h3>Delete environment?</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div>
+    <div class="mbody"><p class="hint" style="margin:0">“<b>${esc(e.name)}</b>” ${k ? `and its <b>${k} node${k > 1 ? 's' : ''}</b> will be removed` : 'will be removed'}. Once you publish, it is gone for visitors too.</p>
+    <div class="mrow"><span class="grow"></span><button class="btn" id="de-no">Cancel</button><button class="btn danger" id="de-yes">${ic('trash', 14)} Delete environment</button></div></div>`);
+  const no = $('#de-no', m.el);
+  no.focus();
+  no.addEventListener('click', m.close);
+  $('#de-yes', m.el).addEventListener('click', () => {
+    m.close();
+    checkpoint();
+    DOC.envs = DOC.envs.filter(x => x.id !== id);
+    changed();
+    if (S.envId === id) switchEnv(DOC.envs[0].id); else renderEnvs();
+    toast(`Deleted “${e.name}”`, { actions: [{ label: 'Undo', fn: undo }] });
+  });
 }
 function moveEnv(id, d) {
   const i = DOC.envs.findIndex(x => x.id === id), j = i + d;
@@ -1438,6 +1518,13 @@ window.addEventListener('hashchange', () => {
 /* layers */
 const layersEl = $('#layers');
 layersEl.addEventListener('click', e => {
+  const eye = e.target.closest('[data-act="leye"]');
+  if (eye) {
+    const row = eye.closest('.layer');
+    if (row.dataset.g) { const g = env().groups.find(x => x.id === row.dataset.g); if (g) toggleHidden(g.members); }
+    else toggleHidden([row.dataset.id]);
+    return;
+  }
   const ch = e.target.closest('[data-act="lcollapse"]');
   if (ch) { const g = ch.closest('[data-g]').dataset.g; UI.collapsed[g] = !UI.collapsed[g]; saveUI(); renderLayers(); return; }
   const row = e.target.closest('.layer');
@@ -1536,7 +1623,8 @@ function openHelp() {
     ['Place freely (no snapping)', 'Hold Ctrl while dragging'], ['Connect nodes', 'Drag from a side dot'],
     ['Move a block', 'Drag its ⋮⋮ handle'], ['Nudge', 'Arrows (Shift ×4, Ctrl 1px)'],
     ['Duplicate', 'Ctrl+D'], ['Copy · paste', 'Ctrl+C · Ctrl+V'],
-    ['Group · ungroup', 'Ctrl+G · Ctrl+Shift+G'], ['Undo · redo', 'Ctrl+Z · Ctrl+Shift+Z'],
+    ['Group · ungroup', 'Ctrl+G · Ctrl+Shift+G'], ['Hide · show', 'Ctrl+Shift+H or the eye in Layers'],
+    ['Disconnect', 'Drag a connection away'], ['Undo · redo', 'Ctrl+Z · Ctrl+Shift+Z'],
     ['Delete', 'Delete'], ['Fit all · selection', 'Shift+1 · Shift+2'],
     ['Zoom to 100%', 'Ctrl+0'], ['Publish', 'Ctrl+S'],
   ].map(([a, b]) => `<div><span>${a}</span><kbd>${esc(b.replace(/Ctrl/g, MOD))}</kbd></div>`).join('');
@@ -1579,7 +1667,8 @@ function openSettings() {
   </section>`;
   const prefs = S.canEdit ? `<section><h4>${ic('settings', 15)} Board</h4>
     <div class="field"><span>Mouse wheel</span><div class="segs" id="s-wheel"><button data-v="zoom" class="${CFG.wheel !== 'pan' ? 'on' : ''}">Zooms</button><button data-v="pan" class="${CFG.wheel === 'pan' ? 'on' : ''}">Scrolls</button></div></div>
-    <label class="tog"><input type="checkbox" id="s-snap"${CFG.snap !== false ? ' checked' : ''}><span></span>Snap to the grid and to other nodes (hold Ctrl to bypass)</label></section>
+    <label class="tog"><input type="checkbox" id="s-snap"${CFG.snap !== false ? ' checked' : ''}><span></span>Snap to the grid and to other nodes (hold Ctrl to bypass)</label>
+    <label class="tog"><input type="checkbox" id="s-nolimit"${CFG.noLimit ? ' checked' : ''}><span></span>Remove the ${NODE_LIMIT.toLocaleString()}-node limit per environment (very large boards can get slow)</label></section>
     <section><h4>${ic('download', 15)} Backup</h4><p class="hint">Your work autosaves in this browser. Export a copy now and then, or import one to replace this board.</p>
     <div class="mrow" style="margin-top:0"><button class="btn" id="s-exp">${ic('download', 14)} Export JSON</button><button class="btn" id="s-imp">${ic('upload', 14)} Import JSON</button>${S.connected ? `<button class="btn" id="s-pull">${ic('refresh', 14)} Reload from GitHub</button>` : ''}</div></section>` : '';
   const m = openModal(`<div class="mhead"><h3>${S.canEdit ? 'Settings' : 'Sign in to edit'}</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div><div class="mbody">${conn}${prefs}</div>`);
@@ -1609,6 +1698,8 @@ function openSettings() {
   });
   const auto = q('#s-auto');
   if (auto) auto.addEventListener('change', () => { CFG.autoPublish = auto.checked; saveCfg(); scheduleAuto(); });
+  const lim = q('#s-nolimit');
+  if (lim) lim.addEventListener('change', () => { CFG.noLimit = lim.checked; saveCfg(); });
   const wheel = q('#s-wheel');
   if (wheel) wheel.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; CFG.wheel = b.dataset.v; saveCfg(); $$('button', wheel).forEach(x => x.classList.toggle('on', x === b)); });
   const snapT = q('#s-snap');

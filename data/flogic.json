@@ -1,203 +1,290 @@
-'use strict';
-/* Flogic: shared helpers, icons and small UI primitives (menu, toast, modal). */
-
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-
-const GRID = 24;          // snap unit (world px)
-const GAP = 48;           // preferred spacing between nodes
-const WORLD = 50000;      // board spans -50k..50k on both axes (100k x 100k)
-const ZMIN = 0.1, ZMAX = 4;
-const SIDES = ['t', 'r', 'b', 'l'];
-const SVGNS = 'http://www.w3.org/2000/svg';
-const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-const MOD = IS_MAC ? '⌘' : 'Ctrl';
-
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const snapV = v => Math.round(v / GRID) * GRID;
-const uid = p => p + Math.random().toString(36).slice(2, 8) + (Date.now() % 46656).toString(36);
-const clone = o => JSON.parse(JSON.stringify(o));
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-function debounce(fn, ms) {
-  let t = 0;
-  const f = () => { clearTimeout(t); t = setTimeout(fn, ms); };
-  f.flush = () => { clearTimeout(t); fn(); };
-  f.cancel = () => clearTimeout(t);
-  return f;
-}
-function getPath(o, p) { return p.split('.').reduce((a, k) => (a == null ? a : a[k]), o); }
-function setPath(o, p, v) { const a = p.split('.'), l = a.pop(); a.reduce((x, k) => x[k], o)[l] = v; }
-function safeUrl(u) {
-  u = String(u || '').trim();
-  if (!u) return '';
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
-  return /^https?:\/\/[^\s]+$/i.test(u) ? u : '';
-}
-function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } }
-function readLS(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
-function writeLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
-function isTyping() {
-  const a = document.activeElement;
-  return !!(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
-}
-
-/* ---------- icons (24px grid, stroke) ---------- */
-const ICONS = {
-  plus: '<path d="M12 5v14M5 12h14"/>',
-  minus: '<path d="M5 12h14"/>',
-  x: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
-  check: '<path d="M5 12.5l4.2 4.2L19 7"/>',
-  chev: '<path d="M6 9l6 6 6-6"/>',
-  chevr: '<path d="M9 6l6 6-6 6"/>',
-  grip: '<g fill="currentColor" stroke="none"><circle cx="9" cy="5.5" r="1.7"/><circle cx="15" cy="5.5" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18.5" r="1.7"/><circle cx="15" cy="18.5" r="1.7"/></g>',
-  text: '<path d="M4 6.5h16M4 12h16M4 17.5h10"/>',
-  highlight: '<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>',
-  category: '<path d="M4 9h16M4 15h16M10 3.5 8 20.5M16 3.5l-2 17"/>',
-  conclusion: '<path d="M4 5.5h16M4 10.5h9"/><path d="M3.5 15h17" opacity=".45"/><path d="m13 19 2.5 2 4.5-5"/>',
-  scenarios: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10"/><path d="M18 10c0 4.5-5 4-10.5 7.5"/>',
-  checklist: '<rect x="3.5" y="4.5" width="6" height="6" rx="1.6"/><path d="m4.6 16.4 1.8 1.8 3.1-3.6"/><path d="M13.5 7.5H21M13.5 16.5H21"/>',
-  image: '<rect x="3" y="4" width="18" height="16" rx="3.2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 15.5-5-5-9.5 9.5"/>',
-  sources: '<path d="M10 13.5a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10.5a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/>',
-  link: '<path d="M10 13.5a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10.5a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/>',
-  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
-  copy: '<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
-  cursor: '<path d="M5.5 3.5 19 10l-6.2 1.8L10.4 18z"/>',
-  hand: '<path d="M18 11.5V7a1.5 1.5 0 0 0-3 0v4"/><path d="M15 10.5V5a1.5 1.5 0 0 0-3 0v5.5"/><path d="M12 10V6a1.5 1.5 0 0 0-3 0v6.5"/><path d="M9 12.5v-1a1.5 1.5 0 0 0-3 0V14a7 7 0 0 0 7 7h.5a6.5 6.5 0 0 0 6.5-6.5v-3a1.5 1.5 0 0 0-3 0"/>',
-  title: '<path d="M6 5v14M18 5v14M6 12h12"/>',
-  note: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.5 9.5h7M8.5 13.5h4.5"/>',
-  sub: '<rect x="6.5" y="6.5" width="11" height="11" rx="3.2"/>',
-  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
-  redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
-  fit: '<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>',
-  board: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M3.5 9.5h17M9.5 20.5v-11"/>',
-  group: '<rect x="3" y="3" width="18" height="18" rx="4.5" stroke-dasharray="3 3"/><rect x="7" y="7" width="5.5" height="5.5" rx="1.4"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.4"/>',
-  lock: '<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
-  eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
-  upload: '<path d="M12 15.5V4M7 8.5l5-4.5 5 4.5"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/>',
-  download: '<path d="M12 4v11.5M7 11l5 4.5 5-4.5"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/>',
-  settings: '<path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/>',
-  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2.5 12h2M19.5 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
-  monitor: '<rect x="3" y="4" width="18" height="12.5" rx="2.5"/><path d="M8 20.5h8M12 16.5v4"/>',
-  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.5"/><path d="M12 17h.01"/>',
-  search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
-  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
-  arrowr: '<path d="M4 12h15M13 6l6 6-6 6"/>',
-  dash: '<path d="M3 12h4M10 12h4M17 12h4"/>',
-  swap: '<path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/>',
-  tidy: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/>',
-  alignl: '<path d="M4 3v18"/><rect x="8" y="6" width="12" height="4.5" rx="1.2"/><rect x="8" y="13.5" width="7" height="4.5" rx="1.2"/>',
-  alignc: '<path d="M12 3v18"/><rect x="5" y="6" width="14" height="4.5" rx="1.2"/><rect x="7.5" y="13.5" width="9" height="4.5" rx="1.2"/>',
-  alignt: '<path d="M3 4h18"/><rect x="6" y="8" width="4.5" height="12" rx="1.2"/><rect x="13.5" y="8" width="4.5" height="7" rx="1.2"/>',
-  front: '<rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
-  back: '<rect x="4" y="4" width="11" height="11" rx="2.5" opacity=".45"/><path d="M19 9v9a2 2 0 0 1-2 2H8"/>',
-  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
-  layers: '<path d="m12 3.5 9 5-9 5-9-5z"/><path d="m3 13.5 9 5 9-5"/>',
-  logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/>',
-  refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.6L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.6L20 16M20 20v-4h-4"/>',
-};
-function ic(name, size = 16) {
-  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
-}
-
-/* ---------- context menu ---------- */
-let MENU = null;
-function openMenu(x, y, items, opt = {}) {
-  closeMenu();
-  items = items.filter(Boolean).filter((it, i, a) => !(it === '-' && (i === 0 || a[i - 1] === '-' || i === a.length - 1)));
-  const m = document.createElement('div');
-  m.className = 'menu' + (opt.cls ? ' ' + opt.cls : '');
-  m.setAttribute('role', 'menu');
-  m.innerHTML = items.map((it, i) => {
-    if (it === '-') return '<div class="msep"></div>';
-    if (it.head) return `<div class="mh">${esc(it.head)}</div>`;
-    if (it.swatches) return `<div class="mswatches">${Object.entries(COLORS).map(([k, v]) => `<button class="sw${it.value === k ? ' on' : ''}" data-sw="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('')}</div>`;
-    if (it.html) return it.html;
-    return `<button class="mi${it.danger ? ' danger' : ''}" role="menuitem" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.icon ? ic(it.icon, 15) : '<span class="ic-sp"></span>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}${it.check !== undefined ? `<span class="mchk">${it.check ? ic('check', 14) : ''}</span>` : ''}</button>`;
-  }).join('');
-  document.body.appendChild(m);
-  const r = m.getBoundingClientRect();
-  const left = clamp(x, 8, innerWidth - r.width - 8), top = clamp(y, 8, innerHeight - r.height - 8);
-  m.style.left = left + 'px'; m.style.top = top + 'px';
-  m.style.setProperty('--ox', (x - left) + 'px'); m.style.setProperty('--oy', (y - top) + 'px');
-  m.addEventListener('pointerdown', e => e.stopPropagation());
-  m.addEventListener('contextmenu', e => e.preventDefault());
-  m.addEventListener('click', e => {
-    if (opt.onClick && opt.onClick(e) === true) { closeMenu(); return; }
-    const sw = e.target.closest('[data-sw]');
-    if (sw) { const it = items.find(x => x && x.swatches); closeMenu(); it.fn(sw.dataset.sw); return; }
-    const b = e.target.closest('[data-i]');
-    if (b && !b.disabled) { const it = items[+b.dataset.i]; closeMenu(); it.fn && it.fn(); }
-  });
-  m._items = items;
-  MENU = m;
-  return m;
-}
-function closeMenu() { if (MENU) { MENU.remove(); MENU = null; } }
-function menuKey(e) {
-  if (!MENU) return false;
-  const btns = $$('.mi:not(:disabled), .bm', MENU);
-  let i = btns.findIndex(b => b.classList.contains('act'));
-  if (e.key === 'Escape') { closeMenu(); return true; }
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Tab') {
-    e.preventDefault();
-    const d = e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey) ? -1 : 1;
-    if (i >= 0) btns[i].classList.remove('act');
-    i = (i + d + btns.length) % btns.length;
-    btns[i].classList.add('act');
-    return true;
+{
+ "version": 1,
+ "envs": [
+  {
+   "id": "e9cvptv8o1",
+   "name": "Environment 1",
+   "nodes": [
+    {
+     "id": "nbn4b018o1",
+     "type": "title",
+     "x": -240,
+     "y": -480,
+     "w": 480,
+     "color": "default",
+     "tag": "Start here",
+     "title": "Welcome to Flogic",
+     "subtitle": "Flow + logic. Right-click anywhere on the board to add a node, then drag from the dots on its sides to connect ideas.",
+     "blocks": []
+    },
+    {
+     "id": "n1izrvv8o1",
+     "type": "note",
+     "x": -552,
+     "y": -192,
+     "w": 336,
+     "color": "default",
+     "tag": "Blocks",
+     "title": "Build notes from blocks",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b226i2g8o1",
+       "kind": "text",
+       "text": "Every node has a + in its corner. Use it to add text, highlights, categories, scenarios, checklists, images and sources."
+      },
+      {
+       "id": "bxurqdl8o1",
+       "kind": "highlight",
+       "label": "Tip",
+       "text": "Double-click any text to edit it."
+      },
+      {
+       "id": "byb8smf8o1",
+       "kind": "category",
+       "label": "Move things",
+       "text": "Grab the 6-dot handle beside a block to reorder it, drop it into another node, or pull it onto the board."
+      },
+      {
+       "id": "bpofwxf8o1",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
+      }
+     ]
+    },
+    {
+     "id": "ne5tzsd8o1",
+     "type": "note",
+     "x": -168,
+     "y": -163,
+     "w": 336,
+     "color": "violet",
+     "tag": "Scenarios",
+     "title": "Unroll a chain of events",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bih7hyk8o1",
+       "kind": "text",
+       "text": "Scenarios fold up so a node stays compact. Open one to see how it plays out."
+      },
+      {
+       "id": "b78ta4c8o1",
+       "kind": "scenarios",
+       "label": "What could happen",
+       "items": [
+        {
+         "id": "s3gfakc8o1",
+         "title": "The idea holds up",
+         "steps": [
+          {
+           "id": "tm3oq4j8o1",
+           "label": "First",
+           "text": "You sketch it on the board.",
+           "alt": false
+          },
+          {
+           "id": "tykze4r8o1",
+           "label": "Then",
+           "text": "Connections show how each part leads to the next.",
+           "alt": false
+          },
+          {
+           "id": "t50maqu8o1",
+           "label": "Result",
+           "text": "The argument reads top to bottom.",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "sngla1v8o1",
+         "title": "Someone pushes back",
+         "steps": [
+          {
+           "id": "t1tbo608o1",
+           "label": "They say",
+           "text": "This step does not follow.",
+           "alt": true
+          },
+          {
+           "id": "tuk1bb98o1",
+           "label": "You answer",
+           "text": "Add a sub-note with the missing link and a source.",
+           "alt": false
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "nd85elo8o1",
+     "type": "note",
+     "x": 216,
+     "y": -163,
+     "w": 336,
+     "color": "green",
+     "tag": "Controls",
+     "title": "Getting around",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "brmbxmc8o1",
+       "kind": "checklist",
+       "label": "Try these",
+       "items": [
+        {
+         "id": "citc1sr8o1",
+         "text": "Middle-click and drag to pan",
+         "done": false
+        },
+        {
+         "id": "cwwj5n98o1",
+         "text": "Scroll to zoom",
+         "done": false
+        },
+        {
+         "id": "czx8wzu8o1",
+         "text": "Drag on empty space to box-select",
+         "done": false
+        },
+        {
+         "id": "c68twm38o1",
+         "text": "Right-click empty space to add a node",
+         "done": false
+        },
+        {
+         "id": "c2ya4wd8o1",
+         "text": "Ctrl+G groups the selection",
+         "done": false
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "n2ld7558o1",
+     "type": "sub",
+     "x": -504,
+     "y": 264,
+     "w": 240,
+     "color": "default",
+     "tag": "",
+     "title": "Sources & images",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b4d6d1l8o1",
+       "kind": "text",
+       "text": "Attach references so anyone reading can check them."
+      },
+      {
+       "id": "boucsxk8o1",
+       "kind": "sources",
+       "label": "Sources",
+       "items": [
+        {
+         "t": "GitHub Pages docs",
+         "u": "https://docs.github.com/en/pages"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "n0rjolo8o1",
+     "type": "sub",
+     "x": 264,
+     "y": 144,
+     "w": 240,
+     "color": "green",
+     "tag": "",
+     "title": "Publishing",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bvf76ga8o1",
+       "kind": "text",
+       "text": "Visitors see the published board, read-only. Only you can edit, after connecting GitHub in Settings."
+      }
+     ]
+    },
+    {
+     "id": "nztmgjkkxj",
+     "type": "title",
+     "x": 384,
+     "y": -384,
+     "w": 480,
+     "color": "default",
+     "tag": "Title",
+     "title": "",
+     "subtitle": "",
+     "blocks": []
+    }
+   ],
+   "edges": [
+    {
+     "id": "lp4uiwy8o1",
+     "from": "nbn4b018o1",
+     "fs": "b",
+     "to": "n1izrvv8o1",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lze2ss98o1",
+     "from": "nbn4b018o1",
+     "fs": "b",
+     "to": "ne5tzsd8o1",
+     "ts": "t",
+     "label": "for example",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lzuitjp8o1",
+     "from": "nbn4b018o1",
+     "fs": "b",
+     "to": "nd85elo8o1",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lwsumbm8o1",
+     "from": "n1izrvv8o1",
+     "fs": "b",
+     "to": "n2ld7558o1",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l5g0k7t8o1",
+     "from": "nd85elo8o1",
+     "fs": "b",
+     "to": "n0rjolo8o1",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    }
+   ],
+   "groups": []
+  },
+  {
+   "id": "e51yegvji",
+   "name": "Environment 2",
+   "nodes": [],
+   "edges": [],
+   "groups": []
   }
-  if (e.key === 'Enter' && i >= 0) { e.preventDefault(); btns[i].click(); return true; }
-  return true;
-}
-document.addEventListener('pointerdown', e => { if (MENU && !MENU.contains(e.target)) closeMenu(); }, true);
-window.addEventListener('blur', closeMenu);
-
-/* ---------- toast ---------- */
-function toast(msg, o = {}) {
-  const root = $('#toast-root');
-  const t = document.createElement('div');
-  t.className = 'toast ' + (o.type || '');
-  t.setAttribute('role', 'status');
-  t.innerHTML = `<span>${esc(msg)}</span>` + (o.actions || []).map((a, i) => `<button data-i="${i}">${esc(a.label)}</button>`).join('');
-  root.appendChild(t);
-  while (root.children.length > 3) root.firstChild.remove();
-  let gone = false;
-  const close = () => { if (gone) return; gone = true; t.classList.add('out'); setTimeout(() => t.remove(), 200); };
-  t.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { o.actions[+b.dataset.i].fn(); close(); } });
-  setTimeout(close, o.ms || 3200);
-  return close;
-}
-
-/* ---------- modal ---------- */
-function openModal(html, o = {}) {
-  const ov = document.createElement('div');
-  ov.className = 'modal-ov';
-  ov.innerHTML = `<div class="modal ${o.cls || ''}" role="dialog" aria-modal="true">${html}</div>`;
-  document.body.appendChild(ov);
-  const onk = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
-  const close = () => {
-    if (ov.classList.contains('out')) return;
-    ov.classList.add('out');
-    setTimeout(() => ov.remove(), 160);
-    document.removeEventListener('keydown', onk, true);
-    o.onClose && o.onClose();
-  };
-  document.addEventListener('keydown', onk, true);
-  ov.addEventListener('pointerdown', e => { if (e.target === ov) close(); });
-  $$('[data-close]', ov).forEach(b => b.addEventListener('click', close));
-  return { el: ov.firstChild, close };
-}
-const modalOpen = () => !!document.querySelector('.modal-ov:not(.out), .lightbox');
-
-function openLightbox(src, caption) {
-  const lb = document.createElement('div');
-  lb.className = 'lightbox';
-  lb.innerHTML = `<img src="${esc(src)}" alt="">${caption ? `<p>${esc(caption)}</p>` : ''}`;
-  const close = () => { lb.remove(); document.removeEventListener('keydown', k, true); };
-  const k = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
-  lb.addEventListener('click', close);
-  document.addEventListener('keydown', k, true);
-  document.body.appendChild(lb);
+ ]
 }

@@ -6,6 +6,7 @@ const ASSET_DIR = 'data/assets';
 const LS = { doc: 'flogic.doc', meta: 'flogic.meta', cfg: 'flogic.cfg', ui: 'flogic.ui' };
 
 const NODE_W = { title: 480, note: 336, sub: 240 };
+const NODE_LIMIT = 1000;   // per environment; Settings → "Remove the node limit" lifts it
 const NODE_LABEL = { title: 'Title', note: 'Note', sub: 'Sub-note' };
 const COLORS = { default: '#7b93ff', sky: '#3fb2ec', violet: '#a98bfa', pink: '#ee6eae', amber: '#e9a43a', green: '#36c08c', red: '#ef6a6a', slate: '#8f9bb3' };
 const BLOCKS = [
@@ -83,6 +84,7 @@ function migrate(doc) {
       if (!NODE_W[n.type]) n.type = 'note';
       n.w = +n.w || NODE_W[n.type]; n.x = +n.x || 0; n.y = +n.y || 0;
       n.color = COLORS[n.color] ? n.color : 'default';
+      if (n.hidden !== true) delete n.hidden;
       n.blocks = Array.isArray(n.blocks) ? n.blocks : [];
       ['tag', 'title', 'subtitle'].forEach(k => { if (typeof n[k] !== 'string') n[k] = ''; });
       n.blocks.forEach(b => {
@@ -138,7 +140,7 @@ function demoDoc() {
 
 /* ---------- state ---------- */
 let DOC = null;
-const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', autoPublish: false, wheel: 'zoom', theme: 'system', snap: true }, readLS(LS.cfg) || {});
+const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', autoPublish: false, wheel: 'zoom', theme: 'system', snap: true, noLimit: false }, readLS(LS.cfg) || {});
 const META = Object.assign({ dirty: false, baseSha: null, baseHash: null, publishedAt: 0 }, readLS(LS.meta) || {});
 const UI = Object.assign({ envId: null, views: {}, collapsed: {} }, readLS(LS.ui) || {});
 const S = {

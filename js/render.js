@@ -139,6 +139,7 @@ function applyNode(el, n, i) {
   el.style.width = n.w + 'px';
   if (!el.classList.contains('lifted')) el.style.zIndex = i + 1;
   el.classList.toggle('sel', S.sel.has(n.id));
+  el.classList.toggle('is-hidden', !!n.hidden);
   if (!DISP.has(n.id)) el.style.transform = `translate3d(${n.x}px,${n.y}px,0)`;
 }
 function renderNode(n) {
@@ -179,7 +180,7 @@ function drawEdges() {
   const e = env(), seen = new Set();
   for (const ed of e.edges) {
     const a = nodeById(ed.from), b = nodeById(ed.to);
-    if (!a || !b) continue;
+    if (!a || !b || a.hidden || b.hidden) continue;
     const g = bez(portPos(a, ed.fs), ed.fs, portPos(b, ed.ts), ed.ts);
     seen.add(ed.id);
     let r = EDGE_EL.get(ed.id);
@@ -215,8 +216,8 @@ function drawEdges() {
 function drawGroups() {
   const e = env(), seen = new Set();
   for (const g of e.groups) {
-    const ns = g.members.map(nodeById).filter(Boolean);
-    if (ns.length < 2) continue;
+    const ns = g.members.map(nodeById).filter(n => n && !n.hidden);
+    if (!ns.length) continue;
     const bb = bboxOf(ns), pad = 22;
     let el = GROUP_EL.get(g.id);
     if (!el) {
@@ -256,7 +257,7 @@ let MM = null;
 function drawMinimap() {
   const c = $('#minimap');
   if (!c || !c.offsetWidth) return;
-  const ns = env().nodes;
+  const ns = env().nodes.filter(n => !n.hidden);
   c.style.display = ns.length ? '' : 'none';
   if (!ns.length) return;
   const dpr = window.devicePixelRatio || 1, W = c.clientWidth, Hh = c.clientHeight;
@@ -295,7 +296,11 @@ function renderEnvs() {
 }
 function layerRow(n, child, snip) {
   const icn = n.type === 'title' ? 'title' : n.type === 'note' ? 'note' : 'sub';
-  return `<div class="layer${child ? ' child' : ''}${S.sel.has(n.id) ? ' sel' : ''}" data-id="${n.id}"><span class="lic" style="color:${COLORS[n.color] || COLORS.default}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span></div>`;
+  return `<div class="layer${child ? ' child' : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"><span class="lic" style="color:${COLORS[n.color] || COLORS.default}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
+}
+function eyeBtn(hidden) {
+  if (!S.canEdit) return '';
+  return `<button class="leye" data-act="leye" title="${hidden ? 'Show' : 'Hide'} (${MOD}+Shift+H)" aria-label="${hidden ? 'Show' : 'Hide'}">${ic(hidden ? 'eyeoff' : 'eye', 14)}</button>`;
 }
 function renderLayers() {
   const e = env(), q = ($('#layer-filter').value || '').trim().toLowerCase();
@@ -315,12 +320,15 @@ function renderLayers() {
     const done = new Set();
     for (let i = e.nodes.length - 1; i >= 0; i--) {
       const n = e.nodes[i], g = inGroup.get(n.id);
+      if (!S.canEdit && n.hidden) continue;          // visitors never see hidden nodes
       if (!g) { h += layerRow(n, false); continue; }
       if (done.has(g.id)) continue;
       done.add(g.id);
+      const members = e.nodes.filter(m => g.members.includes(m.id) && (S.canEdit || !m.hidden)).reverse();
       const open = !UI.collapsed[g.id], all = g.members.every(id => S.sel.has(id));
-      h += `<div class="layer grp${all ? ' sel' : ''}" data-g="${g.id}"><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button>${ic('group', 14)}<span class="nm">${esc(g.name)}</span><span class="cnt">${g.members.length}</span></div>`;
-      if (open) e.nodes.filter(m => g.members.includes(m.id)).reverse().forEach(m => { h += layerRow(m, true); });
+      const allHidden = members.every(m => m.hidden);
+      h += `<div class="layer grp${all ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}" data-g="${g.id}"><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic">${ic('group', 14)}</span><span class="nm">${esc(g.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
+      if (open) members.forEach(m => { h += layerRow(m, true); });
     }
   }
   $('#layers').innerHTML = h;

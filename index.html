@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flogic</title>
+<meta name="description" content="Flogic: flow + logic boards.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='12' height='10' rx='3.5' fill='%237b93ff'/%3E%3Crect x='17' y='18' width='12' height='10' rx='3.5' fill='%23b18bff'/%3E%3Cpath d='M15 9c6 0 8 3 8 9' stroke='%239d8fff' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/flogic.css">
+<script>try{var t=JSON.parse(localStorage.getItem('flogic.cfg')||'{}').theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<div id="app">
+  <aside id="left" class="side">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b93ff"/><stop offset="1" stop-color="#c08bff"/></linearGradient></defs><rect x="3" y="4" width="12" height="10" rx="3.5" fill="url(#lg)"/><rect x="17" y="18" width="12" height="10" rx="3.5" fill="url(#lg)" opacity=".8"/><path d="M15 9c6 0 8 3 8 9" stroke="url(#lg)" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+      <span>Flogic</span>
+      <button class="icon-btn mobile-only" data-cmd="close-panels" aria-label="Close panel"></button>
+    </div>
+    <div class="sec-head"><span>Environments</span><button id="env-add" class="icon-btn edit-only" data-tip="New environment" aria-label="New environment"></button></div>
+    <div id="env-list" class="list"></div>
+    <div class="side-foot">
+      <button class="foot-btn view-only" data-cmd="signin"></button>
+      <button class="foot-btn edit-only" data-cmd="settings"></button>
+      <span class="grow"></span>
+      <button class="icon-btn" data-cmd="theme" aria-label="Theme"></button>
+      <button class="icon-btn" data-cmd="help" aria-label="Shortcuts"></button>
+    </div>
+  </aside>
+
+  <main id="stage">
+    <div id="viewport">
+      <div id="world">
+        <div id="groups"></div>
+        <svg id="edges" aria-hidden="true">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1.2 9 5 1 8.8z" class="ah"/></marker>
+            <marker id="arrow-hi" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1.2 9 5 1 8.8z" class="ah hi"/></marker>
+          </defs>
+          <g id="edge-g"></g>
+        </svg>
+        <div id="edge-labels"></div>
+        <div id="nodes"></div>
+        <svg id="overlay" aria-hidden="true"><path id="conn-preview" d=""/><g id="guide-g"></g></svg>
+      </div>
+      <div id="marquee"></div>
+      <div id="empty-hint" hidden></div>
+    </div>
+
+    <div id="toolbar" class="panel float">
+      <button class="tb mobile-only" data-cmd="show-left" aria-label="Environments"></button>
+      <button class="tb on" data-tool="select" data-tip="Select · V"></button>
+      <button class="tb" data-tool="hand" data-tip="Hand · H or hold Space"></button>
+      <span class="tb-sep edit-only"></span>
+      <button class="tb edit-only" data-new="title" data-tip="Title node · T (click or drag)"></button>
+      <button class="tb edit-only" data-new="note" data-tip="Note · N (click or drag)"></button>
+      <button class="tb edit-only" data-new="sub" data-tip="Sub-note · S (click or drag)"></button>
+      <span class="tb-sep edit-only"></span>
+      <button class="tb edit-only" data-cmd="undo" data-tip="Undo · Ctrl Z"></button>
+      <button class="tb edit-only" data-cmd="redo" data-tip="Redo · Ctrl Shift Z"></button>
+      <button class="tb mobile-only" data-cmd="show-right" aria-label="Layers"></button>
+    </div>
+    <div id="topright" class="float"></div>
+    <div id="zoombar" class="panel float">
+      <button class="tb" data-cmd="zoomout" data-tip="Zoom out · Ctrl −"></button>
+      <button class="tb zl" id="zoom-label" data-cmd="zoom100" data-tip="Reset to 100% · Ctrl 0">100%</button>
+      <button class="tb" data-cmd="zoomin" data-tip="Zoom in · Ctrl +"></button>
+      <button class="tb" data-cmd="fit" data-tip="Fit to screen · Shift 1"></button>
+    </div>
+    <canvas id="minimap" class="panel float" width="200" height="132" aria-label="Minimap"></canvas>
+  </main>
+
+  <aside id="right" class="side">
+    <div class="sec-head"><span>Layers</span><span id="layer-count" class="cnt"></span><button class="icon-btn mobile-only" data-cmd="close-panels" aria-label="Close panel"></button></div>
+    <div class="search"><span class="search-ic"></span><input id="layer-filter" type="search" placeholder="Search nodes…" autocomplete="off"></div>
+    <div id="layers" class="list"></div>
+    <div id="inspector"></div>
+  </aside>
+</div>
+
+<div id="boot"><div class="boot-logo"></div></div>
+<div id="toast-root"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="mblur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feGaussianBlur id="mblur-g" stdDeviation="0 0"/></filter></svg>
+<input type="file" id="file-img" accept="image/*" hidden>
+<input type="file" id="file-json" accept="application/json,.json" hidden>
+
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

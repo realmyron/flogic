@@ -8,8 +8,8 @@
     {
      "id": "nbn4b018o1",
      "type": "title",
-     "x": -240,
-     "y": -480,
+     "x": -216,
+     "y": -648,
      "w": 480,
      "color": "default",
      "tag": "Start here",
@@ -292,7 +292,26 @@
   {
    "id": "e51yegvji",
    "name": "Environment 2",
-   "nodes": [],
+   "nodes": [
+    {
+     "id": "nofwpd0yq8",
+     "type": "note",
+     "x": -312,
+     "y": 24,
+     "w": 336,
+     "color": "default",
+     "tag": "Note",
+     "title": "stop reading you pervert",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b74r1yhyq8",
+       "kind": "text",
+       "text": ""
+      }
+     ]
+    }
+   ],
    "edges": [],
    "groups": []
   }

@@ -200,9 +200,9 @@
     {
      "id": "npqtkwfq7l",
      "type": "sub",
-     "x": -300,
-     "y": 552,
-     "w": 240,
+     "x": -732,
+     "y": 96,
+     "w": 336,
      "color": "slate",
      "tag": "",
      "title": "Skepticism of the Malfunction",
@@ -212,7 +212,38 @@
        "id": "bq3kqvh8wd",
        "kind": "category",
        "label": "EXPLANATION",
-       "text": "On top of the fact it ignores the framework, I'm rather skeptical of the possibility of a malfunction. The pathway attraction relies on is built on multiple physiological systems: \n- pheromones\n- shape recognition by eyes"
+       "text": "On top of the fact it ignores the framework, I'm rather skeptical of the possibility of a malfunction. The pathway attraction relies on is built on multiple physiological mechanisms: \n- pheromones & chemical cues\n- shape recognition by eyes"
+      },
+      {
+       "id": "bfkrbs19n2",
+       "kind": "category",
+       "label": "PHEROMONES",
+       "text": "Males don't react to male pheromones the same way females do. Females don't react to female pheromones the same way males do. Males through chemical cues can sense when a female is ovulating, raising their testosterone. There's no evidence of malfunction on this mechanism."
+      },
+      {
+       "id": "bd1uc86b5m",
+       "kind": "category",
+       "label": "SHAPE RECOGNITION",
+       "text": "Males, under natural circumstances, do not possess the same anatomy as females, lacking the curvature of the hips, breasts, face softness, fat distribution, waist to hip ratio, skin quality, muscle insertions, muscle mass, body hair distribution. Vice versa for females. There's no evidence of malfunction on this mechanism."
+      },
+      {
+       "id": "brg2d2ke98",
+       "kind": "scenarios",
+       "label": "Scenarios",
+       "items": [
+        {
+         "id": "sy5zxm1e98",
+         "title": "Study showing \"Gay\" Males react to Male pheromones",
+         "steps": [
+          {
+           "id": "tdmuvdwe98",
+           "label": "ARGUMENT",
+           "text": "Sometimes, as an argument, ",
+           "alt": false
+          }
+         ]
+        }
+       ]
       }
      ]
     }
@@ -279,11 +310,11 @@
      "dashed": false
     },
     {
-     "id": "lrb6urcq7l",
+     "id": "l7fv46mx1m",
      "from": "nbnt5jgf28",
-     "fs": "b",
+     "fs": "l",
      "to": "npqtkwfq7l",
-     "ts": "t",
+     "ts": "r",
      "label": "",
      "arrow": true,
      "dashed": false

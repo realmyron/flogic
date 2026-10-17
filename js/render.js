@@ -1,0 +1,392 @@
+'use strict';
+/* Flogic: everything that turns the document into DOM. */
+
+const vp = $('#viewport'), world = $('#world'), nodesWrap = $('#nodes'), edgeG = $('#edge-g');
+const labelsWrap = $('#edge-labels'), groupsWrap = $('#groups'), guideG = $('#guide-g'), connPreview = $('#conn-preview');
+const NODE_EL = new Map(), SIZE = new Map(), DISP = new Map(), EDGE_EL = new Map(), GROUP_EL = new Map();
+const V = { x: 0, y: 0, z: 1 };
+let VR = { left: 0, top: 0, width: 800, height: 600 };
+const DIR = { t: { x: 0, y: -1 }, b: { x: 0, y: 1 }, l: { x: -1, y: 0 }, r: { x: 1, y: 0 } };
+
+/* ---------- geometry ---------- */
+function pos(id) { return DISP.get(id) || nodeById(id); }
+function sizeOf(n) { return SIZE.get(n.id) || { w: n.w, h: n.type === 'sub' ? 96 : n.type === 'title' ? 140 : 160 }; }
+function rectOf(n, model) { const p = model ? n : pos(n.id), s = sizeOf(n); return { x: p.x, y: p.y, w: s.w, h: s.h }; }
+function portPos(n, side) {
+  const r = rectOf(n);
+  if (side === 't') return { x: r.x + r.w / 2, y: r.y };
+  if (side === 'b') return { x: r.x + r.w / 2, y: r.y + r.h };
+  if (side === 'l') return { x: r.x, y: r.y + r.h / 2 };
+  return { x: r.x + r.w, y: r.y + r.h / 2 };
+}
+function bez(p1, s1, p2, s2) {
+  const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  const k = clamp(dist * 0.42, 32, 240);
+  const a = DIR[s1], b = DIR[s2];
+  const c1 = { x: p1.x + a.x * k, y: p1.y + a.y * k }, c2 = { x: p2.x + b.x * k, y: p2.y + b.y * k };
+  return {
+    d: `M${p1.x.toFixed(1)} ${p1.y.toFixed(1)} C${c1.x.toFixed(1)} ${c1.y.toFixed(1)} ${c2.x.toFixed(1)} ${c2.y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`,
+    mid: { x: (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8, y: (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8 },
+  };
+}
+/* which side of a target faces a point coming from `from` */
+function facingSide(from, to) {
+  const dx = to.x - from.x, dy = to.y - from.y;
+  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'l' : 'r') : (dy > 0 ? 't' : 'b');
+}
+function bboxOf(nodes, model) {
+  if (!nodes.length) return null;
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  nodes.forEach(n => { const r = rectOf(n, model); x1 = Math.min(x1, r.x); y1 = Math.min(y1, r.y); x2 = Math.max(x2, r.x + r.w); y2 = Math.max(y2, r.y + r.h); });
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+function toWorld(cx, cy) { return { x: (cx - VR.left - V.x) / V.z, y: (cy - VR.top - V.y) / V.z }; }
+
+/* ---------- view ---------- */
+function applyView() {
+  const cx = (VR.width / 2 - V.x) / V.z, cy = (VR.height / 2 - V.y) / V.z;
+  if (cx < -WORLD) V.x = VR.width / 2 + WORLD * V.z;
+  if (cx > WORLD) V.x = VR.width / 2 - WORLD * V.z;
+  if (cy < -WORLD) V.y = VR.height / 2 + WORLD * V.z;
+  if (cy > WORLD) V.y = VR.height / 2 - WORLD * V.z;
+  world.style.transform = `translate(${V.x}px,${V.y}px) scale(${V.z})`;
+  let g = GRID * V.z;
+  while (g < 14) g *= 4;
+  vp.style.backgroundSize = `${g}px ${g}px`;
+  vp.style.backgroundPosition = `${V.x - g / 2}px ${V.y - g / 2}px`;
+  $('#zoom-label').textContent = Math.round(V.z * 100) + '%';
+  queueMinimap();
+  if (S.envId) {
+    UI.views[S.envId] = { cx: (VR.width / 2 - V.x) / V.z, cy: (VR.height / 2 - V.y) / V.z, z: V.z };
+    saveUI();
+  }
+}
+
+/* ---------- node markup ---------- */
+function fld(n, path, tag, cls, o = {}) {
+  const v = getPath(n, path);
+  return `<${tag} class="ed ${cls || ''}" data-f="${path}"${o.ph ? ` data-ph="${esc(o.ph)}"` : ''}${o.single ? ' data-single="1"' : ''}>${esc(v == null ? '' : v)}</${tag}>`;
+}
+function nodeHTML(n) {
+  const E = S.canEdit, T = n.type;
+  let h = '';
+  if (E) h += `<div class="ports">${SIDES.map(s => `<i class="port p-${s}" data-side="${s}"></i>`).join('')}</div><div class="rz" title="Drag to resize"></div><button class="n-add" data-act="add-block" title="Add a block" aria-label="Add a block">${ic('plus', 15)}</button>`;
+  h += '<div class="n-head">';
+  if (T !== 'sub') h += fld(n, 'tag', 'div', 'n-tag', { ph: 'Label', single: 1 });
+  h += fld(n, 'title', 'div', 'n-title', { ph: T === 'title' ? 'Untitled' : T === 'note' ? 'Note title' : 'Sub-note', single: 1 });
+  if (T === 'title') h += fld(n, 'subtitle', 'div', 'n-subtitle', { ph: 'Add a subtitle…' });
+  h += `</div><div class="blocks">${n.blocks.map((b, i) => blockHTML(n, b, i)).join('')}</div>`;
+  return h;
+}
+function blockHTML(n, b, i) {
+  const P = `blocks.${i}`, E = S.canEdit;
+  let inner = '';
+  switch (b.kind) {
+    case 'text':
+      inner = fld(n, P + '.text', 'div', 'b-text', { ph: 'Write something…' }); break;
+    case 'highlight':
+      inner = `<div class="b-hl">${fld(n, P + '.label', 'div', 'lab', { ph: 'Label', single: 1 })}${fld(n, P + '.text', 'div', 'b-text', { ph: 'Highlighted text…' })}</div>`; break;
+    case 'category':
+      inner = `<div class="b-cat">${fld(n, P + '.label', 'div', 'lab', { ph: 'Category', single: 1 })}${fld(n, P + '.text', 'div', 'b-text', { ph: 'Write something…' })}</div>`; break;
+    case 'conclusion':
+      inner = `<div class="b-concl">${fld(n, P + '.label', 'div', 'lab', { ph: 'Conclusion', single: 1 })}${fld(n, P + '.text', 'div', 'b-text', { ph: 'The takeaway…' })}</div>`; break;
+    case 'scenarios':
+      inner = `<div class="b-scn">${fld(n, P + '.label', 'div', 'lab', { ph: 'Scenarios', single: 1 })}` +
+        b.items.map((s, si) => scenarioHTML(n, b, i, s, si)).join('') +
+        (E ? `<button class="ghost-btn wide" data-act="add-scn">${ic('plus', 12)} Scenario</button>` : '') + '</div>';
+      break;
+    case 'checklist':
+      inner = `<div class="b-chk">${fld(n, P + '.label', 'div', 'lab', { ph: 'Checklist', single: 1 })}` +
+        b.items.map((it, ii) => `<div class="chk${it.done ? ' done' : ''}"><button class="box" data-act="toggle-chk" data-ii="${ii}"${E ? '' : ' disabled'} aria-label="Toggle">${ic('check', 11)}</button>${fld(n, `${P}.items.${ii}.text`, 'div', 'b-text', { ph: 'To do…', single: 1 })}${E ? `<button class="mini-x" data-act="del-chk" data-ii="${ii}" aria-label="Remove item">${ic('x', 11)}</button>` : ''}</div>`).join('') +
+        (E ? `<button class="ghost-btn" data-act="add-chk">${ic('plus', 12)} Item</button>` : '') + '</div>';
+      break;
+    case 'image':
+      if (b.src) inner = `<figure class="b-img"><img src="${esc(imgSrc(b.src))}" data-src="${esc(b.src)}" alt="${esc(b.caption || '')}" draggable="false">${fld(n, P + '.caption', 'figcaption', 'cap', { ph: 'Caption…' })}</figure>`;
+      else if (E) inner = `<div class="img-drop"><div class="idr" data-act="pick-img">${ic('image', 22)}<div><b>Add an image</b><small>Click to upload, drop a file, or paste</small></div></div><input class="img-url" placeholder="…or paste an image link and press Enter"></div>`;
+      break;
+    case 'sources':
+      inner = `<div class="b-src">${fld(n, P + '.label', 'div', 'lab', { ph: 'Sources', single: 1 })}<div class="chips">` +
+        b.items.map((s, si) => `<span class="chip"><a href="${esc(s.u)}" target="_blank" rel="noopener noreferrer" title="${esc(s.u)}">${ic('link', 11)}<span>${esc(s.t || hostOf(s.u))}</span></a>${E ? `<button data-act="del-src" data-si="${si}" aria-label="Remove source">${ic('x', 10)}</button>` : ''}</span>`).join('') +
+        (E ? `<button class="chip add" data-act="add-src">${ic('plus', 11)} Source</button>` : '') + '</div></div>';
+      break;
+  }
+  return `<div class="blk k-${b.kind}" data-i="${i}">${E ? `<span class="grip" title="Drag to move">${ic('grip', 14)}</span>` : ''}${inner}${E ? `<button class="blk-x" data-act="del-block" title="Remove block" aria-label="Remove block">${ic('x', 11)}</button>` : ''}</div>`;
+}
+function scenarioHTML(n, b, i, s, si) {
+  const E = S.canEdit, SP = `blocks.${i}.items.${si}`, open = !!S.open[s.id];
+  const tog = ' data-act="toggle-scn"';
+  return `<div class="scn${open ? ' open' : ''}" data-sid="${s.id}">
+    <div class="scn-h"${E ? '' : tog}><span class="scn-n"${tog}>${si + 1}</span>${fld(n, SP + '.title', 'div', 'scn-t', { ph: 'What if…', single: 1 })}<span class="scn-c"${tog}>${s.steps.length} step${s.steps.length === 1 ? '' : 's'}</span><button class="chev"${tog} aria-label="Expand">${ic('chev', 14)}</button></div>
+    <div class="scn-b"><div class="scn-bi"><div class="chain">` +
+    s.steps.map((st, ti) => `<div class="step${st.alt ? ' alt' : ''}" style="--i:${ti}"><i class="dot"${E ? ` data-act="toggle-alt" data-si="${si}" data-ti="${ti}" title="Switch side"` : ''}></i><div class="step-c">${fld(n, `${SP}.steps.${ti}.label`, 'div', 'lab', { ph: 'Step', single: 1 })}${fld(n, `${SP}.steps.${ti}.text`, 'div', 'b-text', { ph: 'What happens…' })}</div>${E ? `<button class="mini-x" data-act="del-step" data-si="${si}" data-ti="${ti}" aria-label="Remove step">${ic('x', 11)}</button>` : ''}</div>`).join('') +
+    `</div>${E ? `<div class="scn-actions"><button class="ghost-btn" data-act="add-step" data-si="${si}">${ic('plus', 12)} Step</button><button class="ghost-btn danger" data-act="del-scn" data-si="${si}">Remove scenario</button></div>` : ''}</div></div></div>`;
+}
+
+/* ---------- node elements ---------- */
+const RO = new ResizeObserver(entries => {
+  let ch = false;
+  for (const en of entries) {
+    const el = en.target, id = el.dataset.id;
+    if (!id || NODE_EL.get(id) !== el) continue;
+    const w = el.offsetWidth, h = el.offsetHeight, s = SIZE.get(id);
+    if (!s || s.w !== w || s.h !== h) { SIZE.set(id, { w, h }); ch = true; }
+  }
+  if (ch) queueFrame();
+});
+function applyNode(el, n, i) {
+  el.dataset.type = n.type;
+  el.dataset.c = n.color || 'default';
+  el.style.width = n.w + 'px';
+  if (!el.classList.contains('lifted')) el.style.zIndex = i + 1;
+  el.classList.toggle('sel', S.sel.has(n.id));
+  if (!DISP.has(n.id)) el.style.transform = `translate3d(${n.x}px,${n.y}px,0)`;
+}
+function renderNode(n) {
+  const el = NODE_EL.get(n.id);
+  if (!el) return;
+  if (S.editing && S.editing.id === n.id) endEdit();
+  el.innerHTML = nodeHTML(n);
+  applyNode(el, n, env().nodes.indexOf(n));
+}
+function syncNodes(force) {
+  const e = env(), keep = new Set();
+  e.nodes.forEach((n, i) => {
+    keep.add(n.id);
+    let el = NODE_EL.get(n.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'node';
+      el.dataset.id = n.id;
+      el.innerHTML = nodeHTML(n);
+      NODE_EL.set(n.id, el);
+      nodesWrap.appendChild(el);
+      RO.observe(el);
+    } else if (force) {
+      if (S.editing && S.editing.id === n.id) endEdit();
+      el.innerHTML = nodeHTML(n);
+    }
+    applyNode(el, n, i);
+  });
+  for (const [id, el] of NODE_EL) {
+    if (keep.has(id)) continue;
+    RO.unobserve(el); el.remove(); NODE_EL.delete(id); SIZE.delete(id); DISP.delete(id);
+  }
+}
+function syncZ() { env().nodes.forEach((n, i) => { const el = NODE_EL.get(n.id); if (el) { el.classList.remove('lifted'); el.style.zIndex = i + 1; } }); }
+
+/* ---------- edges ---------- */
+function drawEdges() {
+  const e = env(), seen = new Set();
+  for (const ed of e.edges) {
+    const a = nodeById(ed.from), b = nodeById(ed.to);
+    if (!a || !b) continue;
+    const g = bez(portPos(a, ed.fs), ed.fs, portPos(b, ed.ts), ed.ts);
+    seen.add(ed.id);
+    let r = EDGE_EL.get(ed.id);
+    if (!r) {
+      const gEl = document.createElementNS(SVGNS, 'g');
+      gEl.dataset.e = ed.id;
+      const hit = document.createElementNS(SVGNS, 'path'); hit.setAttribute('class', 'hit');
+      const vis = document.createElementNS(SVGNS, 'path'); vis.setAttribute('class', 'vis');
+      gEl.append(hit, vis); edgeG.appendChild(gEl);
+      const lab = document.createElement('div'); lab.className = 'elabel'; lab.dataset.e = ed.id;
+      labelsWrap.appendChild(lab);
+      r = { g: gEl, hit, vis, lab, cls: '' };
+      EDGE_EL.set(ed.id, r);
+    }
+    r.hit.setAttribute('d', g.d); r.vis.setAttribute('d', g.d);
+    const sel = S.edgeSel === ed.id, rel = !sel && (S.sel.has(ed.from) || S.sel.has(ed.to));
+    const cls = 'edge' + (sel ? ' sel' : '') + (rel ? ' rel' : '') + (ed.dashed ? ' dashed' : '');
+    if (r.cls !== cls) { r.g.setAttribute('class', cls); r.cls = cls; }
+    if (ed.arrow) r.vis.setAttribute('marker-end', sel || rel ? 'url(#arrow-hi)' : 'url(#arrow)');
+    else r.vis.removeAttribute('marker-end');
+    const editingLabel = r.lab.hasAttribute('contenteditable');
+    if (ed.label || editingLabel || (sel && S.canEdit)) {
+      r.lab.style.display = '';
+      if (!editingLabel && r.lab.textContent !== ed.label) r.lab.textContent = ed.label;
+      r.lab.classList.toggle('empty', !ed.label);
+      r.lab.style.transform = `translate(${g.mid.x}px,${g.mid.y}px) translate(-50%,-50%)`;
+    } else r.lab.style.display = 'none';
+  }
+  for (const [id, r] of EDGE_EL) if (!seen.has(id)) { r.g.remove(); r.lab.remove(); EDGE_EL.delete(id); }
+}
+
+/* ---------- groups ---------- */
+function drawGroups() {
+  const e = env(), seen = new Set();
+  for (const g of e.groups) {
+    const ns = g.members.map(nodeById).filter(Boolean);
+    if (ns.length < 2) continue;
+    const bb = bboxOf(ns), pad = 22;
+    let el = GROUP_EL.get(g.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'gframe';
+      el.innerHTML = `<div class="glabel" data-g="${g.id}">${ic('group', 13)}<span></span></div>`;
+      groupsWrap.appendChild(el);
+      GROUP_EL.set(g.id, el);
+    }
+    el.style.transform = `translate(${bb.x - pad}px,${bb.y - pad}px)`;
+    el.style.width = bb.w + pad * 2 + 'px';
+    el.style.height = bb.h + pad * 2 + 'px';
+    const sp = el.querySelector('span');
+    if (sp.textContent !== g.name) sp.textContent = g.name;
+    el.classList.toggle('sel', ns.every(n => S.sel.has(n.id)));
+    seen.add(g.id);
+  }
+  for (const [id, el] of GROUP_EL) if (!seen.has(id)) { el.remove(); GROUP_EL.delete(id); }
+}
+
+/* ---------- guides ---------- */
+function drawGuides(gs) {
+  guideG.innerHTML = gs.map(g => `<line class="${g.gap ? 'gap' : ''}" x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}"/>`).join('');
+}
+
+/* ---------- frame scheduling ---------- */
+let FQ = 0;
+function queueFrame() {
+  if (FQ) return;
+  FQ = requestAnimationFrame(() => { FQ = 0; drawEdges(); drawGroups(); drawMinimap(); });
+}
+let MQF = 0;
+function queueMinimap() { if (!MQF) MQF = requestAnimationFrame(() => { MQF = 0; drawMinimap(); }); }
+
+/* ---------- minimap ---------- */
+let MM = null;
+function drawMinimap() {
+  const c = $('#minimap');
+  if (!c || !c.offsetWidth) return;
+  const ns = env().nodes;
+  c.style.display = ns.length ? '' : 'none';
+  if (!ns.length) return;
+  const dpr = window.devicePixelRatio || 1, W = c.clientWidth, Hh = c.clientHeight;
+  if (c.width !== W * dpr) { c.width = W * dpr; c.height = Hh * dpr; }
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, Hh);
+  const vr = { x: -V.x / V.z, y: -V.y / V.z, w: VR.width / V.z, h: VR.height / V.z };
+  const bb = bboxOf(ns);
+  const x1 = Math.min(bb.x, vr.x), y1 = Math.min(bb.y, vr.y), x2 = Math.max(bb.x + bb.w, vr.x + vr.w), y2 = Math.max(bb.y + bb.h, vr.y + vr.h);
+  const pad = 10, s = Math.min((W - pad * 2) / (x2 - x1), (Hh - pad * 2) / (y2 - y1));
+  const ox = pad + ((W - pad * 2) - (x2 - x1) * s) / 2 - x1 * s, oy = pad + ((Hh - pad * 2) - (y2 - y1) * s) / 2 - y1 * s;
+  MM = { s, ox, oy };
+  const cs = getComputedStyle(document.documentElement);
+  ns.forEach(n => {
+    const r = rectOf(n);
+    ctx.globalAlpha = S.sel.has(n.id) ? 1 : 0.55;
+    ctx.fillStyle = COLORS[n.color] || COLORS.default;
+    const w = Math.max(2, r.w * s), h = Math.max(2, r.h * s);
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(ox + r.x * s, oy + r.y * s, w, h, Math.min(3, w / 3)); else ctx.rect(ox + r.x * s, oy + r.y * s, w, h);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = cs.getPropertyValue('--sel').trim() || '#7b93ff';
+  ctx.lineWidth = 1.5;
+  ctx.fillStyle = cs.getPropertyValue('--sel-soft').trim() || 'rgba(123,147,255,.15)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(ox + vr.x * s, oy + vr.y * s, vr.w * s, vr.h * s, 4); else ctx.rect(ox + vr.x * s, oy + vr.y * s, vr.w * s, vr.h * s);
+  ctx.fill(); ctx.stroke();
+}
+
+/* ---------- side panels ---------- */
+function renderEnvs() {
+  $('#env-list').innerHTML = DOC.envs.map(e => `<div class="env${e.id === S.envId ? ' active' : ''}" data-env="${e.id}"${S.canEdit ? ' title="Double-click to rename"' : ''}>${ic('board', 15)}<span class="nm">${esc(e.name)}</span><span class="cnt">${e.nodes.length || ''}</span></div>`).join('');
+}
+function layerRow(n, child, snip) {
+  const icn = n.type === 'title' ? 'title' : n.type === 'note' ? 'note' : 'sub';
+  return `<div class="layer${child ? ' child' : ''}${S.sel.has(n.id) ? ' sel' : ''}" data-id="${n.id}"><span class="lic" style="color:${COLORS[n.color] || COLORS.default}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span></div>`;
+}
+function renderLayers() {
+  const e = env(), q = ($('#layer-filter').value || '').trim().toLowerCase();
+  $('#layer-count').textContent = e.nodes.length || '';
+  let h = '';
+  if (q) {
+    const hits = e.nodes.filter(n => nodeText(n).toLowerCase().includes(q)).reverse();
+    h = hits.length ? hits.map(n => {
+      const t = nodeText(n).replace(/\s+/g, ' '), i = t.toLowerCase().indexOf(q);
+      return layerRow(n, false, i > -1 ? (i > 20 ? '…' : '') + t.slice(Math.max(0, i - 20), i + 40) : '');
+    }).join('') : '<div class="list-empty">No matches</div>';
+  } else if (!e.nodes.length) {
+    h = `<div class="list-empty">No nodes yet.${S.canEdit ? '<br>Right-click the board to add one.' : ''}</div>`;
+  } else {
+    const inGroup = new Map();
+    e.groups.forEach(g => g.members.forEach(id => inGroup.set(id, g)));
+    const done = new Set();
+    for (let i = e.nodes.length - 1; i >= 0; i--) {
+      const n = e.nodes[i], g = inGroup.get(n.id);
+      if (!g) { h += layerRow(n, false); continue; }
+      if (done.has(g.id)) continue;
+      done.add(g.id);
+      const open = !UI.collapsed[g.id], all = g.members.every(id => S.sel.has(id));
+      h += `<div class="layer grp${all ? ' sel' : ''}" data-g="${g.id}"><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button>${ic('group', 14)}<span class="nm">${esc(g.name)}</span><span class="cnt">${g.members.length}</span></div>`;
+      if (open) e.nodes.filter(m => g.members.includes(m.id)).reverse().forEach(m => { h += layerRow(m, true); });
+    }
+  }
+  $('#layers').innerHTML = h;
+}
+function swatches(cur) {
+  return Object.entries(COLORS).map(([k, v]) => `<button class="sw${cur === k ? ' on' : ''}" data-sw="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('');
+}
+function renderInspector() {
+  const box = $('#inspector');
+  if (!S.canEdit) { box.innerHTML = ''; return; }
+  const e = env();
+  let h = '';
+  if (S.edgeSel) {
+    const ed = e.edges.find(x => x.id === S.edgeSel);
+    if (ed) h = `<div class="sec-head"><span>Connection</span></div><div class="insp">
+      <div class="row2"><button class="seg${ed.arrow ? ' on' : ''}" data-ia="arrow">${ic('arrowr', 14)} Arrow</button><button class="seg${ed.dashed ? ' on' : ''}" data-ia="dashed">${ic('dash', 14)} Dashed</button></div>
+      <button class="ibtn" data-ia="elabel">${ic('edit', 14)} ${ed.label ? 'Edit label' : 'Add label'}</button>
+      <button class="ibtn" data-ia="reverse">${ic('swap', 14)} Reverse direction</button>
+      <button class="ibtn danger" data-ia="del">${ic('trash', 14)} Delete <kbd>Del</kbd></button></div>`;
+  } else if (S.sel.size === 1) {
+    const n = nodeById([...S.sel][0]);
+    if (n) h = `<div class="sec-head"><span>${NODE_LABEL[n.type]}</span></div><div class="insp">
+      <div class="seg3">${['title', 'note', 'sub'].map(t => `<button class="seg${n.type === t ? ' on' : ''}" data-ia="type" data-v="${t}">${NODE_LABEL[t]}</button>`).join('')}</div>
+      <div class="swrow">${swatches(n.color)}</div>
+      <div class="row2"><button class="ibtn" style="flex:1" data-ia="dup">${ic('copy', 14)} Duplicate</button><button class="ibtn danger" data-ia="del" aria-label="Delete">${ic('trash', 14)}</button></div>
+      <div class="meta">X ${Math.round(n.x)} · Y ${Math.round(n.y)} · W ${n.w}</div></div>`;
+  } else if (S.sel.size > 1) {
+    const ids = [...S.sel], g = groupOf(ids[0]);
+    const isGroup = g && g.members.length === ids.length && ids.every(id => g.members.includes(id));
+    h = `<div class="sec-head"><span>${isGroup ? esc(g.name) : S.sel.size + ' selected'}</span></div><div class="insp">
+      <div class="row4"><button class="ib" data-ia="align" data-v="l" title="Align left">${ic('alignl', 15)}</button><button class="ib" data-ia="align" data-v="c" title="Align centres">${ic('alignc', 15)}</button><button class="ib" data-ia="align" data-v="t" title="Align top">${ic('alignt', 15)}</button><button class="ib" data-ia="tidy" title="Tidy up">${ic('tidy', 15)}</button></div>
+      <div class="swrow">${swatches(null)}</div>
+      ${isGroup ? `<button class="ibtn" data-ia="ungroup">${ic('group', 14)} Ungroup <kbd>${MOD} ⇧ G</kbd></button>` : `<button class="ibtn" data-ia="group">${ic('group', 14)} Group <kbd>${MOD} G</kbd></button>`}
+      <button class="ibtn danger" data-ia="del">${ic('trash', 14)} Delete <kbd>Del</kbd></button></div>`;
+  }
+  box.innerHTML = h;
+}
+let TOPKEY = '';
+function renderTop(force) {
+  const el = $('#topright');
+  let key, h;
+  if (!S.canEdit) {
+    key = 'v' + S.preview;
+    h = `<span class="pill">${ic('eye', 14)} View only</span><button class="tbtn" data-cmd="share" data-tip="Copy link">${ic('link', 15)}</button>` +
+      (S.preview ? `<button class="btn primary" data-cmd="exit-preview">Exit preview</button>` : '');
+  } else {
+    const st = S.publishing ? ['busy', 'Publishing…'] : !S.connected ? ['local', S.local ? 'Saved on this device' : 'Saved locally'] : META.dirty ? ['dirty', 'Unpublished changes'] : ['ok', 'Published'];
+    key = st.join() + S.connected;
+    h = `<span class="pill st-${st[0]}"><i></i>${st[1]}</span>` +
+      `<button class="tbtn" data-cmd="preview" data-tip="Preview as a visitor">${ic('eye', 15)}</button>` +
+      `<button class="tbtn" data-cmd="share" data-tip="Copy link">${ic('link', 15)}</button>` +
+      `<button class="btn ${S.connected && META.dirty ? 'primary' : 'quiet'}" data-cmd="publish"${S.publishing ? ' disabled' : ''}>${ic('upload', 14)}<span>Publish</span></button>`;
+  }
+  if (key === TOPKEY && !force) return;
+  TOPKEY = key;
+  el.innerHTML = h;
+}
+function renderEmptyHint() {
+  const hint = $('#empty-hint'), empty = !env().nodes.length;
+  hint.hidden = !empty;
+  if (empty) hint.innerHTML = S.canEdit
+    ? `<div class="eh-ic">${ic('plus', 24)}</div><b>An empty environment</b><span>Right-click anywhere to add a node, or press N</span>`
+    : `<div class="eh-ic">${ic('board', 24)}</div><b>Nothing here yet</b><span>This environment is empty</span>`;
+}
+function renderAll(force) {
+  syncNodes(force);
+  renderEnvs(); renderLayers(); renderInspector(); renderTop(true); renderEmptyHint();
+  drawEdges(); drawGroups(); drawMinimap();
+}

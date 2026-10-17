@@ -192,6 +192,24 @@
            "alt": false
           }
          ]
+        },
+        {
+         "id": "sygc7icssc",
+         "title": "Possibility of Sex in Infertile Individuals",
+         "steps": [
+          {
+           "id": "tbstg9gssc",
+           "label": "ARGUMENT",
+           "text": "A common response is saying infertile individuals cannot then have sex under this definition",
+           "alt": false
+          },
+          {
+           "id": "tspdjbk6n3",
+           "label": "EXPLANATION",
+           "text": "This is a strawman, ignoring the word \"designed\". Designed means that is its intention, but is not necessary the result.",
+           "alt": false
+          }
+         ]
         }
        ]
       }
@@ -238,7 +256,19 @@
           {
            "id": "tdmuvdwe98",
            "label": "ARGUMENT",
-           "text": "Sometimes, as an argument, ",
+           "text": "A study by Ivanka Savic shows activation of certain parts of the brain in \"Gay\" males from male pheromones",
+           "alt": false
+          },
+          {
+           "id": "tuix4er1hp",
+           "label": "METHODOLOGICAL CRITIQUE",
+           "text": "This study has many methodological problems. It disclosed to the \"gay\" males that they will be smelling male pheromones, which can result in bias and placebo effects. Extremely high dosage, synthetic pheromones, ",
+           "alt": false
+          },
+          {
+           "id": "tvsvus3ca0",
+           "label": "CRITIQUE OF CONCLUSION",
+           "text": "Activation of certain parts of brain can indeed happen through the smell of pheromones, no matter the sex the of objects. However, concluding activation as attraction does not follow (non sequitur)",
            "alt": false
           }
          ]

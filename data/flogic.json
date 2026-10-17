@@ -196,6 +196,25 @@
        ]
       }
      ]
+    },
+    {
+     "id": "npqtkwfq7l",
+     "type": "sub",
+     "x": -300,
+     "y": 552,
+     "w": 240,
+     "color": "slate",
+     "tag": "",
+     "title": "Skepticism of the Malfunction",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bq3kqvh8wd",
+       "kind": "category",
+       "label": "EXPLANATION",
+       "text": "On top of the fact it ignores the framework, I'm rather skeptical of the possibility of a malfunction. The pathway attraction relies on is built on multiple physiological systems: \n- pheromones\n- shape recognition by eyes"
+      }
+     ]
     }
    ],
    "edges": [
@@ -240,8 +259,8 @@
      "dashed": false
     },
     {
-     "id": "lyh6b9s44t",
-     "from": "nuvef0ypz",
+     "id": "lg8a5pk885",
+     "from": "nbnt5jgf28",
      "fs": "r",
      "to": "n8d9hjd6ra",
      "ts": "b",
@@ -250,11 +269,21 @@
      "dashed": false
     },
     {
-     "id": "lg8a5pk885",
-     "from": "nbnt5jgf28",
+     "id": "lepnm31u7z",
+     "from": "nuvef0ypz",
      "fs": "r",
      "to": "n8d9hjd6ra",
-     "ts": "b",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lrb6urcq7l",
+     "from": "nbnt5jgf28",
+     "fs": "b",
+     "to": "npqtkwfq7l",
+     "ts": "t",
      "label": "",
      "arrow": true,
      "dashed": false

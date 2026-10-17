@@ -8,14 +8,14 @@
   --ease:cubic-bezier(.2,.8,.2,1);
   --spring:cubic-bezier(.3,1.45,.55,1);
 
-  --bg:#f2f3f7; --dot:rgba(30,40,70,.12);
-  --amb1:rgba(105,135,255,.11); --amb2:rgba(185,120,255,.08);
-  --panel:rgba(255,255,255,.82); --panel-solid:#ffffff; --panel-b:rgba(20,30,60,.09);
-  --text:#151922; --text2:#2a303e; --muted:#636b7e; --faint:#9da3b3;
-  --hover:rgba(20,30,60,.055); --press:rgba(20,30,60,.09);
-  --node:#ffffff; --node-top:#ffffff; --node-sub:#fbfbfd;
-  --node-b:rgba(20,30,60,.11); --node-b2:rgba(20,30,60,.18); --node-hi:rgba(255,255,255,1);
-  --inset:rgba(20,30,60,.04);
+  /* light mode: muted greys instead of bright white, easier on the eyes */
+  --bg:#dfe2e7; --dot:rgba(30,40,70,.17);
+  --panel:rgba(233,235,240,.92); --panel-solid:#eceef2; --panel-b:rgba(20,30,60,.10);
+  --text:#1e2330; --text2:#333a49; --muted:#5f6779; --faint:#959cad;
+  --hover:rgba(20,30,60,.06); --press:rgba(20,30,60,.10);
+  --node:#eceef2; --node-top:#f0f2f5; --node-sub:#e8eaef;
+  --node-b:rgba(20,30,60,.12); --node-b2:rgba(20,30,60,.19); --node-hi:rgba(255,255,255,.55);
+  --inset:rgba(20,30,60,.045);
   --sel:#4d6bf5; --sel-soft:rgba(77,107,245,.15); --on-sel:#fff;
   --line:rgba(60,72,100,.45); --guide:#ff3d7f;
   --sh-1:0 1px 2px rgba(20,30,60,.05),0 6px 22px rgba(20,30,60,.07);
@@ -27,7 +27,6 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#0c0e13; --dot:rgba(255,255,255,.075);
-    --amb1:rgba(105,135,255,.09); --amb2:rgba(185,120,255,.07);
     --panel:rgba(20,23,30,.80); --panel-solid:#171a22; --panel-b:rgba(255,255,255,.07);
     --text:#e9ecf3; --text2:#c8cedb; --muted:#8a92a6; --faint:#5b6276;
     --hover:rgba(255,255,255,.055); --press:rgba(255,255,255,.09);
@@ -44,7 +43,6 @@
 }
 :root[data-theme="dark"]{
   --bg:#0c0e13; --dot:rgba(255,255,255,.075);
-  --amb1:rgba(105,135,255,.09); --amb2:rgba(185,120,255,.07);
   --panel:rgba(20,23,30,.80); --panel-solid:#171a22; --panel-b:rgba(255,255,255,.07);
   --text:#e9ecf3; --text2:#c8cedb; --muted:#8a92a6; --faint:#5b6276;
   --hover:rgba(255,255,255,.055); --press:rgba(255,255,255,.09);
@@ -81,8 +79,7 @@ kbd{font-family:var(--font);font-size:11px;color:var(--faint)}
   backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%)}
 #left{border-right:1px solid var(--panel-b)}
 #right{border-left:1px solid var(--panel-b)}
-#stage{position:relative;min-width:0;overflow:hidden;
-  background:radial-gradient(900px 640px at 12% 8%,var(--amb1),transparent 62%),radial-gradient(800px 600px at 90% 92%,var(--amb2),transparent 62%),var(--bg)}
+#stage{position:relative;min-width:0;overflow:hidden;background:var(--bg)}
 
 .brand{display:flex;align-items:center;gap:10px;padding:16px 16px 14px;font-weight:650;font-size:15px;letter-spacing:-.01em}
 .brand span{flex:1}
@@ -116,6 +113,10 @@ kbd{font-family:var(--font);font-size:11px;color:var(--faint)}
 .layer .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .layer .nm small{display:block;font-size:11px;color:var(--faint);overflow:hidden;text-overflow:ellipsis}
 .layer.child{padding-left:30px}
+.layer .leye{flex:none;width:22px;height:22px;margin-right:-4px;border-radius:6px;display:grid;place-items:center;color:var(--faint);opacity:0;transition:opacity .12s,background .12s,color .12s}
+.layer:hover .leye,.layer.is-hidden .leye{opacity:1}
+.layer .leye:hover{background:var(--hover);color:var(--text)}
+.layer.is-hidden>.nm,.layer.is-hidden>.lic{opacity:.45}
 .layer.grp{font-weight:600;color:var(--text2)}
 .lchev{width:16px;height:16px;display:grid;place-items:center;color:var(--faint);transition:transform .18s var(--ease);margin-right:-4px}
 .lchev.open{transform:rotate(90deg)}
@@ -174,6 +175,8 @@ kbd{font-family:var(--font);font-size:11px;color:var(--faint)}
 .btn:active{transform:scale(.96)}
 .btn.primary{background:var(--sel);border-color:transparent;color:var(--on-sel)}
 .btn.primary:hover{filter:brightness(1.08);background:var(--sel)}
+.btn.danger{background:var(--err);border-color:transparent;color:#fff}
+.btn.danger:hover{background:var(--err);filter:brightness(1.08)}
 .btn.quiet{background:var(--panel);color:var(--text2);border-color:var(--panel-b);backdrop-filter:blur(16px)}
 .btn.sm{height:26px;padding:0 10px;font-size:12px;border-radius:8px}
 #zoombar{left:14px;bottom:14px;display:flex;align-items:center;gap:2px;padding:4px;border-radius:12px}
@@ -198,7 +201,8 @@ body.panning #viewport,body.panning *{cursor:grabbing !important}
 
 /* edges */
 .edge .vis{fill:none;stroke:var(--line);stroke-width:1.7;stroke-linecap:round;transition:stroke .15s}
-.edge .hit{fill:none;stroke:transparent;stroke-width:18;pointer-events:stroke;cursor:pointer}
+.edge .hit{fill:none;stroke:transparent;stroke-width:18;pointer-events:stroke;cursor:grab}
+body.viewer .edge .hit{cursor:pointer}
 .edge.dashed .vis{stroke-dasharray:6 7}
 .edge:hover .vis{stroke:color-mix(in srgb,var(--sel) 70%,var(--line))}
 .edge.rel .vis{stroke:var(--sel);stroke-dasharray:7 7;animation:flow .9s linear infinite}
@@ -235,6 +239,7 @@ body.editor .node:hover{border-color:var(--node-b2)}
 .node.sel{border-color:var(--sel);box-shadow:0 0 0 1px var(--sel),inset 0 1px 0 var(--node-hi),var(--sh-1)}
 .node.hl{box-shadow:0 0 0 3px var(--sel-soft),var(--sh-1)}
 .node.lifted{box-shadow:0 0 0 1px var(--sel),var(--sh-2);cursor:grabbing}
+.node.is-hidden{visibility:hidden;pointer-events:none}
 .node.pop{animation:pop .32s var(--spring) both}
 .node.leaving{animation:leave .18s var(--ease) forwards}
 @keyframes pop{from{opacity:0;scale:.9}}

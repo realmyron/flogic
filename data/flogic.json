@@ -11,7 +11,7 @@
      "x": -216,
      "y": -624,
      "w": 480,
-     "color": "pink",
+     "color": "default",
      "tag": "POSITION",
      "title": "Homosexuality is Impossible",
      "subtitle": "Homosexuality under the classic definition of \"same sex attraction is impossible.",
@@ -23,7 +23,7 @@
      "x": -360,
      "y": -384,
      "w": 360,
-     "color": "red",
+     "color": "default",
      "tag": "REDEFINING",
      "title": "Critiquing the definition of Attraction",
      "subtitle": "",
@@ -70,6 +70,49 @@
        "kind": "category",
        "label": "JUSTIFICATION",
        "text": "This definition addresses the problem. It defines attraction as one of the steps of reproduction, showing its purpose. "
+      },
+      {
+       "id": "b4ww51wtqe",
+       "kind": "scenarios",
+       "label": "Scenarios",
+       "items": [
+        {
+         "id": "sirnmtitqe",
+         "title": "Malfunction of Pathway",
+         "steps": [
+          {
+           "id": "tso1yt2tqe",
+           "label": "ARGUMENT",
+           "text": "A common argument may be to treat homosexuality as a malfunction of the reproductive pathway.",
+           "alt": false
+          },
+          {
+           "id": "t6jnoc53w6",
+           "label": "EXPLANATION",
+           "text": "This thought comes from the further misunderstanding of the terms, attraction & sex, under this framework, are solely reproductive terms.  ",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "sqlejr4vw4",
+         "title": "Animals have same sex intercourse",
+         "steps": [
+          {
+           "id": "t0fxrvuvw4",
+           "label": "ARGUMENT",
+           "text": "Some people claim will use the phenomenon of same sex intimate acts happening in nature.",
+           "alt": false
+          },
+          {
+           "id": "tuaplhjbgn",
+           "label": "EXPLANATION",
+           "text": "This confuses intimate acts with the act of sex. Sex is solely reproductive under this framework.",
+           "alt": false
+          }
+         ]
+        }
+       ]
       }
      ]
     },
@@ -79,7 +122,7 @@
      "x": 120,
      "y": -384,
      "w": 360,
-     "color": "violet",
+     "color": "default",
      "tag": "REDEFINING",
      "title": "Critiquing the definition of Sex",
      "subtitle": "",
@@ -87,20 +130,70 @@
       {
        "id": "b4arfr5pz",
        "kind": "category",
-       "label": "ATTRACTION",
-       "text": "to feel a pull to someone through the appeal to own desires and tastes"
+       "label": "SEX (ACT)",
+       "text": "a physical activity between people involving the vaginas, mouths or anus' contact with the opposing genitals"
       },
       {
        "id": "bpzhnrapz",
        "kind": "category",
        "label": "THE PROBLEM",
-       "text": "Under this definition, attraction is synonymous to liking & loving. It is reductive and does not address the biology behind the phenomenon of attraction. Through this definition, there is no way of explaining the phenomenon that gets a male to mate with a female over any other female. "
+       "text": "This definition treats sex as an intimate activity involving penetration that is only limited to the mouth, anus or vagina. This definition is logically fallacious (ad populum), as it has no justification for why only these 3 parts should be considered as part of a sexual intercourse and others not (such as ear, nose, open wounds, belly buttons, etc), other than that most people consider it that way. \nIt also fails to describes sex as the act that leads to pregnancy."
       },
       {
        "id": "b04egfzpz",
        "kind": "conclusion",
-       "label": "Conclusion",
-       "text": "The term attraction needs to be brought back to its original roots, when it was strictly a medical term. "
+       "label": "CONCLUSION",
+       "text": "The act of sex needs to be defined medically and evolutionary. "
+      }
+     ]
+    },
+    {
+     "id": "n8d9hjd6ra",
+     "type": "note",
+     "x": 528,
+     "y": -384,
+     "w": 336,
+     "color": "red",
+     "tag": "ROOT",
+     "title": "Redefining the Act of Sex",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bxbljel6ra",
+       "kind": "category",
+       "label": "ATTRACTION",
+       "text": "a reproductive pathway designed to deliver sperm to the fallopian tubes through penetration"
+      },
+      {
+       "id": "bl7v28g6ra",
+       "kind": "category",
+       "label": "JUSTIFICATION",
+       "text": "This definition addresses the problem. It, too,  defines sex as one of the steps of reproduction, showing its purpose. "
+      },
+      {
+       "id": "bcpk08wk29",
+       "kind": "scenarios",
+       "label": "Scenarios",
+       "items": [
+        {
+         "id": "s4iqrnmk29",
+         "title": "\"Animals have same sex intercourse\"",
+         "steps": [
+          {
+           "id": "twa3ytok29",
+           "label": "ARGUMENT",
+           "text": "Some people claim will use the phenomenon of same sex intimate acts happening in nature.",
+           "alt": false
+          },
+          {
+           "id": "t9ivv467z3",
+           "label": "EXPLANATION",
+           "text": "This confuses intimate acts with the act of sex. Sex is solely reproductive under this framework.",
+           "alt": false
+          }
+         ]
+        }
+       ]
       }
      ]
     }
@@ -142,6 +235,26 @@
      "fs": "r",
      "to": "nuvef0ypz",
      "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lyh6b9s44t",
+     "from": "nuvef0ypz",
+     "fs": "r",
+     "to": "n8d9hjd6ra",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lg8a5pk885",
+     "from": "nbnt5jgf28",
+     "fs": "r",
+     "to": "n8d9hjd6ra",
+     "ts": "b",
      "label": "",
      "arrow": true,
      "dashed": false

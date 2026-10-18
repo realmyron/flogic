@@ -972,7 +972,7 @@ function onDown(e) {
     selectEdge(eg.dataset.e);
     if (!S.canEdit) return;
     /* the middle dot (or a line's label) bends the line; anywhere else on the line pulls it off to disconnect */
-    if (t.closest('.bend') || (eg.classList.contains('elabel') && !eg.hasAttribute('contenteditable'))) BEND = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY, moved: false };
+    if (t.closest('.bend, .bend-hit') || (eg.classList.contains('elabel') && !eg.hasAttribute('contenteditable'))) BEND = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY, moved: false };
     else EG = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY };
     return;
   }
@@ -1732,7 +1732,10 @@ document.addEventListener('click', e => {
 function switchEnv(id) {
   endEdit();
   if (!DOC.envs.some(e => e.id === id)) id = DOC.envs[0].id;
-  S.envId = id; UI.envId = id; saveUI();
+  S.envId = id; UI.envId = id;
+  const fe = DOC.envs.find(x => x.id === id);
+  if (fe && fe.folder) delete UI.collapsed['fold:' + fe.folder];
+  saveUI();
   try { history.replaceState(null, '', location.pathname + location.search + '#e=' + id); } catch (_) {}
   for (const [, el] of NODE_EL) { RO.unobserve(el); el.remove(); }
   NODE_EL.clear(); SIZE.clear(); DISP.clear();
@@ -1749,35 +1752,88 @@ function switchEnv(id) {
   popIn(env().nodes.map(n => n.id), true);
   animateEdgesIn(120 + Math.min(env().nodes.length, 30) * 10);
 }
-function addEnv() {
+function addEnv(folderId) {
   checkpoint();
   let k = DOC.envs.length + 1;
   while (DOC.envs.some(e => e.name === 'Environment ' + k)) k++;
   const e = makeEnv('Environment ' + k);
+  if (folderId) { e.folder = folderId; delete UI.collapsed['fold:' + folderId]; }
   DOC.envs.push(e);
   changed();
   switchEnv(e.id);
   renameEnvInline(e.id);
 }
-function renameEnvInline(id) {
-  const e = DOC.envs.find(x => x.id === id), row = $(`.env[data-env="${id}"]`);
-  if (!e || !row || !S.canEdit) return;
+/* swap a row's name for a text box; Enter or clicking away saves, Esc cancels */
+function inlineRename(row, value, label, save) {
+  if (!row || !S.canEdit) return;
   const span = row.querySelector('.nm'), inp = document.createElement('input');
-  inp.className = 'rename'; inp.value = e.name; inp.setAttribute('aria-label', 'Environment name');
+  inp.className = 'rename'; inp.value = value; inp.setAttribute('aria-label', label);
+  row.removeAttribute('draggable');
   span.replaceWith(inp);
   inp.focus(); inp.select();
   let done = false;
-  const finish = save => {
+  const finish = ok => {
     if (done) return;
     done = true;
     const v = inp.value.trim();
-    if (save && v && v !== e.name) { checkpoint(); e.name = v; changed(); }
+    if (ok && v && v !== value) { checkpoint(); save(v); changed(); }
     renderEnvs();
   };
   inp.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Enter') finish(true); if (ev.key === 'Escape') finish(false); });
   inp.addEventListener('blur', () => finish(true));
   inp.addEventListener('pointerdown', ev => ev.stopPropagation());
+  inp.addEventListener('click', ev => ev.stopPropagation());
 }
+function renameEnvInline(id) {
+  const e = DOC.envs.find(x => x.id === id);
+  if (e) inlineRename($(`.env[data-env="${id}"]`), e.name, 'Environment name', v => { e.name = v; });
+}
+
+/* ---------- environment categories ---------- */
+function folderOf(id) { return (DOC.folders || []).find(f => f.id === id); }
+function addFolder(withEnv) {
+  checkpoint();
+  DOC.folders = DOC.folders || [];
+  let k = DOC.folders.length + 1;
+  while (DOC.folders.some(f => f.name === 'Category ' + k)) k++;
+  const f = { id: uid('f'), name: 'Category ' + k };
+  DOC.folders.push(f);
+  if (withEnv) { const e = DOC.envs.find(x => x.id === withEnv); if (e) e.folder = f.id; }
+  changed(); renderEnvs();
+  inlineRename($(`.efold[data-fold="${f.id}"]`), f.name, 'Category name', v => { f.name = v; });
+}
+function renameFolderInline(id) {
+  const f = folderOf(id);
+  if (f) inlineRename($(`.efold[data-fold="${id}"]`), f.name, 'Category name', v => { f.name = v; });
+}
+function deleteFolder(id) {
+  const f = folderOf(id);
+  if (!f) return;
+  checkpoint();
+  DOC.envs.forEach(e => { if (e.folder === id) delete e.folder; });
+  DOC.folders = DOC.folders.filter(x => x !== f);
+  changed(); renderEnvs();
+  toast(`Removed the category “${f.name}”. Its environments were kept.`, { actions: [{ label: 'Undo', fn: undo }] });
+}
+function moveFolder(id, d) {
+  const fs = DOC.folders || [], i = fs.findIndex(f => f.id === id), j = i + d;
+  if (i < 0 || j < 0 || j >= fs.length) return;
+  checkpoint();
+  [fs[i], fs[j]] = [fs[j], fs[i]];
+  changed(); renderEnvs();
+}
+function setEnvFolder(envId, folderId) {
+  const e = DOC.envs.find(x => x.id === envId);
+  if (!e || (e.folder || null) === (folderId || null)) return;
+  checkpoint();
+  if (folderId) { e.folder = folderId; delete UI.collapsed['fold:' + folderId]; } else delete e.folder;
+  changed(); renderEnvs();
+}
+function toggleFolder(id) {
+  UI.collapsed['fold:' + id] = !UI.collapsed['fold:' + id];
+  saveUI(); renderEnvs();
+}
+const sameGroup = (a, b) => (a.folder || null) === (b.folder || null) || (!folderOf(a.folder) && !folderOf(b.folder));
 function duplicateEnv(id) {
   const src = DOC.envs.find(x => x.id === id);
   if (!src) return;
@@ -1810,34 +1866,115 @@ function deleteEnv(id) {
     toast(`Deleted “${e.name}”`, { actions: [{ label: 'Undo', fn: undo }] });
   });
 }
+/* move up/down among the environments it is listed with (same category) */
+function envNeighbour(id, d) {
+  const e = DOC.envs.find(x => x.id === id), peers = DOC.envs.filter(x => sameGroup(x, e));
+  return peers[peers.indexOf(e) + d];
+}
 function moveEnv(id, d) {
-  const i = DOC.envs.findIndex(x => x.id === id), j = i + d;
-  if (i < 0 || j < 0 || j >= DOC.envs.length) return;
+  const other = envNeighbour(id, d);
+  if (!other) return;
   checkpoint();
+  const i = DOC.envs.findIndex(x => x.id === id), j = DOC.envs.indexOf(other);
   [DOC.envs[i], DOC.envs[j]] = [DOC.envs[j], DOC.envs[i]];
   renderEnvs(); changed();
 }
-$('#env-add').addEventListener('click', addEnv);
-$('#env-list').addEventListener('click', e => {
+$('#env-add').addEventListener('click', () => addEnv());
+$('#cat-add').addEventListener('click', () => addFolder());
+const envList = $('#env-list');
+envList.addEventListener('click', e => {
+  const fold = e.target.closest('.efold');
+  if (fold && !fold.querySelector('input')) { toggleFolder(fold.dataset.fold); return; }
   const row = e.target.closest('.env');
   if (!row || row.querySelector('input')) return;
   if (row.dataset.env !== S.envId) switchEnv(row.dataset.env);
   closePanels();
 });
-$('#env-list').addEventListener('dblclick', e => { const row = e.target.closest('.env'); if (row) renameEnvInline(row.dataset.env); });
-$('#env-list').addEventListener('contextmenu', e => {
+envList.addEventListener('dblclick', e => {
+  const fold = e.target.closest('.efold');
+  if (fold) { renameFolderInline(fold.dataset.fold); return; }   /* its two clicks already toggled it closed and open again */
   const row = e.target.closest('.env');
-  if (!row || !S.canEdit) return;
+  if (row) renameEnvInline(row.dataset.env);
+});
+envList.addEventListener('contextmenu', e => {
+  if (!S.canEdit) return;
+  const fold = e.target.closest('.efold'), row = e.target.closest('.env');
+  if (!fold && !row) return;
   e.preventDefault();
-  const id = row.dataset.env, i = DOC.envs.findIndex(x => x.id === id);
+  if (fold) {
+    const id = fold.dataset.fold, i = DOC.folders.findIndex(f => f.id === id);
+    openMenu(e.clientX, e.clientY, [
+      { label: 'New environment here', icon: 'plus', fn: () => addEnv(id) },
+      { label: 'Rename category', icon: 'edit', fn: () => renameFolderInline(id) },
+      { label: 'Move up', icon: 'chev', disabled: i === 0, fn: () => moveFolder(id, -1) },
+      { label: 'Move down', icon: 'chev', disabled: i === DOC.folders.length - 1, fn: () => moveFolder(id, 1) },
+      '-',
+      { label: 'Remove category (keeps environments)', icon: 'trash', danger: true, fn: () => deleteFolder(id) },
+    ]);
+    return;
+  }
+  const id = row.dataset.env, env0 = DOC.envs.find(x => x.id === id), folders = DOC.folders || [];
   openMenu(e.clientX, e.clientY, [
     { label: 'Rename', icon: 'edit', fn: () => renameEnvInline(id) },
     { label: 'Duplicate', icon: 'copy', fn: () => duplicateEnv(id) },
-    { label: 'Move up', icon: 'chev', disabled: i === 0, fn: () => moveEnv(id, -1) },
-    { label: 'Move down', icon: 'chev', disabled: i === DOC.envs.length - 1, fn: () => moveEnv(id, 1) },
+    { label: 'Move up', icon: 'chev', disabled: !envNeighbour(id, -1), fn: () => moveEnv(id, -1) },
+    { label: 'Move down', icon: 'chev', disabled: !envNeighbour(id, 1), fn: () => moveEnv(id, 1) },
+    { head: 'Category' },
+    ...folders.map(f => ({ label: f.name, icon: 'folder', check: env0.folder === f.id, fn: () => setEnvFolder(id, f.id) })),
+    folderOf(env0.folder) && { label: 'No category', icon: 'board', fn: () => setEnvFolder(id, null) },
+    { label: 'New category with this…', icon: 'folderplus', fn: () => addFolder(id) },
     '-',
     { label: 'Delete', icon: 'trash', danger: true, disabled: DOC.envs.length < 2, fn: () => deleteEnv(id) },
   ]);
+});
+/* drag environments: onto a category to file them, between rows to reorder, onto blank space to un-file */
+let ENV_DRAG = null;
+const clearEnvDrop = () => $$('.drop-in, .drop-before, .drop-after', envList).forEach(x => x.classList.remove('drop-in', 'drop-before', 'drop-after'));
+envList.addEventListener('dragstart', e => {
+  const row = e.target.closest('.env[draggable]');
+  if (!row) return;
+  ENV_DRAG = row.dataset.env;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', row.querySelector('.nm').textContent); } catch (_) {}
+  requestAnimationFrame(() => row.classList.add('dragging'));
+});
+envList.addEventListener('dragend', () => { ENV_DRAG = null; clearEnvDrop(); $$('.env.dragging', envList).forEach(x => x.classList.remove('dragging')); });
+function envDropTarget(e) {
+  const fold = e.target.closest('.efold, .efold-empty');
+  if (fold) return { folder: fold.closest('[data-fold-items]') ? fold.closest('[data-fold-items]').dataset.foldItems : fold.dataset.fold, el: fold.classList.contains('efold') ? fold : fold.closest('[data-fold-items]').previousElementSibling, mode: 'in' };
+  const row = e.target.closest('.env');
+  if (row && row.dataset.env !== ENV_DRAG) {
+    const r = row.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2;
+    return { env: row.dataset.env, el: row, mode: after ? 'after' : 'before' };
+  }
+  if (!row) return { loose: true };
+  return null;
+}
+envList.addEventListener('dragover', e => {
+  if (!ENV_DRAG) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  clearEnvDrop();
+  const t = envDropTarget(e);
+  if (t && t.el) t.el.classList.add('drop-' + t.mode);
+});
+envList.addEventListener('drop', e => {
+  if (!ENV_DRAG) return;
+  e.preventDefault();
+  const t = envDropTarget(e), id = ENV_DRAG;
+  clearEnvDrop();
+  if (!t) return;
+  const env0 = DOC.envs.find(x => x.id === id);
+  checkpoint();
+  if (t.folder) { env0.folder = t.folder; delete UI.collapsed['fold:' + t.folder]; }
+  else if (t.loose) delete env0.folder;
+  else {
+    const target = DOC.envs.find(x => x.id === t.env);
+    if (target.folder && folderOf(target.folder)) env0.folder = target.folder; else delete env0.folder;
+    DOC.envs.splice(DOC.envs.indexOf(env0), 1);
+    DOC.envs.splice(DOC.envs.indexOf(target) + (t.mode === 'after' ? 1 : 0), 0, env0);
+  }
+  changed(); renderEnvs();
 });
 window.addEventListener('hashchange', () => {
   const id = (location.hash.match(/e=([\w-]+)/) || [])[1];
@@ -1922,7 +2059,7 @@ $('#inspector').addEventListener('click', e => {
 /* labels & group frames on the board */
 vp.addEventListener('dblclick', e => {
   const t = e.target;
-  const knob = t.closest('.bend');
+  const knob = t.closest('.bend, .bend-hit');
   if (knob) { resetBend(knob.parentNode.dataset.e); return; }
   const eg = t.closest('[data-e]');
   if (eg) { editEdgeLabel(eg.dataset.e); return; }
@@ -2136,7 +2273,7 @@ function fillIcons() {
   put('[data-new="title"]', 'title'); put('[data-new="note"]', 'note'); put('[data-new="sub"]', 'sub');
   put('[data-cmd="undo"]', 'undo'); put('[data-cmd="redo"]', 'redo');
   put('[data-cmd="zoomout"]', 'minus', 16); put('[data-cmd="zoomin"]', 'plus', 16); put('[data-cmd="fit"]', 'fit', 16);
-  put('#env-add', 'plus', 15); put('[data-cmd="help"]', 'help', 16);
+  put('#env-add', 'plus', 15); put('#cat-add', 'folderplus', 15); put('[data-cmd="help"]', 'help', 16);
   put('[data-cmd="show-left"]', 'menu'); put('[data-cmd="show-right"]', 'layers'); put('[data-cmd="close-panels"]', 'x', 15);
   $('.search-ic').innerHTML = ic('search', 14);
   $('[data-cmd="signin"]').innerHTML = ic('lock', 15) + '<span>Owner sign-in</span>';

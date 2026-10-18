@@ -151,13 +151,19 @@
      "id": "n8d9hjd6ra",
      "type": "note",
      "x": 504,
-     "y": -384,
+     "y": -364,
      "w": 336,
      "color": "red",
      "tag": "ROOT",
      "title": "Redefining the Act of Sex",
      "subtitle": "",
      "blocks": [
+      {
+       "id": "bybdtclwfa",
+       "kind": "category",
+       "label": "SEX",
+       "text": "a reproductive pathway that leads to the delivery of semen to the fallopian tubes."
+      },
       {
        "id": "bl7v28g6ra",
        "kind": "category",
@@ -201,6 +207,18 @@
            "id": "tspdjbk6n3",
            "label": "EXPLANATION",
            "text": "This is a strawman, ignoring the word \"designed\". Designed means that is its intention, but is not necessary the result.",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "scbarpk2g7",
+         "title": "Would that mean isolated implantation is sex?",
+         "steps": [
+          {
+           "id": "t706f7s2g7",
+           "label": "CLARIFYING",
+           "text": "No, the pathway consists of the physical penetration of the vagina by the penis.",
            "alt": false
           }
          ]
@@ -355,7 +373,19 @@
           {
            "id": "tyvjoj1xm9",
            "label": "EXPLANATION",
-           "text": "The anus is not made for penetration, ",
+           "text": "The anus is not made for penetration, it's made for elimination of fecal matter: \n- Sphincters\n- Damages natural function\n- Lack of lubrication\n- Excretes toxic waste ",
+           "alt": false
+          },
+          {
+           "id": "t3sufbp50v",
+           "label": "G-SPOT MYTH",
+           "text": "Some claim the G-Spot (the region with the highest nerve endings) in males is located inside the anus. That is a misconception, it's located on the penile glands foreskin.",
+           "alt": false
+          },
+          {
+           "id": "td35o35lzt",
+           "label": "EYE ANALOGY",
+           "text": "Some people will make various analogies trying to compare the anus to the hand. However, we can counter the analogies with our own. \n- an eye's function is to see, just because some people cant see, doesn't mean eyes arent a seeing organ. the same applies to the anus",
            "alt": false
           }
          ]
@@ -365,21 +395,76 @@
       {
        "id": "babxh1k5f3",
        "kind": "scenarios",
-       "label": "Scenarios",
+       "label": "FEMALE",
        "items": [
         {
          "id": "s2dutql5f3",
-         "title": "",
+         "title": "Horniness",
          "steps": [
           {
            "id": "t49algy5f3",
            "label": "EXPLANATION",
-           "text": "",
+           "text": "The act is done out of horniness and semen retention. The male imitates a reproductive act to satisfy natural instincts.",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "sclq9oszta",
+         "title": "Societal Grooming",
+         "steps": [
+          {
+           "id": "tfbmaugzta",
+           "label": "EXPLANATION",
+           "text": "Controlling for horniness, there's no explanation for why a female would prefer an intimate act with a female rather than a male other than societal grooming. ",
            "alt": false
           }
          ]
         }
        ]
+      },
+      {
+       "id": "b1zw3znjmb",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Same-Sex intimate acts and tendencies for them, are not rooted in anything psycho-physiological, but rather are fetishes or consequences of societal or personal grooming."
+      }
+     ]
+    },
+    {
+     "id": "nvivrd8px2",
+     "type": "note",
+     "x": 432,
+     "y": 660,
+     "w": 480,
+     "color": "amber",
+     "tag": "CONCLUSION",
+     "title": "Impossibility",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b8mdvptyjj",
+       "kind": "category",
+       "label": "EXPLANATION",
+       "text": "Now, that I've demonstrated that:\n- same sex attraction is impossible\n- same sex intercourse is impossible\n- the phenomenon of same sex intimate acts not being psycho-physiological\n\nThe concept of homosexuality under the mainstream definition is impossible. "
+      },
+      {
+       "id": "bzevz7jccn",
+       "kind": "category",
+       "label": "PROPOSAL",
+       "text": "We can redefine homosexuality to more clearly explain the intent and thought behind it, its reasoning of existence. The definition will be a sociological one, rather than a biological one, relying on it as a social construct."
+      },
+      {
+       "id": "bjfwsd9mtf",
+       "kind": "category",
+       "label": "HOMOSEXUALITY",
+       "text": "An intense liking of someone of one's own sex, that leads to intimate acts with someone of own sex."
+      },
+      {
+       "id": "bw7j0rwtzt",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Homosexuality is only possible if redefined into a non reproductive, non biological, societal definition."
       }
      ]
     }
@@ -417,7 +502,11 @@
      "ts": "l",
      "label": "",
      "arrow": true,
-     "dashed": false
+     "dashed": false,
+     "bend": {
+      "dx": 0,
+      "dy": 62
+     }
     },
     {
      "id": "lmk1t1yq76",
@@ -462,6 +551,30 @@
      "label": "",
      "arrow": true,
      "dashed": false
+    },
+    {
+     "id": "lnfvl2wwh7",
+     "from": "noso4rr4vz",
+     "fs": "r",
+     "to": "nvivrd8px2",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lgzbsmrl7n",
+     "from": "n8d9hjd6ra",
+     "fs": "b",
+     "to": "nvivrd8px2",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "bend": {
+      "dx": 0,
+      "dy": 5
+     }
     }
    ],
    "groups": [],

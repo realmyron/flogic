@@ -175,6 +175,7 @@ function endEdit() {
   el.innerHTML = mdField(v, !!el.dataset.single);
   const ne = el.closest('.node');
   if (ne) ne.classList.remove('editing');
+  if (n) markNode(n);
   if (document.activeElement === el) el.blur();
   getSelection().removeAllRanges();
   renderLayers(); renderInspector();
@@ -951,6 +952,7 @@ function onDown(e) {
   if (S.editing) return;
   if (e.button === 1 || (e.button === 0 && (S.space || S.tool === 'hand'))) { e.preventDefault(); startPan(e); return; }
   if (e.button !== 0) return;
+  if (t.closest('.sug-flag, .sug-bubble')) return;   /* suggestion markers handle their own clicks */
   const ae = document.activeElement;
   if (ae && ae !== document.body && !t.closest('input, .src-form') && ae.blur) ae.blur();
   const ne = t.closest('.node');
@@ -979,7 +981,11 @@ function onDown(e) {
   if (ne) {
     const id = ne.dataset.id;
     if (t.closest('button, a, input, textarea, select, [data-act], .src-form')) { if (!S.sel.has(id)) selectNodes(groupOrNode(id)); return; }
-    if (!S.canEdit) { selectNodes(groupOrNode(id)); startPan(e); return; }
+    if (!S.canEdit) {
+      if (!S.sel.has(id)) selectNodes(groupOrNode(id));
+      if (t.closest('.ed')) return;   /* visitors can select and copy text; drag the node's edge or the board to pan */
+      startPan(e); return;
+    }
     if (e.shiftKey) {
       if (S.sel.has(id)) { S.sel.delete(id); refreshSel(); return; }
       S.sel.add(id); S.edgeSel = null; refreshSel();
@@ -1514,10 +1520,20 @@ vp.addEventListener('contextmenu', e => {
   if (DRAG || CONN || BD || (PAN && PAN.moved)) return;
   const t = e.target, x = e.clientX, y = e.clientY, w = toWorld(x, y);
   if (!S.canEdit) {
-    const vn = t.closest('.node');
+    const vn = t.closest('.node'), field = t.closest('.ed'), vsel = viewerSelection();
     if (vn && !S.sel.has(vn.dataset.id)) selectNodes(groupOrNode(vn.dataset.id));
+    /* a suggestion points at the selected text if there is some, else at the node, else at this spot */
+    const target = vsel && vsel.node ? { node: vsel.node, f: vsel.f, q: vsel.q }
+      : vn ? { node: vn.dataset.id, f: field ? field.dataset.f : '', q: '' }
+      : { x: w.x, y: w.y };
     openMenu(x, y, [
-      vn && { label: S.sel.size > 1 ? `Copy text of ${S.sel.size} nodes` : 'Copy text', icon: 'text2', fn: copyText },
+      vsel && { label: 'Copy', icon: 'copy', kbd: MOD + 'C', fn: () => copyPlain(vsel.text) },
+      vn && { label: S.sel.size > 1 ? `Copy text of ${S.sel.size} nodes` : 'Copy node as Markdown', icon: 'text2', fn: copyText },
+      '-',
+      target.node
+        ? { label: vsel && vsel.node ? 'Suggest a change to this text…' : 'Suggest a change…', icon: 'warn', fn: () => openSuggestForm(target) }
+        : { label: 'Suggest an idea here…', icon: 'bubble', fn: () => openSuggestForm(target) },
+      '-',
       { label: 'Fit to screen', icon: 'fit', kbd: '⇧1', fn: () => fitAll() },
       { label: 'Copy link', icon: 'link', fn: share },
     ]);
@@ -2131,7 +2147,7 @@ function promptModal(title, value, cb) {
 function openSettings() {
   const det = detectRepo() || {};
   const conn = `<section><h4>${ic('upload', 15)} ${S.canEdit ? 'Publishing to GitHub' : 'Owner sign-in'}</h4>
-    <p class="hint">${S.canEdit ? '' : 'Visitors can only view this board. '}Flogic keeps the board in <code>${DATA_PATH}</code> inside your GitHub Pages repository. To edit and publish, connect a <b>fine-grained token</b> that has <b>Contents: Read and write</b> on that one repository. The token is stored only in this browser.</p>
+    <p class="hint">${S.canEdit ? '' : 'Visitors can only view this board. '}Flogic keeps the board in <code>${DATA_PATH}</code> inside your GitHub Pages repository. To edit and publish, connect a <b>fine-grained token</b> that has <b>Contents: Read and write</b> on that one repository (add <b>Issues: Read and write</b> to see and solve visitors' suggestions). The token is stored only in this browser.</p>
     <div class="grid2">
       <label>Owner<input id="s-owner" value="${esc(CFG.owner || det.owner || '')}" placeholder="your-username" spellcheck="false"></label>
       <label>Repository<input id="s-repo" value="${esc(CFG.repo || det.repo || '')}" placeholder="flogic" spellcheck="false"></label>
@@ -2329,6 +2345,7 @@ async function boot() {
   const hashEnv = (location.hash.match(/e=([\w-]+)/) || [])[1];
   const first = [hashEnv, UI.envId].find(id => id && DOC.envs.some(e => e.id === id)) || DOC.envs[0].id;
   switchEnv(first);
+  if (S.canEdit && S.connected) fetchSuggestions();
   setTool('select');
   const bootEl = $('#boot');
   bootEl.classList.add('done');

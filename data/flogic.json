@@ -310,16 +310,6 @@
      "dashed": false
     },
     {
-     "id": "l6kfk8l7o4",
-     "from": "nbnt5jgf28",
-     "fs": "r",
-     "to": "n8d9hjd6ra",
-     "ts": "b",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
      "id": "lmk1t1yq76",
      "from": "nbn4b018o1",
      "fs": "b",
@@ -338,6 +328,16 @@
      "label": "",
      "arrow": true,
      "dashed": false
+    },
+    {
+     "id": "lchhapmtwu",
+     "from": "nbnt5jgf28",
+     "fs": "r",
+     "to": "n8d9hjd6ra",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": true
     }
    ],
    "groups": []
@@ -368,5 +368,6 @@
    "edges": [],
    "groups": []
   }
- ]
+ ],
+ "lineStyle": "geometric"
 }

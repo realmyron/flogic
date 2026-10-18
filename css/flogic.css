@@ -10,7 +10,7 @@
 
   /* light mode: muted greys instead of bright white, easier on the eyes */
   --bg:#dfe2e7; --dot:rgba(30,40,70,.17);
-  --amb1:rgba(95,125,255,.13); --amb2:rgba(175,110,255,.10);
+  --amb1:rgba(14,128,118,.15); --amb2:rgba(18,104,138,.12);
   --panel:rgba(233,235,240,.92); --panel-solid:#eceef2; --panel-b:rgba(20,30,60,.10);
   --text:#1e2330; --text2:#333a49; --muted:#5f6779; --faint:#959cad;
   --hover:rgba(20,30,60,.06); --press:rgba(20,30,60,.10);
@@ -104,6 +104,21 @@ kbd{font-family:var(--font);font-size:11px;color:var(--faint)}
 .env.active{background:var(--sel-soft);color:var(--text)}
 .env.active .ic{color:var(--sel)}
 .env .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.env.child{padding-left:30px}
+.env.dragging{opacity:.35}
+.env.drop-before{box-shadow:inset 0 2px 0 var(--sel)}
+.env.drop-after{box-shadow:inset 0 -2px 0 var(--sel)}
+.efold{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 6px;margin-top:2px;border-radius:9px;color:var(--text2);font-weight:600;cursor:pointer;transition:background .12s,box-shadow .12s}
+.efold:hover{background:var(--hover)}
+.efold .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.efold>.ic{color:var(--muted)}
+.efold.has-active>.ic{color:var(--sel)}
+.efold.drop-in{background:var(--sel-soft);box-shadow:inset 0 0 0 1.5px var(--sel)}
+.efold .lchev{margin-right:-2px}
+.efold-items{position:relative}
+.efold-items::before{content:"";position:absolute;left:15px;top:2px;bottom:6px;width:1px;background:var(--panel-b)}
+.efold-empty{padding:6px 10px 8px 30px;font-size:11.5px;color:var(--faint);font-style:italic}
+.efold-empty.drop-in{color:var(--sel)}
 .rename{flex:1;min-width:0;height:24px;padding:0 6px;margin:0 -6px;border-radius:6px;border:1px solid var(--sel);background:var(--panel-solid);outline:none;font-size:13px}
 
 /* layers */
@@ -207,10 +222,13 @@ body.panning #viewport,body.panning *{cursor:grabbing !important}
 .edge .vis{fill:none;stroke:var(--line);stroke-width:1.7;stroke-linecap:round;transition:stroke .15s}
 .edge .hit{fill:none;stroke:transparent;stroke-width:18;pointer-events:stroke;cursor:grab}
 body.viewer .edge .hit{cursor:pointer}
-.edge .bend{fill:var(--panel-solid);stroke:var(--sel);stroke-width:2;opacity:0;pointer-events:none;cursor:move;transition:opacity .12s,r .15s var(--spring)}
+.edge .bend{fill:var(--panel-solid);stroke:var(--sel);stroke-width:2;opacity:0;pointer-events:none;cursor:move;r:calc(5.5px / min(var(--z,1), 1));transition:opacity .12s}
+.edge .bend-hit{fill:transparent;stroke:none;pointer-events:none;cursor:move;r:calc(15px / min(var(--z,1), 1.3))}
+body.editor .edge:hover .bend-hit,body.editor .edge.sel .bend-hit{pointer-events:all}
+.edge .bend-hit:hover+.bend{fill:var(--sel)}
 body.editor .edge:hover .bend,body.editor .edge.sel .bend{opacity:1;pointer-events:all}
-body.editor .edge .bend:hover,body.bending .edge.sel .bend{r:7;fill:var(--sel)}
-.edge.haslabel .bend{display:none}
+body.editor .edge .bend:hover,body.bending .edge.sel .bend{fill:var(--sel)}
+.edge.haslabel .bend,.edge.haslabel .bend-hit{display:none}
 body.editor .elabel{cursor:move}
 body.bending,body.bending *{cursor:move !important}
 .edge.dashed .vis{stroke-dasharray:6 7}
@@ -334,7 +352,7 @@ body.connecting .node,body.connecting #viewport{cursor:crosshair}
 
 .blk-ghost{position:fixed;left:0;top:0;z-index:9999;pointer-events:none;transform-origin:0 0;padding:10px 12px;border-radius:12px;
   background:var(--node-top);border:1px solid var(--sel);box-shadow:var(--sh-2);opacity:.96;font-size:13px}
-.blk-ghost .grip,.blk-ghost .blk-x{display:none}
+.blk-ghost .grip{display:none}
 .blk-ghost.to-canvas::after{content:"Drop to make a sub-note";position:absolute;left:50%;top:100%;margin-top:8px;transform:translateX(-50%);white-space:nowrap;
   padding:4px 10px;border-radius:999px;background:var(--sel);color:var(--on-sel);font-size:11px;font-weight:600}
 .tb-ghost{position:fixed;left:0;top:0;z-index:9999;pointer-events:none;border-radius:18px;border:1.5px dashed var(--sel);background:var(--sel-soft);

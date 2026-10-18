@@ -333,8 +333,14 @@ function renderSugPanel() {
   else body = SUGS.map(sugItemHTML).join('');
   const top = !!UI.sugTop;
   $('#right').classList.toggle('sug-top', top);
+  const lm = $('#layers-move');
+  if (lm) {
+    lm.innerHTML = ic(top ? 'arrowup' : 'arrowdown', 14);
+    lm.title = (top ? 'Move Layers above Suggestions' : 'Move Layers below Suggestions') + ' (or drag this header)';
+    lm.setAttribute('aria-label', top ? 'Move Layers above Suggestions' : 'Move Layers below Suggestions');
+  }
   box.innerHTML = `<div class="sec-head sug-head" data-sa="fold"><span><span class="lchev${folded ? '' : ' open'}">${ic('chevr', 12)}</span>Suggestions</span><span class="cnt sug-count${SUGS.length ? ' has' : ''}">${SUGS.length || ''}</span>` +
-    `<button class="icon-btn" data-sa="move" title="${top ? 'Move below Layers' : 'Move above Layers'}" aria-label="${top ? 'Move below Layers' : 'Move above Layers'}">${ic(top ? 'arrowdown' : 'arrowup', 14)}</button>` +
+    `<button class="icon-btn sec-move" data-sa="move" title="${top ? 'Move below Layers' : 'Move above Layers'} (or drag this header)" aria-label="${top ? 'Move below Layers' : 'Move above Layers'}">${ic(top ? 'arrowdown' : 'arrowup', 14)}</button>` +
     `${S.connected ? `<button class="icon-btn${SUGP.loading ? ' spin' : ''}" data-sa="refresh" title="Check for new suggestions" aria-label="Refresh">${ic('refresh', 14)}</button>` : ''}</div>` +
     (folded ? '' : `<div class="sug-list">${body}</div>`);
 }
@@ -352,6 +358,51 @@ function moveSugPanel(top) {
   const box = $('#sug-panel');
   box.classList.remove('moved'); void box.offsetWidth; box.classList.add('moved');
 }
+$('#layers-move').addEventListener('click', () => moveSugPanel(!UI.sugTop));
+
+/* drag the Layers or Suggestions header up or down to swap the two sections */
+let SEC_DRAG = null;
+function sectionDragStart(e, which) {
+  if (!S.canEdit || e.button !== 0 || e.target.closest('button, input')) return;
+  SEC_DRAG = { which, sy: e.clientY, moved: false, id: e.pointerId };
+}
+function sectionDragTarget(which, y) {
+  /* where the dragged section would go: upper half of the panel = top */
+  const r = $('#right').getBoundingClientRect(), upper = y < r.top + r.height / 2;
+  return which === 'sug' ? upper : !upper;            // returned value = "Suggestions on top?"
+}
+window.addEventListener('pointermove', e => {
+  const d = SEC_DRAG;
+  if (!d || e.pointerId !== d.id) return;
+  if (!d.moved) {
+    if (Math.abs(e.clientY - d.sy) < 6) return;
+    d.moved = true;
+    document.body.classList.add('sec-dragging');
+    d.line = document.createElement('div');
+    d.line.className = 'sec-drop';
+    $('#right').appendChild(d.line);
+  }
+  const sugTop = sectionDragTarget(d.which, e.clientY), rr = $('#right').getBoundingClientRect();
+  /* show where it lands: at the very top, or just above the inspector at the bottom */
+  const top = (d.which === 'sug') === sugTop;
+  const insp = $('#inspector'), bottomY = (insp && insp.offsetHeight ? insp.getBoundingClientRect().top : rr.bottom) - rr.top;
+  d.line.style.top = (top ? 2 : bottomY - 3) + 'px';
+});
+window.addEventListener('pointerup', e => {
+  const d = SEC_DRAG;
+  if (!d || e.pointerId !== d.id) return;
+  SEC_DRAG = null;
+  if (!d.moved) return;
+  document.body.classList.remove('sec-dragging');
+  if (d.line) d.line.remove();
+  const sugTop = sectionDragTarget(d.which, e.clientY);
+  if (sugTop !== !!UI.sugTop) moveSugPanel(sugTop);
+  SEC_NOCLICK = Date.now() + 350;     /* the header's own click (fold/unfold) shouldn't fire after a drag */
+});
+let SEC_NOCLICK = 0;
+$('#sug-panel').addEventListener('pointerdown', e => { if (e.target.closest('.sug-head')) sectionDragStart(e, 'sug'); });
+$('#layers-head').addEventListener('pointerdown', e => sectionDragStart(e, 'layers'));
+
 $('#sug-panel').addEventListener('contextmenu', e => {
   if (!e.target.closest('.sug-head')) return;
   e.preventDefault();
@@ -364,6 +415,7 @@ $('#sug-panel').addEventListener('contextmenu', e => {
   ]);
 });
 $('#sug-panel').addEventListener('click', e => {
+  if (Date.now() < SEC_NOCLICK) return;
   const b = e.target.closest('[data-sa]');
   if (!b) return;
   const it = b.closest('.sug-it'), n = it ? +it.dataset.sug : null, s = n && SUGS.find(x => x.n === n);

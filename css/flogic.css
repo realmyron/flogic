@@ -244,10 +244,34 @@ body.bending,body.bending *{cursor:move !important}
 #conn-preview{fill:none;stroke:var(--sel);stroke-width:2.2;stroke-linecap:round;stroke-dasharray:6 7;animation:flow .5s linear infinite}
 #guide-g line{stroke:var(--guide);stroke-width:1;vector-effect:non-scaling-stroke}
 #guide-g line.gap{stroke-dasharray:3 3}
-.elabel{position:absolute;left:0;top:0;padding:3px 10px;border-radius:999px;background:var(--panel-solid);border:1px solid var(--node-b);
-  font-size:11.5px;color:var(--text2);white-space:pre;max-width:260px;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-shadow:var(--sh-1);outline:none}
-.elabel.empty:not([contenteditable])::before{content:"Double-click to label";color:var(--faint)}
-.elabel[contenteditable]{user-select:text;-webkit-user-select:text;cursor:text;border-color:var(--sel);text-overflow:clip}
+.elabel{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--panel-solid);border:1px solid var(--node-b);
+  font-size:11.5px;color:var(--text2);white-space:pre;max-width:280px;cursor:pointer;box-shadow:var(--sh-1);outline:none}
+.et-tx{min-width:0;overflow:hidden;text-overflow:ellipsis;outline:none}
+.elabel.empty .et-tx:not([contenteditable])::before{content:"Double-click to label";color:var(--faint)}
+.et-tx[contenteditable]{user-select:text;-webkit-user-select:text;cursor:text;text-overflow:clip;min-width:20px}
+.elabel:has(.et-tx[contenteditable]){border-color:var(--sel)}
+.et-ic{display:none}
+/* connection types: coloured line + round icon badge in the middle */
+.elabel.typed{padding:3px 10px 3px 3px;border-color:color-mix(in srgb,var(--ec) 55%,transparent)}
+.elabel.typed .et-ic{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--ec);color:#fff;flex:none}
+.elabel.typed .et-ic .ic{stroke-width:2.6}
+.elabel.typed.notext{padding:3px;border-width:1.5px}
+.elabel.typed.notext .et-tx{display:none}
+.edge.typed .vis,.edge.typed:hover .vis,.edge.typed.rel .vis{stroke:var(--ec)}
+.edge.typed .vis{stroke-width:2}
+.edge.typed.sel .vis{stroke:var(--ec);stroke-width:3;filter:drop-shadow(0 0 3px color-mix(in srgb,var(--ec) 60%,transparent))}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px 5px 4px}
+.tgroup{grid-column:1/-1;font-size:9.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:6px 5px 2px}
+.tt{display:flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 5px;border-radius:8px;font-size:12px;color:var(--text2);text-align:left;transition:background .1s}
+.tt:hover{background:var(--hover)}
+.tt.on{background:color-mix(in srgb,var(--ec) 18%,transparent);color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ec) 55%,transparent)}
+.tt-ic{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--ec);color:#fff;flex:none}
+.tt-ic .ic{stroke-width:2.6}
+.tt[data-etype=""] .tt-ic{background:transparent;border:1.5px solid var(--line)}
+.tt-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.emenu{width:300px;max-height:calc(100vh - 16px);overflow:auto}
+.insp .tgrid{padding:0}
+.ihead{font-size:10px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:2px}
 body.viewer .elabel{cursor:default}
 
 /* groups */
@@ -286,8 +310,9 @@ body.editor .node:hover{border-color:var(--node-b2)}
 .node[data-type="sub"] .lab{font-size:9px}
 .node[data-type="sub"] .scn-t{font-size:11.5px}
 .n-head{position:relative}
-body.editor .n-head{padding-right:24px}
-body.editor .node[data-type="title"] .n-head{padding:0 24px}
+/* same text width for owner and visitors, so text wraps (and nodes size) identically */
+.n-head{padding-right:24px}
+.node[data-type="title"] .n-head{padding:0 24px}
 .n-tag{font-size:10.5px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--c);margin-bottom:6px}
 .n-title{font-size:16px;font-weight:620;line-height:1.3;letter-spacing:-.012em;color:var(--text)}
 .node[data-type="title"] .n-title{font-size:27px;font-weight:680;letter-spacing:-.025em;line-height:1.18}

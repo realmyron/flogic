@@ -21,8 +21,7 @@ function portPos(n, side) {
 }
 /* ---------- connection routing ----------
    Two looks: "fluid" (smooth S-curves) and "geometric" (straight lines in 4 directions, rounded corners).
-   Sides are picked from where the nodes sit, so lines leave through the face that points at the other
-   node instead of looping back under their own node. */
+   Lines start and end on the sides you dragged between. */
 const f1 = v => v.toFixed(1);
 function lineStyle(ed) { return (ed && ed.style) || DOC.lineStyle || 'fluid'; }
 function bez(p1, s1, p2, s2, style, avoid) {
@@ -106,14 +105,6 @@ function roundedPath(raw, r) {
     half -= lens[i - 1];
   }
   return { d, mid };
-}
-/* best pair of faces for a connection between two rects */
-function autoSides(ra, rb, fs, ts) {
-  const hg = Math.max(rb.x - (ra.x + ra.w), ra.x - (rb.x + rb.w));
-  const vg = Math.max(rb.y - (ra.y + ra.h), ra.y - (rb.y + rb.h));
-  if (hg < 16 && vg < 16) return [fs, ts];                     // overlapping: keep what was drawn
-  if (vg >= hg) return rb.y > ra.y ? ['b', 't'] : ['t', 'b'];
-  return rb.x > ra.x ? ['r', 'l'] : ['l', 'r'];
 }
 function sidePoint(r, side, off) {
   if (side === 't') return { x: r.x + r.w / 2 + off, y: r.y };
@@ -301,12 +292,11 @@ function syncZ() { env().nodes.forEach((n, i) => { const el = NODE_EL.get(n.id);
 function drawEdges() {
   const e = env(), seen = new Set(), rects = new Map(), list = [];
   for (const n of e.nodes) if (!n.hidden) rects.set(n.id, rectOf(n));
-  /* 1. pick faces */
+  /* 1. each line uses the sides it was connected to */
   for (const ed of e.edges) {
     const ra = rects.get(ed.from), rb = rects.get(ed.to);
     if (!ra || !rb) continue;
-    const [s1, s2] = autoSides(ra, rb, ed.fs, ed.ts);
-    list.push({ ed, ra, rb, s1, s2, o1: 0, o2: 0 });
+    list.push({ ed, ra, rb, s1: ed.fs, s2: ed.ts, o1: 0, o2: 0 });
   }
   /* 2. several lines on one face fan out instead of sharing a single point */
   const faces = new Map();

@@ -315,6 +315,7 @@ function renderNode(n) {
   if (S.editing && S.editing.id === n.id) endEdit();
   el.innerHTML = nodeHTML(n);
   applyNode(el, n, env().nodes.indexOf(n));
+  markNode(n);
 }
 function syncNodes(force) {
   const e = env(), keep = new Set();
@@ -329,9 +330,11 @@ function syncNodes(force) {
       NODE_EL.set(n.id, el);
       nodesWrap.appendChild(el);
       RO.observe(el);
+      markNode(n);
     } else if (force) {
       if (S.editing && S.editing.id === n.id) endEdit();
       el.innerHTML = nodeHTML(n);
+      markNode(n);
     }
     applyNode(el, n, i);
   });
@@ -643,5 +646,5 @@ function renderEmptyHint() {
 function renderAll(force) {
   syncNodes(force);
   renderEnvs(); renderLayers(); renderInspector(); renderTop(true); renderEmptyHint();
-  drawEdges(); drawGroups(); drawMinimap();
+  drawEdges(); drawGroups(); drawMinimap(); drawBubbles(); renderSugPanel();
 }

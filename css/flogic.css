@@ -514,6 +514,12 @@ body.viewer .node .ed::selection,body.viewer .node .ed *::selection{background:v
 #sug-panel.moved{animation:fadeIn .35s var(--ease)}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}}
 .sug-head .icon-btn{width:24px;height:24px}
+body.editor #layers-head,body.editor .sug-head{cursor:grab}
+body.sec-dragging,body.sec-dragging *{cursor:grabbing !important;user-select:none}
+.sec-move{color:var(--text2);border:1px solid var(--panel-b);background:var(--inset);width:24px;height:24px}
+.sec-move:hover{background:var(--sel);color:var(--on-sel);border-color:transparent}
+#layers-head .sec-move{margin-left:2px}
+.sec-drop{position:absolute;left:10px;right:10px;height:3px;border-radius:3px;background:var(--sel);box-shadow:0 0 0 3px var(--sel-soft);z-index:5;pointer-events:none;transition:top .12s var(--ease)}
 .fld .opt{font-weight:400;color:var(--faint)}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 .sug-head{cursor:pointer;user-select:none}

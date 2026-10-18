@@ -9,6 +9,21 @@ const NODE_W = { title: 480, note: 336, sub: 216 };
 const NODE_LIMIT = 1000;   // per environment; Settings → "Remove the node limit" lifts it
 const NODE_LABEL = { title: 'Title', note: 'Note', sub: 'Sub-note' };
 const COLORS = { default: '#7b93ff', sky: '#3fb2ec', violet: '#a98bfa', pink: '#ee6eae', amber: '#e9a43a', green: '#36c08c', red: '#ef6a6a', slate: '#8f9bb3' };
+/* What a connection means. "Default" (no type) is a plain line. Each type colours the line and its
+   arrow and shows a small icon badge in the middle of the line. */
+const EDGE_TYPES = {
+  correct:     { label: 'Correct',        icon: 'check',  color: '#2fb866', group: 'Truth' },
+  wrong:       { label: 'Wrong',          icon: 'x',      color: '#ec5b5b', group: 'Truth' },
+  uncertain:   { label: 'Uncertain',      icon: 'q',      color: '#e3a33b', group: 'Truth' },
+  supports:    { label: 'Supports',       icon: 'plus',   color: '#2bb5a2', group: 'Evidence' },
+  contradicts: { label: 'Contradicts',    icon: 'minus',  color: '#f07a4f', group: 'Evidence' },
+  causes:      { label: 'Causes',         icon: 'zap',    color: '#e9a43a', group: 'Cause & effect' },
+  enables:     { label: 'Enables',        icon: 'key',    color: '#3fa7ec', group: 'Cause & effect' },
+  prevents:    { label: 'Prevents',       icon: 'ban',    color: '#e35d6a', group: 'Cause & effect' },
+  before:      { label: 'Happens before', icon: 'clock',  color: '#a98bfa', group: 'Time & structure' },
+  partof:      { label: 'Part of',        icon: 'partof', color: '#8f9bb3', group: 'Time & structure' },
+  example:     { label: 'Example of',     icon: 'bulb',   color: '#8f9bb3', group: 'Time & structure' },
+};
 const BLOCKS = [
   ['text', 'Text', 'Plain paragraph'],
   ['highlight', 'Highlight', 'Emphasised box'],
@@ -104,7 +119,10 @@ function migrate(doc) {
     });
     const ids = new Set(e.nodes.map(n => n.id));
     e.edges = e.edges.filter(x => ids.has(x.from) && ids.has(x.to));
-    e.edges.forEach(x => { if (!x.bend || !isFinite(x.bend.dx) || !isFinite(x.bend.dy)) delete x.bend; });
+    e.edges.forEach(x => {
+      if (!x.bend || !isFinite(x.bend.dx) || !isFinite(x.bend.dy)) delete x.bend;
+      if (!EDGE_TYPES[x.type]) delete x.type;
+    });
     e.groups.forEach(g => { g.members = (g.members || []).filter(id => ids.has(id)); });
     e.groups = e.groups.filter(g => g.members.length > 1);
   });

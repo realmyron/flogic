@@ -275,11 +275,38 @@ body.bending,body.bending *{cursor:move !important}
 body.viewer .elabel{cursor:default}
 
 /* groups */
-.gframe{position:absolute;left:0;top:0;border:1.5px dashed var(--node-b2);border-radius:30px;pointer-events:none;transition:border-color .15s,background .15s}
-.gframe.sel{border-style:solid;border-color:color-mix(in srgb,var(--sel) 70%,transparent);background:color-mix(in srgb,var(--sel) 4%,transparent)}
-.glabel{position:absolute;left:16px;bottom:100%;margin-bottom:6px;display:flex;align-items:center;gap:6px;padding:4px 9px;border-radius:9px;
-  font-size:12px;font-weight:600;color:var(--muted);pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
+/* group looks: clear (name tag only), dotted, hatched, panel. --gc is the group's frame colour */
+.gframe{--gc:#8f9bb3;position:absolute;left:0;top:0;border:2px solid transparent;border-radius:28px;pointer-events:none;transition:border-color .15s,background .15s,box-shadow .15s}
+.gframe[data-look="clear"].sel{border:1.5px dashed color-mix(in srgb,var(--sel) 60%,transparent)}
+.gframe[data-look="dotted"]{border:2.5px dotted color-mix(in srgb,var(--gc) 75%,transparent);background:color-mix(in srgb,var(--gc) 4%,transparent)}
+.gframe[data-look="hatched"]{border:1.5px solid color-mix(in srgb,var(--gc) 50%,transparent);
+  background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--gc) 18%,transparent) 0 1.5px,transparent 1.5px 13px),color-mix(in srgb,var(--gc) 3%,transparent)}
+.gframe[data-look="panel"]{border:1px solid color-mix(in srgb,var(--gc) 40%,var(--node-b));border-radius:24px;box-shadow:var(--sh-1);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--gc) 16%,var(--node)) 0 34px,color-mix(in srgb,var(--node) 62%,transparent) 34px)}
+.gframe.sel:not([data-look="clear"]){box-shadow:0 0 0 2px color-mix(in srgb,var(--sel) 65%,transparent),var(--sh-1)}
+.gframe.conn-target{box-shadow:0 0 0 4px var(--sel-soft),0 0 0 2px var(--sel) !important}
+.glabel{position:absolute;left:18px;bottom:100%;margin-bottom:6px;display:flex;align-items:center;gap:6px;padding:4px 9px;border-radius:9px;
+  font-size:12px;font-weight:600;color:color-mix(in srgb,var(--gc) 65%,var(--text2));pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
+.glabel .ic{color:var(--gc)}
+.gframe[data-look="panel"] .glabel{bottom:auto;top:5px;left:12px;margin:0;color:var(--text)}
 .glabel:hover,.gframe.sel .glabel{background:var(--sel-soft);color:var(--sel)}
+/* side dots on groups, shown when the group is selected, its name is hovered, or while connecting */
+.gport{pointer-events:auto}
+.gframe.sel .gport::before,.gframe:has(.glabel:hover) .gport::before,body.connecting .gframe .gport::before,.gport:hover::before{opacity:1;transform:scale(1)}
+/* inspector: group look picker */
+.glooks{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.glook{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px 5px;border-radius:9px;font-size:10.5px;color:var(--muted);border:1px solid var(--panel-b);background:var(--inset);transition:background .12s,color .12s,border-color .12s}
+.glook:hover{color:var(--text)}
+.glook.on{border-color:var(--sel);color:var(--text);background:var(--sel-soft)}
+.gl-prev{width:30px;height:20px;border-radius:6px;border:1.5px solid transparent}
+.gl-clear{border:1.5px dashed var(--faint);opacity:.5}
+.gl-dotted{border:2px dotted var(--muted)}
+.gl-hatched{border:1px solid var(--muted);background:repeating-linear-gradient(45deg,var(--node-b2) 0 1px,transparent 1px 5px)}
+.gl-panel{border:1px solid var(--node-b2);background:linear-gradient(180deg,var(--press) 0 6px,var(--node) 6px);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+/* Layers: box selection */
+.lmarquee{position:fixed;z-index:40;border:1px solid var(--sel);background:var(--sel-soft);border-radius:4px;pointer-events:none}
+.layer.boxed{background:var(--sel-soft)}
+#layers{user-select:none}
 body.viewer .glabel{cursor:pointer}
 
 /* ---------- nodes ---------- */

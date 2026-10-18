@@ -374,8 +374,9 @@ function syncZ() { env().nodes.forEach((n, i) => { const el = NODE_EL.get(n.id);
 
 /* ---------- edges ---------- */
 function drawEdges() {
-  const e = env(), seen = new Set(), rects = new Map(), list = [];
-  for (const n of e.nodes) if (!n.hidden) rects.set(n.id, rectOf(n));
+  const e = env(), seen = new Set(), rects = new Map(), nodeRects = new Map(), list = [];
+  for (const n of e.nodes) if (!n.hidden) { const r = rectOf(n); rects.set(n.id, r); nodeRects.set(n.id, r); }
+  for (const g of e.groups) { const r = groupRect(g); if (r) rects.set(g.id, r); }       /* groups can be connected too */
   /* 1. each line uses the sides it was connected to */
   for (const ed of e.edges) {
     const ra = rects.get(ed.from), rb = rects.get(ed.to);
@@ -402,7 +403,12 @@ function drawEdges() {
     const p1 = sidePoint(it.ra, it.s1, it.o1), p2 = sidePoint(it.rb, it.s2, it.o2);
     if (!ed.bend) straighten(p1, it.s1, it.ra, p2, it.s2, it.rb);
     let avoid = null;
-    if (style === 'geometric') { avoid = []; for (const [id, rc] of rects) if (id !== ed.from && id !== ed.to) avoid.push(rc); }
+    if (style === 'geometric') {
+      /* steer around other nodes, but not around the members of a connected group */
+      const inside = new Set([ed.from, ed.to].flatMap(id => (groupById(id) || { members: [] }).members));
+      avoid = [];
+      for (const [id, rc] of nodeRects) if (id !== ed.from && id !== ed.to && !inside.has(id)) avoid.push(rc);
+    }
     const g = bez(p1, it.s1, p2, it.s2, style, avoid, bendPoint(ed, p1, p2));
     seen.add(ed.id);
     let r = EDGE_EL.get(ed.id);
@@ -489,27 +495,49 @@ function animateEdgesIn(baseDelay = 160) {
   drawEdges();
 }
 
-/* ---------- groups ---------- */
+/* ---------- groups ----------
+   Looks: clear (default: just a name tag), dotted, hatched (45° lines inside), panel (a big card the
+   nodes sit on). Groups have side dots too, so a group can be connected like a node. */
+const GROUP_LOOKS = [['clear', 'Clear'], ['dotted', 'Dotted'], ['hatched', 'Hatched'], ['panel', 'Panel']];
+const GROUP_PAD = 30, PANEL_HEAD = 34;
+function groupById(id) { return env().groups.find(g => g.id === id); }
+function groupRect(g) {
+  const ns = g.members.map(nodeById).filter(n => n && !n.hidden);
+  if (!ns.length) return null;
+  const bb = bboxOf(ns), head = g.look === 'panel' ? PANEL_HEAD : 0;
+  return { x: bb.x - GROUP_PAD, y: bb.y - GROUP_PAD - head, w: bb.w + GROUP_PAD * 2, h: bb.h + GROUP_PAD * 2 + head };
+}
+/* a connection end can be a node or a group */
+function endRect(id) {
+  const n = nodeById(id);
+  if (n) return n.hidden ? null : rectOf(n);
+  const g = groupById(id);
+  return g ? groupRect(g) : null;
+}
+function endPort(id, side) { const r = endRect(id); return r ? sidePoint(r, side, 0) : null; }
 function drawGroups() {
   const e = env(), seen = new Set();
   for (const g of e.groups) {
-    const ns = g.members.map(nodeById).filter(n => n && !n.hidden);
-    if (!ns.length) continue;
-    const bb = bboxOf(ns), pad = 22;
+    const r = groupRect(g);
+    if (!r) continue;
     let el = GROUP_EL.get(g.id);
     if (!el) {
       el = document.createElement('div');
       el.className = 'gframe';
-      el.innerHTML = `<div class="glabel" data-g="${g.id}">${ic('group', 13)}<span></span></div>`;
+      el.dataset.gid = g.id;
+      el.innerHTML = `<div class="glabel" data-g="${g.id}">${ic('group', 13)}<span></span></div>` +
+        (S.canEdit ? SIDES.map(s => `<i class="port gport p-${s}" data-side="${s}" data-g="${g.id}"></i>`).join('') : '');
       groupsWrap.appendChild(el);
       GROUP_EL.set(g.id, el);
     }
-    el.style.transform = `translate(${bb.x - pad}px,${bb.y - pad}px)`;
-    el.style.width = bb.w + pad * 2 + 'px';
-    el.style.height = bb.h + pad * 2 + 'px';
+    el.dataset.look = g.look || 'clear';
+    el.style.setProperty('--gc', COLORS[g.color] || COLORS.slate);
+    el.style.transform = `translate(${r.x}px,${r.y}px)`;
+    el.style.width = r.w + 'px';
+    el.style.height = r.h + 'px';
     const sp = el.querySelector('span');
     if (sp.textContent !== g.name) sp.textContent = g.name;
-    el.classList.toggle('sel', ns.every(n => S.sel.has(n.id)));
+    el.classList.toggle('sel', g.members.every(id => S.sel.has(id)));
     seen.add(g.id);
   }
   for (const [id, el] of GROUP_EL) if (!seen.has(id)) { el.remove(); GROUP_EL.delete(id); }
@@ -617,7 +645,7 @@ function renderLayers() {
       const members = e.nodes.filter(m => g.members.includes(m.id) && (S.canEdit || !m.hidden)).reverse();
       const open = !UI.collapsed[g.id], all = g.members.every(id => S.sel.has(id));
       const allHidden = members.every(m => m.hidden);
-      h += `<div class="layer grp${all ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}" data-g="${g.id}"><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic">${ic('group', 14)}</span><span class="nm">${esc(g.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
+      h += `<div class="layer grp${all ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}" data-g="${g.id}"><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic" style="color:${COLORS[g.color] || COLORS.slate}">${ic('group', 14)}</span><span class="nm">${esc(g.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
       if (open) members.forEach(m => { h += layerRow(m, true); });
     }
   }
@@ -661,8 +689,11 @@ function renderInspector() {
     const isGroup = g && g.members.length === ids.length && ids.every(id => g.members.includes(id));
     h = `<div class="sec-head"><span>${isGroup ? esc(g.name) : S.sel.size + ' selected'}</span></div><div class="insp">
       <div class="row4"><button class="ib" data-ia="align" data-v="l" title="Align left">${ic('alignl', 15)}</button><button class="ib" data-ia="align" data-v="c" title="Align centres">${ic('alignc', 15)}</button><button class="ib" data-ia="align" data-v="t" title="Align top">${ic('alignt', 15)}</button><button class="ib" data-ia="tidy" title="Tidy up">${ic('tidy', 15)}</button></div>
-      <div class="swrow">${swatches(null)}</div>
-      ${isGroup ? `<button class="ibtn" data-ia="ungroup">${ic('group', 14)} Ungroup <kbd>${MOD} ⇧ G</kbd></button>` : `<button class="ibtn" data-ia="group">${ic('group', 14)} Group <kbd>${MOD} G</kbd></button>`}
+      <div class="ihead">${isGroup ? 'Node colour' : 'Colour'}</div><div class="swrow">${swatches(null)}</div>
+      ${isGroup ? `<div class="ihead">Group look</div>
+      <div class="glooks">${GROUP_LOOKS.map(([k, name]) => `<button class="glook${(g.look || 'clear') === k ? ' on' : ''}" data-ia="glook" data-v="${k}" title="${name}"><span class="gl-prev gl-${k}"></span>${name}</button>`).join('')}</div>
+      <div class="ihead">Frame colour</div><div class="swrow">${Object.entries(COLORS).map(([k, v]) => `<button class="sw${(g.color || 'slate') === k ? ' on' : ''}" data-gc="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('')}</div>
+      <div class="row2"><button class="ibtn" style="flex:1" data-ia="grename">${ic('edit', 14)} Rename</button><button class="ibtn" style="flex:1" data-ia="ungroup">${ic('group', 14)} Ungroup</button></div>` : `<button class="ibtn" data-ia="group">${ic('group', 14)} Group <kbd>${MOD} G</kbd></button>`}
       <button class="ibtn danger" data-ia="del">${ic('trash', 14)} Delete <kbd>Del</kbd></button></div>`;
   }
   box.innerHTML = h;

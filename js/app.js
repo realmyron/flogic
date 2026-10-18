@@ -1,7 +1,7 @@
 'use strict';
 /* Flogic: interaction layer (pointer, keyboard, menus, editing, publishing, boot). */
 
-let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null, EG = null;
+let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null, EG = null, BEND = null;
 const TOUCH = new Map();
 const pointerInVp = () => PTR.x >= VR.left && PTR.x <= VR.left + VR.width && PTR.y >= VR.top && PTR.y <= VR.top + VR.height;
 const capture = e => { try { vp.setPointerCapture(e.pointerId); } catch (_) {} };
@@ -470,7 +470,10 @@ function nodesMarkdown(ns) {
         b.items.forEach(it => L.push(`- [${it.done ? 'x' : ' '}] ${mdOut(it.text, true)}`));
       } else if (b.kind === 'sources') {
         L.push(`**${mdPlain(b.label) || 'Sources'}**`, '');
-        b.items.forEach(s => L.push(`- [${s.t || hostOf(s.u)}](${s.u})`));
+        b.items.forEach(s => {
+          L.push(`- [${s.t || hostOf(s.u)}](${s.u})`);
+          if (s.note && s.note.trim()) L.push(mdOut(s.note).split('\n').map(l => '  ' + l).join('\n'));
+        });
       } else if (b.kind === 'image') {
         if (!b.src) L.pop();
         else if (b.src.startsWith('data:')) L.push(`*[Image${b.caption ? ': ' + mdPlain(b.caption) : ''}]*`);
@@ -739,19 +742,23 @@ function openSourceForm(nodeId, bi) {
   const n = nodeById(nodeId);
   const f = document.createElement('div');
   f.className = 'src-form';
-  f.innerHTML = `<input class="sf-u" placeholder="https://…" autocomplete="off" spellcheck="false"><input class="sf-t" placeholder="Title (optional)" autocomplete="off"><div class="sf-row"><span class="err"></span><button class="btn sm" data-sf="cancel">Cancel</button><button class="btn sm primary" data-sf="ok">Add</button></div>`;
+  f.innerHTML = `<input class="sf-u" placeholder="https://…" autocomplete="off" spellcheck="false"><input class="sf-t" placeholder="Title (optional)" autocomplete="off"><textarea class="sf-n" rows="2" placeholder="What it explains or why it matters (optional)"></textarea><div class="sf-row"><span class="err"></span><button class="btn sm" data-sf="cancel">Cancel</button><button class="btn sm primary" data-sf="ok">Add</button></div>`;
   add.replaceWith(f);
-  const u = f.querySelector('.sf-u'), t = f.querySelector('.sf-t'), er = f.querySelector('.err');
+  const u = f.querySelector('.sf-u'), t = f.querySelector('.sf-t'), nt = f.querySelector('.sf-n'), er = f.querySelector('.err');
   u.focus();
   const ok = () => {
     const url = safeUrl(u.value);
     if (!url) { er.textContent = 'Enter a valid http(s) link'; u.focus(); return; }
     checkpoint();
-    n.blocks[bi].items.push({ t: t.value.trim(), u: url });
+    n.blocks[bi].items.push({ id: uid('r'), t: t.value.trim(), u: url, note: nt.value.trim() });
     renderNode(n); changed();
   };
   f.addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('[data-sf]'); if (b) b.dataset.sf === 'ok' ? ok() : renderNode(n); });
-  f.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); ok(); } if (e.key === 'Escape') renderNode(n); });
+  f.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && (e.target !== nt || e.ctrlKey || e.metaKey)) { e.preventDefault(); ok(); }
+    if (e.key === 'Escape') renderNode(n);
+  });
 }
 
 nodesWrap.addEventListener('click', e => {
@@ -772,6 +779,23 @@ nodesWrap.addEventListener('click', e => {
     const sc = a.closest('.scn'), id = sc.dataset.sid;
     S.open[id] = !S.open[id];
     sc.classList.toggle('open', !!S.open[id]);
+    return;
+  }
+  if (act === 'toggle-src') {
+    const it = a.closest('.src-it'), k = 's:' + it.dataset.sk;
+    S.open[k] = !S.open[k];
+    it.classList.toggle('open', S.open[k]);
+    a.title = S.open[k] ? 'Hide details' : 'Show details';
+    return;
+  }
+  if (act === 'toggle-fold') {
+    /* the owner's choice is saved with the board; visitors only fold it for themselves */
+    const box = a.closest('.b-cat'), closed = !box.classList.contains('closed');
+    if (S.canEdit) { endEdit(); b.closed = closed; if (!closed) delete b.closed; delete S.open['f:' + b.id]; changed(); }
+    else S.open['f:' + b.id] = closed;
+    box.classList.toggle('closed', closed);
+    const btn = box.querySelector('.cat-h .chev');
+    if (btn) btn.title = closed ? 'Open' : 'Close';
     return;
   }
   if (!S.canEdit) return;
@@ -946,7 +970,10 @@ function onDown(e) {
   const eg = t.closest('[data-e]');
   if (eg) {
     selectEdge(eg.dataset.e);
-    if (S.canEdit) EG = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY };
+    if (!S.canEdit) return;
+    /* the middle dot (or a line's label) bends the line; anywhere else on the line pulls it off to disconnect */
+    if (t.closest('.bend') || (eg.classList.contains('elabel') && !eg.hasAttribute('contenteditable'))) BEND = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY, moved: false };
+    else EG = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY };
     return;
   }
   if (ne) {
@@ -968,7 +995,7 @@ function onDown(e) {
 }
 function onMove(e) {
   PTR = { x: e.clientX, y: e.clientY };
-  if (e.pointerType === 'mouse' && e.buttons === 0 && (CONN || DRAG || BD || MQ || RZ || TB || EG || (PAN && PAN.moved))) { abortGestures(); return; }
+  if (e.pointerType === 'mouse' && e.buttons === 0 && (CONN || DRAG || BD || MQ || RZ || TB || EG || BEND || (PAN && PAN.moved))) { abortGestures(); return; }
   if (e.pointerType === 'touch' && TOUCH.has(e.pointerId)) {
     TOUCH.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (PINCH) { movePinch(); return; }
@@ -984,6 +1011,7 @@ function onMove(e) {
   if (RZ) return moveResize(e);
   if (TB) return moveTB(e);
   if (EG) return moveEdgeGrab(e);
+  if (BEND) return moveBend(e);
 }
 function onUp(e) {
   if (e.pointerType === 'touch') {
@@ -991,6 +1019,7 @@ function onUp(e) {
     if (PINCH) { if (TOUCH.size < 2) PINCH = null; return; }
   }
   EG = null;
+  if (BEND) endBend();
   if (PAN) { PAN = null; document.body.classList.remove('panning'); }
   if (DRAG) endDrag();
   if (MQ) endMarquee();
@@ -1003,6 +1032,7 @@ function onUp(e) {
    hanging (e.g. a half-drawn connection that follows the mouse). End everything cleanly instead. */
 function abortGestures() {
   EG = null;
+  if (BEND) endBend();
   if (CONN) cancelConnect();
   if (DRAG) endDrag(true);
   if (BD) { BD.target = null; endBlockDrag({}); }
@@ -1167,12 +1197,38 @@ function moveEdgeGrab(e) {
   S.edgeSel = null;
   CONN = {
     from: loseFrom ? ed.to : ed.from, side: loseFrom ? s2 : s1, target: null, key: '',
-    detached: { reverse: loseFrom, label: ed.label, arrow: ed.arrow, dashed: ed.dashed, style: ed.style, edge: ed },
+    detached: { reverse: loseFrom, label: ed.label, arrow: ed.arrow, dashed: ed.dashed, style: ed.style, bend: ed.bend, edge: ed },
   };
   capture(e);
   document.body.classList.add('connecting');
   drawEdges(); renderInspector();
   moveConnect(e);
+}
+/* bend a line by dragging its middle dot; the dot snaps to the grid unless Ctrl is held */
+function moveBend(e) {
+  const b = BEND, ed = env().edges.find(x => x.id === b.id), r = EDGE_EL.get(b.id);
+  if (!ed || !r || !r.p1) { BEND = null; return; }
+  if (!b.moved) {
+    if (Math.hypot(e.clientX - b.sx, e.clientY - b.sy) < 3) return;
+    b.moved = true; capture(e); checkpoint();
+    document.body.classList.add('bending');
+  }
+  const w = toWorld(e.clientX, e.clientY);
+  if (!(e.ctrlKey || e.metaKey)) { w.x = snapV(w.x); w.y = snapV(w.y); }
+  ed.bend = { dx: Math.round(w.x - (r.p1.x + r.p2.x) / 2), dy: Math.round(w.y - (r.p1.y + r.p2.y) / 2) };
+  drawEdges();
+}
+function endBend() {
+  const b = BEND;
+  BEND = null;
+  document.body.classList.remove('bending');
+  if (b && b.moved) { changed(); renderInspector(); }
+}
+function resetBend(id) {
+  const ed = env().edges.find(x => x.id === id);
+  if (!ed || !ed.bend) return;
+  checkpoint(); delete ed.bend;
+  drawEdges(); renderInspector(); changed();
 }
 function clearConnHL() { $$('.port.magnet').forEach(p => p.classList.remove('magnet')); $$('.node.conn-target').forEach(x => x.classList.remove('conn-target')); }
 function moveConnect(e) {
@@ -1223,7 +1279,7 @@ function endConnect(e) {
     connPreview.setAttribute('d', '');
     if (!d) checkpoint();
     const ok = d && d.reverse ? addEdge(c.target.id, c.target.side, c.from, c.side) : addEdge(c.from, c.side, c.target.id, c.target.side);
-    if (ok && d) { const es = env().edges, ne = es[es.length - 1]; Object.assign(ne, { label: d.label, arrow: d.arrow, dashed: d.dashed }); if (d.style) ne.style = d.style; }
+    if (ok && d) { const es = env().edges, ne = es[es.length - 1]; Object.assign(ne, { label: d.label, arrow: d.arrow, dashed: d.dashed }); if (d.style) ne.style = d.style; if (d.bend) ne.bend = d.bend; }
     if (ok || d) { drawEdges(); renderInspector(); changed(); }
     if (!ok && d) toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
     return;
@@ -1562,6 +1618,7 @@ function edgeMenu(id) {
     { label: 'Dashed', icon: 'dash', check: ed.dashed, fn: () => edgeSet(id, { dashed: !ed.dashed }) },
     { label: ed.label ? 'Edit label' : 'Add label', icon: 'edit', fn: () => editEdgeLabel(id) },
     { label: 'Reverse direction', icon: 'swap', fn: () => reverseEdge(id) },
+    ed.bend && { label: 'Reset curve', icon: 'refresh', fn: () => resetBend(id) },
     '-',
     { label: 'Delete connection', icon: 'trash', kbd: 'Del', danger: true, fn: () => { S.edgeSel = id; deleteSel(); } },
   ];
@@ -1852,6 +1909,7 @@ $('#inspector').addEventListener('click', e => {
     case 'elabel': editEdgeLabel(id); break;
     case 'reverse': reverseEdge(id); break;
     case 'estyle': if (ed) edgeSet(id, { style: b.dataset.v }); break;
+    case 'unbend': resetBend(id); break;
     case 'del': deleteSel(); break;
     case 'dup': duplicateSel(); break;
     case 'align': alignSel(b.dataset.v); break;
@@ -1864,6 +1922,8 @@ $('#inspector').addEventListener('click', e => {
 /* labels & group frames on the board */
 vp.addEventListener('dblclick', e => {
   const t = e.target;
+  const knob = t.closest('.bend');
+  if (knob) { resetBend(knob.parentNode.dataset.e); return; }
   const eg = t.closest('[data-e]');
   if (eg) { editEdgeLabel(eg.dataset.e); return; }
   const gl = t.closest('.glabel');

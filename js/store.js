@@ -24,7 +24,9 @@ const EDGE_TYPES = {
   partof:      { label: 'Part of',        icon: 'partof', color: '#8f9bb3', group: 'Time & structure' },
   example:     { label: 'Example of',     icon: 'bulb',   color: '#8f9bb3', group: 'Time & structure' },
 };
-const GROUP_LOOK_IDS = ['clear', 'dotted', 'hatched', 'panel'];
+/* Groups just bundle nodes (for sorting and selecting together). Panels are the framed areas on the
+   board: they have a look, a frame colour, can be folded and can be connected like a node. */
+const PANEL_LOOK_IDS = ['dotted', 'outline', 'tinted', 'hatched', 'grid', 'card'];
 const BLOCKS = [
   ['text', 'Text', 'Plain paragraph'],
   ['highlight', 'Highlight', 'Emphasised box'],
@@ -61,7 +63,7 @@ function makeNode(type) {
     blocks: type === 'title' ? [] : [makeBlock('text')],
   };
 }
-function makeEnv(name) { return { id: uid('e'), name, nodes: [], edges: [], groups: [] }; }
+function makeEnv(name) { return { id: uid('e'), name, nodes: [], edges: [], groups: [], panels: [] }; }
 
 /* fresh ids for pasted / duplicated content */
 function reIdNode(n) {
@@ -118,23 +120,60 @@ function migrate(doc) {
         if (b.kind === 'scenarios') b.items.forEach(s => { s.id = s.id || uid('s'); s.steps = Array.isArray(s.steps) ? s.steps : []; });
       });
     });
-    const ids = new Set(e.nodes.map(n => n.id));
-    e.groups.forEach(g => {
-      g.id = g.id || uid('g'); g.name = String(g.name || 'Group');
-      g.members = (g.members || []).filter(id => ids.has(id));
-      if (!GROUP_LOOK_IDS.includes(g.look) || g.look === 'clear') delete g.look;
-      if (!COLORS[g.color]) delete g.color;
+    e.panels = Array.isArray(e.panels) ? e.panels : [];
+    /* boards from before panels existed: a group with a look, or one that lines connect to, becomes a panel
+       (it keeps its id, so its connections stay) */
+    const linked = new Set(e.edges.flatMap(x => [x.from, x.to]));
+    e.groups = e.groups.filter(g => {
+      if (!g || !((g.look && g.look !== 'clear') || linked.has(g.id))) return true;
+      e.panels.push({ id: g.id || uid('p'), name: String(g.name || 'Panel'), members: g.members || [], look: g.look === 'panel' ? 'card' : g.look === 'hatched' ? 'hatched' : 'dotted', color: g.color });
+      return false;
     });
-    e.groups = e.groups.filter(g => g.members.length > 1);
-    /* a connection may join nodes and/or groups */
-    const ends = new Set([...ids, ...e.groups.map(g => g.id)]);
-    e.edges = e.edges.filter(x => ends.has(x.from) && ends.has(x.to) && x.from !== x.to);
+    e.groups.forEach(g => { g.id = g.id || uid('g'); g.name = String(g.name || 'Group'); delete g.look; delete g.color; });
+    e.panels.forEach(p => {
+      p.id = p.id || uid('p'); p.name = String(p.name || 'Panel');
+      if (!PANEL_LOOK_IDS.includes(p.look)) p.look = 'dotted';
+      if (!COLORS[p.color]) delete p.color;
+      if (p.folded !== true) delete p.folded;
+    });
+    normalizeEnv(e);
     e.edges.forEach(x => {
       if (!x.bend || !isFinite(x.bend.dx) || !isFinite(x.bend.dy)) delete x.bend;
       if (!EDGE_TYPES[x.type]) delete x.type;
     });
   });
   return doc;
+}
+/* Keep groups and panels consistent: members must exist, a node is in at most one group and one panel,
+   a group's nodes all sit in the same panel (or in none), groups need two nodes and panels one.
+   Connections may join nodes and/or panels; ones whose end is gone are dropped. */
+function normalizeEnv(e) {
+  const ids = new Set(e.nodes.map(n => n.id));
+  const tidy = (list, min) => {
+    const used = new Set();
+    list.forEach(x => { x.members = (Array.isArray(x.members) ? x.members : []).filter(id => ids.has(id) && !used.has(id) && used.add(id)); });
+    return list.filter(x => x.members.length >= min);
+  };
+  e.panels = tidy(e.panels, 1);
+  e.groups = tidy(e.groups, 2);
+  const pOf = new Map();
+  e.panels.forEach(p => p.members.forEach(id => pOf.set(id, p)));
+  for (const g of e.groups) {
+    const votes = new Map();
+    g.members.forEach(id => { const p = pOf.get(id) || null; votes.set(p, (votes.get(p) || 0) + 1); });
+    if (votes.size < 2) continue;
+    const home = [...votes].sort((a, b) => b[1] - a[1])[0][0];
+    g.members.forEach(id => {
+      const p = pOf.get(id) || null;
+      if (p === home) return;
+      if (p) p.members = p.members.filter(m => m !== id);
+      if (home) home.members.push(id);
+      pOf.set(id, home);
+    });
+  }
+  e.panels = e.panels.filter(p => p.members.length);
+  const ends = new Set([...ids, ...e.panels.map(p => p.id)]);
+  e.edges = e.edges.filter(x => ends.has(x.from) && ends.has(x.to) && x.from !== x.to);
 }
 
 /* ---------- starter board ---------- */
@@ -180,7 +219,7 @@ const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', auto
 const META = Object.assign({ dirty: false, baseSha: null, baseHash: null, publishedAt: 0 }, readLS(LS.meta) || {});
 const UI = Object.assign({ envId: null, views: {}, collapsed: {} }, readLS(LS.ui) || {});
 const S = {
-  envId: null, sel: new Set(), edgeSel: null,
+  envId: null, sel: new Set(), edgeSel: null, panelSel: null,
   canEdit: false, connected: false, preview: false, local: false,
   open: {}, editing: null, tool: 'select', space: false, publishing: false,
 };
@@ -194,6 +233,7 @@ const saveUI = debounce(() => writeLS(LS.ui, UI), 300);
 function env() { return DOC.envs.find(e => e.id === S.envId) || DOC.envs[0]; }
 function nodeById(id) { return env().nodes.find(n => n.id === id); }
 function groupOf(id) { return env().groups.find(g => g.members.includes(id)); }
+function panelOf(id) { return env().panels.find(p => p.members.includes(id)); }
 
 let lsWarned = false;
 function saveLocalNow() {

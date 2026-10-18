@@ -34,6 +34,13 @@ function safeUrl(u) {
   if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
   return /^https?:\/\/[^\s]+$/i.test(u) ? u : '';
 }
+/* text with formatting marks removed (for layer names, search, link matching) */
+function mdPlain(s) {
+  return String(s || '')
+    .replace(/\(([^()\n]+?)\)\[[^\[\]\n]+?\]/g, '$1').replace(/\[([^\[\]\n]+?)\]\([^)\s]+\)/g, '$1')
+    .replace(/\*\*|==|~~/g, '').replace(/(^|[^*\w])\*(\S[^*\n]*?)\*/g, '$1$2').replace(/(^|[^_\w])_(\S[^_\n]*?)_(?!\w)/g, '$1$2')
+    .replace(/^-#\s+/gm, '');
+}
 function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } }
 function readLS(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
 function writeLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -74,6 +81,15 @@ const ICONS = {
   group: '<rect x="3" y="3" width="18" height="18" rx="4.5" stroke-dasharray="3 3"/><rect x="7" y="7" width="5.5" height="5.5" rx="1.4"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.4"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
   eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  fluid: '<path d="M4 19c8 0 8-14 16-14"/>',
+  geo: '<path d="M4 19h7a2 2 0 0 0 2-2V7a2 2 0 0 1 2-2h5"/>',
+  bold: '<path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z"/>',
+  italic: '<path d="M10 5h8M6 19h8M14 5l-4 14"/>',
+  strike: '<path d="M5 12h14M16 7.5A4 3 0 0 0 12 5c-2.5 0-4 1.3-4 3s1.5 2.6 4 3.2M8 16.5A4 3 0 0 0 12 19c2.5 0 4-1.3 4-3"/>',
+  mark: '<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>',
+  small: '<path d="M4 7h9M8.5 7v11M14 12h6M17 12v6"/>',
+  nodelink: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/><path d="M7 11v2a4 4 0 0 0 4 4h2"/>',
+  text2: '<path d="M4 6h16M4 10h16M4 14h10M4 18h7"/>',
   eyeoff: '<path d="M10.6 5.6A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C3.9 8.3 2.5 12 2.5 12s3.5 6.5 9.5 6.5a9 9 0 0 0 5.4-1.9"/><path d="M9.9 9.9a2.8 2.8 0 0 0 4 4"/><path d="M3 3l18 18"/>',
   upload: '<path d="M12 15.5V4M7 8.5l5-4.5 5 4.5"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/>',
   download: '<path d="M12 4v11.5M7 11l5 4.5 5-4.5"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/>',
@@ -123,6 +139,7 @@ function openMenu(x, y, items, opt = {}) {
   m.style.left = left + 'px'; m.style.top = top + 'px';
   m.style.setProperty('--ox', (x - left) + 'px'); m.style.setProperty('--oy', (y - top) + 'px');
   m.addEventListener('pointerdown', e => e.stopPropagation());
+  m.addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });   // keep focus (and text selection) where it was
   m.addEventListener('contextmenu', e => e.preventDefault());
   m.addEventListener('click', e => {
     if (opt.onClick && opt.onClick(e) === true) { closeMenu(); return; }

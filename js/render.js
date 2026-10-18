@@ -240,6 +240,9 @@ function mdBlock(s) {
 function mdField(v, single) { return single ? mdInline(v) : mdBlock(v); }
 
 /* ---------- node markup ---------- */
+/* Edit-only controls ("+ Item", "+ Scenario"…) are also drawn for visitors, invisibly, so every node has
+   exactly the same size for owner and visitors and connections attach at the same spots. */
+function eoAttr() { return S.canEdit ? '' : ' aria-hidden="true" tabindex="-1"'; }
 function fld(n, path, tag, cls, o = {}) {
   const v = getPath(n, path);
   return `<${tag} class="ed ${cls || ''}" data-f="${path}"${o.ph ? ` data-ph="${esc(o.ph)}"` : ''}${o.single ? ' data-single="1"' : ''}>${mdField(v == null ? '' : String(v), o.single)}</${tag}>`;
@@ -274,21 +277,21 @@ function blockHTML(n, b, i) {
     case 'scenarios':
       inner = `<div class="b-scn">${fld(n, P + '.label', 'div', 'lab', { ph: 'Scenarios', single: 1 })}` +
         b.items.map((s, si) => scenarioHTML(n, b, i, s, si)).join('') +
-        (E ? `<button class="ghost-btn wide" data-act="add-scn">${ic('plus', 12)} Scenario</button>` : '') + '</div>';
+        `<button class="ghost-btn wide eo" data-act="add-scn"${eoAttr()}>${ic('plus', 12)} Scenario</button>` + '</div>';
       break;
     case 'checklist':
       inner = `<div class="b-chk">${fld(n, P + '.label', 'div', 'lab', { ph: 'Checklist', single: 1 })}` +
         b.items.map((it, ii) => `<div class="chk${it.done ? ' done' : ''}"><button class="box" data-act="toggle-chk" data-ii="${ii}"${E ? '' : ' disabled'} aria-label="Toggle">${ic('check', 11)}</button>${fld(n, `${P}.items.${ii}.text`, 'div', 'b-text', { ph: 'To do…', single: 1 })}${E ? `<button class="mini-x" data-act="del-chk" data-ii="${ii}" aria-label="Remove item">${ic('x', 11)}</button>` : ''}</div>`).join('') +
-        (E ? `<button class="ghost-btn" data-act="add-chk">${ic('plus', 12)} Item</button>` : '') + '</div>';
+        `<button class="ghost-btn eo" data-act="add-chk"${eoAttr()}>${ic('plus', 12)} Item</button>` + '</div>';
       break;
     case 'image':
       if (b.src) inner = `<figure class="b-img"><img src="${esc(imgSrc(b.src))}" data-src="${esc(b.src)}" alt="${esc(b.caption || '')}" draggable="false">${fld(n, P + '.caption', 'figcaption', 'cap', { ph: 'Caption…' })}</figure>`;
-      else if (E) inner = `<div class="img-drop"><div class="idr" data-act="pick-img">${ic('image', 22)}<div><b>Add an image</b><small>Click to upload, drop a file, or paste</small></div></div><input class="img-url" placeholder="…or paste an image link and press Enter"></div>`;
+      else inner = `<div class="img-drop eo"${eoAttr()}><div class="idr" data-act="pick-img">${ic('image', 22)}<div><b>Add an image</b><small>Click to upload, drop a file, or paste</small></div></div><input class="img-url" placeholder="…or paste an image link and press Enter"></div>`;
       break;
     case 'sources':
       inner = `<div class="b-src">${fld(n, P + '.label', 'div', 'lab', { ph: 'Sources', single: 1 })}<div class="src-list">` +
         b.items.map((s, si) => sourceHTML(n, P, s, si)).join('') +
-        `</div>${E ? `<button class="chip add" data-act="add-src">${ic('plus', 11)} Source</button>` : ''}</div>`;
+        `</div><button class="chip add eo" data-act="add-src"${eoAttr()}>${ic('plus', 11)} Source</button></div>`;
       break;
   }
   return `<div class="blk k-${b.kind}" data-i="${i}">${E ? `<span class="grip" title="Drag to move">${ic('grip', 14)}</span>` : ''}${inner}</div>`;   /* blocks are deleted from the right-click menu only, so they can't be removed by accident */
@@ -310,7 +313,7 @@ function scenarioHTML(n, b, i, s, si) {
     <div class="scn-h"${E ? '' : tog}><span class="scn-n"${tog}>${si + 1}</span>${fld(n, SP + '.title', 'div', 'scn-t', { ph: 'What if…', single: 1 })}<span class="scn-c"${tog}>${s.steps.length} step${s.steps.length === 1 ? '' : 's'}</span><button class="chev"${tog} aria-label="Expand">${ic('chev', 14)}</button></div>
     <div class="scn-b"><div class="scn-bi"><div class="chain">` +
     s.steps.map((st, ti) => `<div class="step${st.alt ? ' alt' : ''}" style="--i:${ti}"><i class="dot"${E ? ` data-act="toggle-alt" data-si="${si}" data-ti="${ti}" title="Switch side"` : ''}></i><div class="step-c">${fld(n, `${SP}.steps.${ti}.label`, 'div', 'lab', { ph: 'Step', single: 1 })}${fld(n, `${SP}.steps.${ti}.text`, 'div', 'b-text', { ph: 'What happens…' })}</div>${E ? `<button class="mini-x" data-act="del-step" data-si="${si}" data-ti="${ti}" aria-label="Remove step">${ic('x', 11)}</button>` : ''}</div>`).join('') +
-    `</div>${E ? `<div class="scn-actions"><button class="ghost-btn" data-act="add-step" data-si="${si}">${ic('plus', 12)} Step</button><button class="ghost-btn danger" data-act="del-scn" data-si="${si}">Remove scenario</button></div>` : ''}</div></div></div>`;
+    `</div><div class="scn-actions eo"${eoAttr()}><button class="ghost-btn" data-act="add-step" data-si="${si}">${ic('plus', 12)} Step</button><button class="ghost-btn danger" data-act="del-scn" data-si="${si}">Remove scenario</button></div></div></div></div>`;
 }
 
 /* ---------- node elements ---------- */

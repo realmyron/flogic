@@ -233,7 +233,7 @@
      "x": -732,
      "y": 90,
      "w": 336,
-     "color": "slate",
+     "color": "pink",
      "tag": "",
      "title": "Skepticism of the Malfunction",
      "subtitle": "",
@@ -536,7 +536,7 @@
      "ts": "r",
      "label": "",
      "arrow": true,
-     "dashed": false,
+     "dashed": true,
      "bend": {
       "dx": 474,
       "dy": 181

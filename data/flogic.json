@@ -119,7 +119,7 @@
     {
      "id": "nuvef0ypz",
      "type": "note",
-     "x": 120,
+     "x": 96,
      "y": -384,
      "w": 360,
      "color": "default",
@@ -150,7 +150,7 @@
     {
      "id": "n8d9hjd6ra",
      "type": "note",
-     "x": 528,
+     "x": 504,
      "y": -384,
      "w": 336,
      "color": "red",
@@ -158,12 +158,6 @@
      "title": "Redefining the Act of Sex",
      "subtitle": "",
      "blocks": [
-      {
-       "id": "bxbljel6ra",
-       "kind": "category",
-       "label": "ATTRACTION",
-       "text": "a reproductive pathway designed to deliver sperm to the fallopian tubes through penetration"
-      },
       {
        "id": "bl7v28g6ra",
        "kind": "category",
@@ -221,7 +215,7 @@
      "x": -732,
      "y": 96,
      "w": 336,
-     "color": "slate",
+     "color": "default",
      "tag": "",
      "title": "Skepticism of the Malfunction",
      "subtitle": "",
@@ -242,7 +236,7 @@
        "id": "bd1uc86b5m",
        "kind": "category",
        "label": "SHAPE RECOGNITION",
-       "text": "Males, under natural circumstances, do not possess the same anatomy as females, lacking the curvature of the hips, breasts, face softness, fat distribution, waist to hip ratio, skin quality, muscle insertions, muscle mass, body hair distribution. Vice versa for females. There's no evidence of malfunction on this mechanism."
+       "text": "Males, under natural circumstances, do not possess the same anatomy as females, lacking the curvature of the hips, breasts, face softness, fat distribution, waist to hip ratio, skin quality, muscle insertions, muscle mass, body hair distribution. Vice versa for females. There's no evidence of malfunction on this mechanism.\n___"
       },
       {
        "id": "brg2d2ke98",
@@ -286,26 +280,6 @@
    ],
    "edges": [
     {
-     "id": "l0ouonvwbc",
-     "from": "nq5ngovwel",
-     "fs": "t",
-     "to": "nbn4b018o1",
-     "ts": "b",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lnm65ltcmz",
-     "from": "nuvef0ypz",
-     "fs": "t",
-     "to": "nbn4b018o1",
-     "ts": "b",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
      "id": "lmxuqr6pvm",
      "from": "nq5ngovwel",
      "fs": "b",
@@ -316,27 +290,17 @@
      "dashed": false
     },
     {
-     "id": "l64kba410j",
+     "id": "l7fv46mx1m",
      "from": "nbnt5jgf28",
-     "fs": "r",
-     "to": "nuvef0ypz",
-     "ts": "l",
+     "fs": "l",
+     "to": "npqtkwfq7l",
+     "ts": "r",
      "label": "",
      "arrow": true,
      "dashed": false
     },
     {
-     "id": "lg8a5pk885",
-     "from": "nbnt5jgf28",
-     "fs": "r",
-     "to": "n8d9hjd6ra",
-     "ts": "b",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lepnm31u7z",
+     "id": "l5qwhu9m48",
      "from": "nuvef0ypz",
      "fs": "r",
      "to": "n8d9hjd6ra",
@@ -346,11 +310,31 @@
      "dashed": false
     },
     {
-     "id": "l7fv46mx1m",
+     "id": "l6kfk8l7o4",
      "from": "nbnt5jgf28",
-     "fs": "l",
-     "to": "npqtkwfq7l",
-     "ts": "r",
+     "fs": "r",
+     "to": "n8d9hjd6ra",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lmk1t1yq76",
+     "from": "nbn4b018o1",
+     "fs": "b",
+     "to": "nq5ngovwel",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lr17usur78",
+     "from": "nbn4b018o1",
+     "fs": "b",
+     "to": "nuvef0ypz",
+     "ts": "t",
      "label": "",
      "arrow": true,
      "dashed": false

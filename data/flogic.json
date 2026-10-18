@@ -213,9 +213,9 @@
      "id": "npqtkwfq7l",
      "type": "sub",
      "x": -732,
-     "y": 96,
+     "y": 90,
      "w": 336,
-     "color": "default",
+     "color": "slate",
      "tag": "",
      "title": "Skepticism of the Malfunction",
      "subtitle": "",
@@ -273,7 +273,113 @@
        "id": "byqa7gewzt",
        "kind": "sources",
        "label": "Sources",
-       "items": []
+       "items": [
+        {
+         "id": "r10a87yiz",
+         "t": "Ivanka Savic - Gays react to Male Pheromones",
+         "u": "https://pubmed.ncbi.nlm.nih.gov/15883379/",
+         "note": "The study that  I referred to that shows homosexuals react to male pheromones"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "noso4rr4vz",
+     "type": "note",
+     "x": -348,
+     "y": 576,
+     "w": 336,
+     "color": "green",
+     "tag": "CLARIFICATION",
+     "title": "Intimate Tendencies",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bhahbw4kx8",
+       "kind": "text",
+       "text": "It's important to address the occurrences of same sex intimate - why and how they happen. I will address each position separately."
+      },
+      {
+       "id": "bqxdnxs4vz",
+       "kind": "scenarios",
+       "label": "MALE (PENETRATOR)",
+       "items": [
+        {
+         "id": "it7adv24vz",
+         "title": "Horniness",
+         "steps": [
+          {
+           "id": "tp94fru4vz",
+           "label": "EXPLANATION",
+           "text": "The act is done out of horniness and semen retention. The male imitates a reproductive act to satisfy natural instincts.",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "sku59jq3ub",
+         "title": "Societal Grooming",
+         "steps": [
+          {
+           "id": "t16igdc3ub",
+           "label": "EXPLANATION",
+           "text": "Controlling for horniness, we must also control for every variable that differentiates a female from a male, the anus in both sexes is essentially identical. If we hypothetically put 2 isolated anuses in front of the subject and the only variable are the titles of \"male\" and \"female\", and the subject picks male, then the subjects decision is driven by arbitrary social grooming and has no psycho-physiological backing.",
+           "alt": false
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "bw88v3s2bx",
+       "kind": "scenarios",
+       "label": "MALE (RECEIVER)",
+       "items": [
+        {
+         "id": "s0b84fj2bx",
+         "title": "Autogynephilia",
+         "steps": [
+          {
+           "id": "tewgezp2bx",
+           "label": "EXPLANATION",
+           "text": "Autogynephilia is defined as a male's propensity to experience sexual arousal from the thought, image, or fantasy of himself as a female",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "s3qj2lixm9",
+         "title": "Counter-Indication",
+         "steps": [
+          {
+           "id": "tyvjoj1xm9",
+           "label": "EXPLANATION",
+           "text": "The anus is not made for penetration, ",
+           "alt": false
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "babxh1k5f3",
+       "kind": "scenarios",
+       "label": "Scenarios",
+       "items": [
+        {
+         "id": "s2dutql5f3",
+         "title": "",
+         "steps": [
+          {
+           "id": "t49algy5f3",
+           "label": "EXPLANATION",
+           "text": "",
+           "alt": false
+          }
+         ]
+        }
+       ]
       }
      ]
     }
@@ -297,7 +403,11 @@
      "ts": "r",
      "label": "",
      "arrow": true,
-     "dashed": false
+     "dashed": false,
+     "bend": {
+      "dx": 12,
+      "dy": 45
+     }
     },
     {
      "id": "l5qwhu9m48",
@@ -330,17 +440,32 @@
      "dashed": false
     },
     {
-     "id": "lchhapmtwu",
+     "id": "ldoe0innlc",
      "from": "nbnt5jgf28",
      "fs": "r",
      "to": "n8d9hjd6ra",
-     "ts": "b",
+     "ts": "r",
      "label": "",
      "arrow": true,
-     "dashed": true
+     "dashed": false,
+     "bend": {
+      "dx": 474,
+      "dy": 181
+     }
+    },
+    {
+     "id": "l59kwd717m",
+     "from": "nbnt5jgf28",
+     "fs": "b",
+     "to": "noso4rr4vz",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
     }
    ],
-   "groups": []
+   "groups": [],
+   "folder": "f6bboigff2"
   },
   {
    "id": "eiw6bxmnsf",
@@ -366,8 +491,19 @@
     }
    ],
    "edges": [],
-   "groups": []
+   "groups": [],
+   "folder": "f6bboigff2"
   }
  ],
- "lineStyle": "geometric"
+ "lineStyle": "geometric",
+ "folders": [
+  {
+   "id": "f6bboigff2",
+   "name": "Social Issues"
+  },
+  {
+   "id": "f3949hz1g4",
+   "name": "Category 2"
+  }
+ ]
 }

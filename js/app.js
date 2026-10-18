@@ -115,51 +115,64 @@ function restore(json) {
 
 /* ===================== text editing ===================== */
 const PLAIN = (() => { const d = document.createElement('div'); try { d.contentEditable = 'plaintext-only'; } catch (e) {} return d.contentEditable === 'plaintext-only' ? 'plaintext-only' : 'true'; })();
+function caretFromPoint(cx, cy) {
+  if (document.caretRangeFromPoint) return document.caretRangeFromPoint(cx, cy);
+  if (document.caretPositionFromPoint) {
+    const p = document.caretPositionFromPoint(cx, cy);
+    if (p) { const r = document.createRange(); r.setStart(p.offsetNode, p.offset); r.collapse(true); return r; }
+  }
+  return null;
+}
+/* Fields show formatted text; while editing they show the raw text with its ** == -# marks. */
 function startEdit(el, cx, cy) {
   if (!S.canEdit || !el) return;
   if (S.editing && S.editing.el === el) return;
   endEdit();
   const ne = el.closest('.node');
   if (!ne) return;
+  const n = nodeById(ne.dataset.id), raw = String(getPath(n, el.dataset.f) || '');
+  /* where in the visible text was clicked, mapped onto the raw text */
+  let at = raw.length;
+  if (cx != null) {
+    const r = caretFromPoint(cx, cy);
+    if (r && el.contains(r.startContainer)) {
+      const pre = document.createRange();
+      pre.selectNodeContents(el); pre.setEnd(r.startContainer, r.startOffset);
+      const shown = pre.toString(), all = el.textContent;
+      if (all === raw) at = shown.length;
+      else { let j = 0, i = 0; for (; i < raw.length && j < shown.length; i++) if (raw[i] === shown[j]) j++; at = i; }
+    }
+  }
   checkpoint();
-  S.editing = { el, id: ne.dataset.id, f: el.dataset.f, before: el.textContent };
+  S.editing = { el, id: ne.dataset.id, f: el.dataset.f, before: raw };
+  el.textContent = raw;
   el.setAttribute('contenteditable', PLAIN);
   el.setAttribute('spellcheck', 'true');
   ne.classList.add('editing');
   el.focus({ preventScroll: true });
-  const sel = getSelection();
-  sel.removeAllRanges();
-  let r = null;
-  if (cx != null) {
-    if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(cx, cy);
-    else if (document.caretPositionFromPoint) {
-      const p = document.caretPositionFromPoint(cx, cy);
-      if (p) { r = document.createRange(); r.setStart(p.offsetNode, p.offset); r.collapse(true); }
-    }
-  }
-  if (!r || !el.contains(r.startContainer)) { r = document.createRange(); r.selectNodeContents(el); r.collapse(false); }
-  sel.addRange(r);
+  setEditSelection(at, at);
 }
 function editField(nodeId, f, selectAll) {
   const ne = NODE_EL.get(nodeId), el = ne && ne.querySelector(`[data-f="${f}"]`);
   if (!el) return;
   startEdit(el);
-  if (selectAll && el.textContent) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  if (selectAll && el.textContent) setEditSelection(0, el.textContent.length);
 }
 function endEdit() {
   const ed = S.editing;
   if (!ed) return;
   S.editing = null;
   const el = ed.el, n = nodeById(ed.id);
+  let v = ed.before;
   if (n) {
-    let v = el.innerText.replace(/\xa0/g, ' ').replace(/\n+$/, '');
+    v = el.innerText.replace(/\xa0/g, ' ').replace(/\n+$/, '');
     if (el.dataset.single) v = v.replace(/\s*\n\s*/g, ' ');
     setPath(n, ed.f, v);
-    if (el.textContent !== v) el.textContent = v;
     if (v !== ed.before) changed();
   }
   el.removeAttribute('contenteditable');
   el.removeAttribute('spellcheck');
+  el.innerHTML = mdField(v, !!el.dataset.single);
   const ne = el.closest('.node');
   if (ne) ne.classList.remove('editing');
   if (document.activeElement === el) el.blur();
@@ -181,8 +194,14 @@ nodesWrap.addEventListener('keydown', e => {
   const ed = S.editing;
   if (!ed || e.target !== ed.el) return;
   e.stopPropagation();
+  const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  if (mod && !e.shiftKey && k === 'b') { e.preventDefault(); wrapSel('**'); return; }
+  if (mod && !e.shiftKey && k === 'i') { e.preventDefault(); wrapSel('*'); return; }
+  if (mod && !e.shiftKey && k === 'e') { e.preventDefault(); wrapSel('=='); return; }
+  if (mod && e.shiftKey && k === 'x') { e.preventDefault(); wrapSel('~~'); return; }
+  if (mod && k === 'k') { e.preventDefault(); const r = ed.el.getBoundingClientRect(); openNodeLinkPicker(r.left, r.bottom + 6); return; }
   if (e.key === 'Escape') { e.preventDefault(); endEdit(); return; }
-  if (e.key === 'Enter' && (ed.el.dataset.single || e.ctrlKey || e.metaKey)) { e.preventDefault(); endEdit(); return; }
+  if (e.key === 'Enter' && (ed.el.dataset.single || mod)) { e.preventDefault(); endEdit(); return; }
   if (e.key === 'Tab') {
     e.preventDefault();
     const all = $$('[data-f]', NODE_EL.get(ed.id)).filter(x => x.offsetParent);
@@ -196,6 +215,119 @@ nodesWrap.addEventListener('paste', e => {
     document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
   }
 });
+
+/* ---------- formatting helpers (work on the raw text of the field being edited) ---------- */
+function editSelection() {
+  const el = S.editing.el, s = getSelection(), len = el.textContent.length;
+  if (!s.rangeCount || !el.contains(s.anchorNode)) return { start: len, end: len };
+  const r = s.getRangeAt(0), pre = document.createRange();
+  pre.selectNodeContents(el); pre.setEnd(r.startContainer, r.startOffset);
+  const start = pre.toString().length;
+  return { start, end: Math.min(len, start + r.toString().length) };
+}
+function setEditSelection(a, b) {
+  const el = S.editing && S.editing.el;
+  if (!el) return;
+  el.normalize();
+  if (!el.firstChild || el.childNodes.length > 1 || el.firstChild.nodeType !== 3) el.textContent = el.textContent;
+  if (!el.firstChild) el.appendChild(document.createTextNode(''));
+  const tn = el.firstChild, r = document.createRange();
+  r.setStart(tn, clamp(a, 0, tn.length)); r.setEnd(tn, clamp(b, 0, tn.length));
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function commitEditText(text, a, b) {
+  const ed = S.editing;
+  ed.el.textContent = text;
+  setEditSelection(a, b);
+  setPath(nodeById(ed.id), ed.f, text);
+  changed();
+}
+const WORD_L = /[\p{L}\p{N}_'’-]*$/u, WORD_R = /^[\p{L}\p{N}_'’-]*/u;
+/* wrap the selection (or the word at the caret) in marks; wrapping again removes them */
+function wrapSel(pre, post = pre, sel) {
+  if (!S.editing) return;
+  let { start, end } = sel || editSelection();
+  const t = S.editing.el.textContent;
+  if (start === end) { start -= t.slice(0, start).match(WORD_L)[0].length; end += t.slice(end).match(WORD_R)[0].length; }
+  if (t.slice(start - pre.length, start) === pre && t.slice(end, end + post.length) === post)
+    return commitEditText(t.slice(0, start - pre.length) + t.slice(start, end) + t.slice(end + post.length), start - pre.length, end - pre.length);
+  if (t.slice(start, start + pre.length) === pre && t.slice(end - post.length, end) === post && end - start >= pre.length + post.length)
+    return commitEditText(t.slice(0, start) + t.slice(start + pre.length, end - post.length) + t.slice(end), start, end - pre.length - post.length);
+  commitEditText(t.slice(0, start) + pre + t.slice(start, end) + post + t.slice(end), start + pre.length, end + pre.length);
+}
+/* toggle a prefix (like "-# ") on the line holding the selection */
+function toggleLinePrefix(prefix, sel) {
+  if (!S.editing || S.editing.el.dataset.single) return;
+  const { start, end } = sel || editSelection(), t = S.editing.el.textContent;
+  const ls = t.lastIndexOf('\n', start - 1) + 1;
+  if (t.startsWith(prefix, ls)) commitEditText(t.slice(0, ls) + t.slice(ls + prefix.length), Math.max(ls, start - prefix.length), Math.max(ls, end - prefix.length));
+  else commitEditText(t.slice(0, ls) + prefix + t.slice(ls), start + prefix.length, end + prefix.length);
+}
+function insertDivider(sel) {
+  if (!S.editing || S.editing.el.dataset.single) return;
+  const { end } = sel || editSelection(), t = S.editing.el.textContent;
+  const le = t.indexOf('\n', end), at = le < 0 ? t.length : le, add = '\n___\n';
+  commitEditText(t.slice(0, at) + add + t.slice(at), at + add.length, at + add.length);
+}
+function linkSel(name, sel) {
+  if (!S.editing) return;
+  let { start, end } = sel || editSelection();
+  const t = S.editing.el.textContent;
+  if (start === end) { start -= t.slice(0, start).match(WORD_L)[0].length; end += t.slice(end).match(WORD_R)[0].length; }
+  const label = t.slice(start, end) || name, ins = `(${label})[${name}]`;
+  commitEditText(t.slice(0, start) + ins + t.slice(end), start + ins.length, start + ins.length);
+}
+function openNodeLinkPicker(x, y, sel) {
+  if (!S.editing) return;
+  sel = sel || editSelection();
+  const here = S.editing.id;
+  const ns = env().nodes.filter(n => n.id !== here && !n.hidden).sort((a, b) => nodeName(a).localeCompare(nodeName(b)));
+  if (!ns.length) return toast('There are no other nodes to link to yet');
+  openMenu(x, y, [{ head: 'Link to node' }, ...ns.slice(0, 80).map(n => ({
+    label: nodeName(n), icon: n.type === 'title' ? 'title' : n.type === 'note' ? 'note' : 'sub',
+    fn: () => linkSel(nodeName(n), sel),
+  }))], { cls: 'scroll' });
+}
+/* one-row formatting toolbar used inside right-click menus */
+function fmtRow(single) {
+  const b = (k, icon, tip, off) => `<button class="fb" data-fmt="${k}" title="${tip}"${off ? ' disabled' : ''}>${ic(icon, 15)}</button>`;
+  return { html: `<div class="mfmt">${b('bold', 'bold', 'Bold · ' + MOD + '+B')}${b('italic', 'italic', 'Italic · ' + MOD + '+I')}${b('mark', 'mark', 'Highlight · ' + MOD + '+E')}${b('strike', 'strike', 'Strikethrough · ' + MOD + '+Shift+X')}<span class="fsep"></span>${b('small', 'small', 'Small text (-#)', single)}${b('hr', 'minus', 'Divider line below (___)', single)}${b('link', 'nodelink', 'Link to a node · ' + MOD + '+K')}</div>` };
+}
+function runFmt(k, sel) {
+  if (k === 'bold') wrapSel('**', '**', sel);
+  else if (k === 'italic') wrapSel('*', '*', sel);
+  else if (k === 'mark') wrapSel('==', '==', sel);
+  else if (k === 'strike') wrapSel('~~', '~~', sel);
+  else if (k === 'small') toggleLinePrefix('-# ', sel);
+  else if (k === 'hr') insertDivider(sel);
+  else if (k === 'link') { const x = PTR.x, y = PTR.y; setTimeout(() => openNodeLinkPicker(x, y, sel), 0); }
+}
+/* `prep` makes sure the field is being edited and returns the selection to act on */
+function fmtClick(prep) {
+  return e => {
+    const b = e.target.closest('[data-fmt]');
+    if (!b || b.disabled) return false;
+    closeMenu();
+    const sel = prep();
+    if (sel) runFmt(b.dataset.fmt, sel);
+    return false;
+  };
+}
+/* clicking a (text)[Node] link jumps to that node, even in another environment */
+function goToNode(name) {
+  const want = mdPlain(name).trim().toLowerCase();
+  const match = n => nodeName(n).toLowerCase() === want;
+  let e = env(), n = e.nodes.find(match);
+  if (!n) { e = DOC.envs.find(x => x.nodes.some(match)); n = e && e.nodes.find(match); }
+  if (!n) return toast(`No node called “${name}”`);
+  if (n.hidden) return toast(`“${name}” is hidden`);
+  endEdit();
+  if (e.id !== S.envId) switchEnv(e.id);
+  selectNodes([n.id]);
+  zoomToNodes([n.id]);
+  const el = NODE_EL.get(n.id);
+  if (el) { el.classList.remove('ping'); void el.offsetWidth; el.classList.add('ping'); setTimeout(() => el.classList.remove('ping'), 1200); }
+}
 
 /* ===================== node operations ===================== */
 /* Each environment holds at most NODE_LIMIT nodes unless the limit is switched off in Settings. */
@@ -273,6 +405,86 @@ function copySel(silent) {
   const c = CLIP;
   try { navigator.clipboard.writeText('flogic:' + JSON.stringify({ nodes: c.nodes, edges: c.edges })).then(() => { c.sys = true; }, () => {}); } catch (_) {}
   if (!silent) toast(`Copied ${c.nodes.length} node${c.nodes.length > 1 ? 's' : ''}`);
+}
+/* ---------- "Copy text": selected nodes as Markdown ----------
+   Order follows the connections: start from nodes nothing points to (top-left first), then walk
+   each node's outgoing links left to right, so a parent is followed by what it leads to. */
+function mdSlug(s) { return mdPlain(s).toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s+/g, '-'); }
+function mdOut(s, inline) {
+  if (!s) return '';
+  let t = String(s)
+    .replace(/\(([^()\n]+?)\)\[([^\[\]\n]+?)\]/g, (m, a, n) => `[${a}](#${mdSlug(n)})`)
+    .replace(/^-#\s+(.*)$/gm, '*$1*');
+  if (!inline) t = t.replace(/^\s*(_{3,}|-{3,}|\*{3,})\s*$/gm, '\n---\n').replace(/\n{3,}/g, '\n\n');
+  return t.trim();
+}
+function nodesMarkdown(ns) {
+  const ids = new Set(ns.map(n => n.id)), es = env().edges.filter(x => ids.has(x.from) && ids.has(x.to));
+  const byPos = (a, b) => (a.y - b.y) || (a.x - b.x);
+  const kids = new Map(ns.map(n => [n.id, []])), hasIn = new Set(es.map(x => x.to));
+  es.forEach(x => kids.get(x.from).push(nodeById(x.to)));
+  kids.forEach(a => a.sort((p, q) => (p.x - q.x) || (p.y - q.y)));
+  const order = [], seen = new Set();
+  const visit = n => { if (seen.has(n.id)) return; seen.add(n.id); order.push(n); kids.get(n.id).forEach(visit); };
+  ns.filter(n => !hasIn.has(n.id)).sort(byPos).forEach(visit);
+  ns.slice().sort(byPos).forEach(visit);
+  const H = { title: '#', note: '##', sub: '###' };
+  const quote = s => s.split('\n').map(l => '> ' + l).join('\n');
+  const sections = order.map(n => {
+    const L = [];
+    if (n.tag && n.type !== 'sub') L.push(`*${mdPlain(n.tag)}*`);
+    L.push(`${H[n.type]} ${mdOut(n.title, true) || nodeName(n)}`);
+    if (n.type === 'title' && n.subtitle) L.push('', mdOut(n.subtitle));
+    n.blocks.forEach(b => {
+      L.push('');
+      if (b.kind === 'text') L.push(mdOut(b.text));
+      else if (b.kind === 'highlight') L.push(quote(`**${mdPlain(b.label) || 'Note'}:** ${mdOut(b.text)}`));
+      else if (b.kind === 'category') L.push(`#### ${mdOut(b.label, true) || 'Category'}`, '', mdOut(b.text));
+      else if (b.kind === 'conclusion') L.push('---', '', `**${mdPlain(b.label) || 'Conclusion'}:** ${mdOut(b.text)}`);
+      else if (b.kind === 'scenarios') {
+        if (b.label) L.push(`**${mdPlain(b.label)}**`, '');
+        b.items.forEach((s, i) => {
+          L.push(`${i + 1}. **${mdOut(s.title, true) || 'Scenario ' + (i + 1)}**`);
+          s.steps.forEach(st => {
+            const lab = mdPlain(st.label), txt = mdOut(st.text, true).replace(/\n/g, ' ');
+            L.push(`   - ${lab ? (st.alt ? `*${lab}:*` : `**${lab}:**`) + ' ' : ''}${txt}`);
+          });
+        });
+      } else if (b.kind === 'checklist') {
+        if (b.label) L.push(`**${mdPlain(b.label)}**`, '');
+        b.items.forEach(it => L.push(`- [${it.done ? 'x' : ' '}] ${mdOut(it.text, true)}`));
+      } else if (b.kind === 'sources') {
+        L.push(`**${mdPlain(b.label) || 'Sources'}**`, '');
+        b.items.forEach(s => L.push(`- [${s.t || hostOf(s.u)}](${s.u})`));
+      } else if (b.kind === 'image') {
+        if (!b.src) L.pop();
+        else if (b.src.startsWith('data:')) L.push(`*[Image${b.caption ? ': ' + mdPlain(b.caption) : ''}]*`);
+        else { let u = b.src; try { u = new URL(b.src, location.href).href; } catch (_) {} L.push(`![${mdPlain(b.caption)}](${u})`); }
+      }
+    });
+    const out = es.filter(x => x.from === n.id);
+    if (out.length) {
+      L.push('', '→ ' + out.map(x => { const t = nodeById(x.to); return `[${nodeName(t)}](#${mdSlug(nodeName(t))})${x.label ? ` *(${x.label})*` : ''}`; }).join(' · '));
+    }
+    return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  });
+  return sections.join('\n\n') + '\n';
+}
+function copyText() {
+  const ns = selNodes().filter(n => !n.hidden);
+  if (!ns.length) return toast('Select one or more nodes first');
+  endEdit();
+  const text = nodesMarkdown(ns);
+  const done = () => toast(ns.length > 1 ? `Copied the text of ${ns.length} nodes as Markdown` : 'Copied the text as Markdown');
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (_) { toast('Could not copy', { type: 'err' }); }
+    ta.remove();
+  };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (_) { fallback(); }
+  return text;
 }
 function pasteData(data, at) {
   if (!data || !Array.isArray(data.nodes) || !data.nodes.length) return;
@@ -526,6 +738,8 @@ function openSourceForm(nodeId, bi) {
 }
 
 nodesWrap.addEventListener('click', e => {
+  const nl = e.target.closest('a.nlink');
+  if (nl) { e.preventDefault(); e.stopPropagation(); goToNode(nl.dataset.node); return; }
   const ne = e.target.closest('.node');
   if (!ne) return;
   const n = nodeById(ne.dataset.id);
@@ -680,7 +894,7 @@ vp.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); 
 vp.addEventListener('pointerdown', onDown);
 window.addEventListener('pointermove', onMove);
 window.addEventListener('pointerup', onUp);
-window.addEventListener('pointercancel', onUp);
+window.addEventListener('pointercancel', e => { if (e.pointerType === 'touch') onUp(e); else abortGestures(); });
 
 function onDown(e) {
   PTR = { x: e.clientX, y: e.clientY };
@@ -736,6 +950,7 @@ function onDown(e) {
 }
 function onMove(e) {
   PTR = { x: e.clientX, y: e.clientY };
+  if (e.pointerType === 'mouse' && e.buttons === 0 && (CONN || DRAG || BD || MQ || RZ || TB || EG || (PAN && PAN.moved))) { abortGestures(); return; }
   if (e.pointerType === 'touch' && TOUCH.has(e.pointerId)) {
     TOUCH.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (PINCH) { movePinch(); return; }
@@ -766,6 +981,22 @@ function onUp(e) {
   if (RZ) endResize();
   if (TB) endTB(e);
 }
+/* Alt-tab, a lost pointer or a button released outside the window would otherwise leave a gesture
+   hanging (e.g. a half-drawn connection that follows the mouse). End everything cleanly instead. */
+function abortGestures() {
+  EG = null;
+  if (CONN) cancelConnect();
+  if (DRAG) endDrag();
+  if (BD) { BD.target = null; endBlockDrag({}); }
+  if (MQ) endMarquee();
+  if (RZ) endResize();
+  if (TB) { if (TB.ghost) TB.ghost.remove(); TB = null; }
+  if (PAN) { PAN = null; document.body.classList.remove('panning'); }
+  PINCH = null; TOUCH.clear();
+}
+window.addEventListener('blur', abortGestures);
+document.addEventListener('visibilitychange', () => { if (document.hidden) abortGestures(); });
+vp.addEventListener('lostpointercapture', e => { if (e.pointerType === 'mouse' && e.buttons === 0 && (CONN || BD || DRAG || MQ || RZ)) abortGestures(); });
 function cancelGestures() {
   if (DRAG) endDrag();
   PAN = null;
@@ -902,14 +1133,16 @@ function moveEdgeGrab(e) {
   if (!ed) return;
   const a = nodeById(ed.from), b = nodeById(ed.to);
   if (!a || !b) return;
-  const w = toWorld(e.clientX, e.clientY), pa = portPos(a, ed.fs), pb = portPos(b, ed.ts);
+  const drawn = EDGE_EL.get(ed.id) || {};
+  const s1 = drawn.s1 || ed.fs, s2 = drawn.s2 || ed.ts;
+  const w = toWorld(e.clientX, e.clientY), pa = drawn.p1 || portPos(a, s1), pb = drawn.p2 || portPos(b, s2);
   const loseFrom = Math.hypot(pa.x - w.x, pa.y - w.y) < Math.hypot(pb.x - w.x, pb.y - w.y);
   checkpoint();
   env().edges = env().edges.filter(x => x !== ed);
   S.edgeSel = null;
   CONN = {
-    from: loseFrom ? ed.to : ed.from, side: loseFrom ? ed.ts : ed.fs, target: null, key: '',
-    detached: { reverse: loseFrom, label: ed.label, arrow: ed.arrow, dashed: ed.dashed },
+    from: loseFrom ? ed.to : ed.from, side: loseFrom ? s2 : s1, target: null, key: '',
+    detached: { reverse: loseFrom, label: ed.label, arrow: ed.arrow, dashed: ed.dashed, style: ed.style, edge: ed },
   };
   capture(e);
   document.body.classList.add('connecting');
@@ -934,6 +1167,14 @@ function moveConnect(e) {
       for (const s of SIDES) { const p = portPos(n, s), d = Math.hypot(p.x - w.x, p.y - w.y); if (d < dd) { dd = d; best = { id: n.id, side: s, p }; } }
     }
   }
+  /* once over a node, preview exactly how the finished line will be routed */
+  let from = p0, fromSide = CONN.side, to = w, toSide = facingSide(p0, w);
+  if (best) {
+    const ra = rectOf(src), rb = rectOf(nodeById(best.id));
+    [fromSide, toSide] = autoSides(ra, rb, CONN.side, best.side);
+    best.side = toSide;
+    from = sidePoint(ra, fromSide, 0); to = sidePoint(rb, toSide, 0);
+  }
   const key = best ? best.id + best.side : '';
   if (CONN.key !== key) {
     clearConnHL();
@@ -941,7 +1182,18 @@ function moveConnect(e) {
     CONN.key = key;
   }
   CONN.target = best;
-  connPreview.setAttribute('d', bez(p0, CONN.side, best ? best.p : w, best ? best.side : facingSide(p0, w)).d);
+  connPreview.setAttribute('d', bez(from, fromSide, to, toSide, CONN.detached && CONN.detached.style).d);
+}
+/* Abandon a half-made connection (window lost focus, pointer vanished…). A line pulled off an
+   existing connection goes back where it was. */
+function cancelConnect() {
+  const c = CONN;
+  if (!c) return;
+  CONN = null;
+  document.body.classList.remove('connecting');
+  clearConnHL();
+  connPreview.setAttribute('d', '');
+  if (c.detached) { env().edges.push(c.detached.edge); H.undo.pop(); drawEdges(); }
 }
 function endConnect(e) {
   const c = CONN;
@@ -953,7 +1205,7 @@ function endConnect(e) {
     connPreview.setAttribute('d', '');
     if (!d) checkpoint();
     const ok = d && d.reverse ? addEdge(c.target.id, c.target.side, c.from, c.side) : addEdge(c.from, c.side, c.target.id, c.target.side);
-    if (ok && d) { const es = env().edges; Object.assign(es[es.length - 1], { label: d.label, arrow: d.arrow, dashed: d.dashed }); }
+    if (ok && d) { const es = env().edges, ne = es[es.length - 1]; Object.assign(ne, { label: d.label, arrow: d.arrow, dashed: d.dashed }); if (d.style) ne.style = d.style; }
     if (ok || d) { drawEdges(); renderInspector(); changed(); }
     if (!ok && d) toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
     return;
@@ -1212,7 +1464,19 @@ vp.addEventListener('contextmenu', e => {
   if (DRAG || CONN || BD || (PAN && PAN.moved)) return;
   const t = e.target, x = e.clientX, y = e.clientY, w = toWorld(x, y);
   if (!S.canEdit) {
-    openMenu(x, y, [{ label: 'Fit to screen', icon: 'fit', kbd: '⇧1', fn: () => fitAll() }, { label: 'Copy link', icon: 'link', fn: share }]);
+    const vn = t.closest('.node');
+    if (vn && !S.sel.has(vn.dataset.id)) selectNodes(groupOrNode(vn.dataset.id));
+    openMenu(x, y, [
+      vn && { label: S.sel.size > 1 ? `Copy text of ${S.sel.size} nodes` : 'Copy text', icon: 'text2', fn: copyText },
+      { label: 'Fit to screen', icon: 'fit', kbd: '⇧1', fn: () => fitAll() },
+      { label: 'Copy link', icon: 'link', fn: share },
+    ]);
+    return;
+  }
+  /* right-click while typing: format the selected text */
+  if (S.editing && S.editing.el.contains(t)) {
+    const sel = editSelection();
+    openMenu(x, y, [{ head: 'Format' }, fmtRow(!!S.editing.el.dataset.single)], { onClick: fmtClick(() => (S.editing ? sel : null)) });
     return;
   }
   endEdit();
@@ -1228,10 +1492,16 @@ vp.addEventListener('contextmenu', e => {
   }
   const ne = t.closest('.node');
   if (ne) {
-    const id = ne.dataset.id, n = nodeById(id), blk = t.closest('.blk');
+    const id = ne.dataset.id, n = nodeById(id), blk = t.closest('.blk'), field = t.closest('[data-f]');
     if (!S.sel.has(id)) selectNodes(groupOrNode(id));
-    if (blk && S.sel.size <= 1) { openMenu(x, y, blockMenu(n, +blk.dataset.i, x, y)); return; }
-    openMenu(x, y, nodeMenu(x, y));
+    const items = blk && S.sel.size <= 1 ? blockMenu(n, +blk.dataset.i, x, y) : nodeMenu(x, y);
+    if (field && S.sel.size <= 1) {
+      /* right-clicked a word: offer formatting for it on top of the usual menu */
+      const prep = () => { if (!S.editing || S.editing.el !== field) startEdit(field, x, y); return S.editing ? editSelection() : null; };
+      openMenu(x, y, [{ head: 'Format this word' }, fmtRow(!!field.dataset.single), '-', ...items], { onClick: fmtClick(prep) });
+      return;
+    }
+    openMenu(x, y, items);
     return;
   }
   clearSel();
@@ -1256,6 +1526,7 @@ function nodeMenu(x, y) {
     !multi && { label: 'Edit title', icon: 'edit', kbd: '↵', fn: () => editField(n.id, 'title', true) },
     { label: 'Duplicate', icon: 'copy', kbd: MOD + 'D', fn: duplicateSel },
     { label: 'Copy', icon: 'copy', kbd: MOD + 'C', fn: () => copySel() },
+    { label: multi ? `Copy text of ${ns.length} nodes` : 'Copy text', icon: 'text2', kbd: MOD + '⌥C', fn: copyText },
     '-',
     { head: 'Turn into' },
     ...['title', 'note', 'sub'].map(t => ({ label: NODE_LABEL[t], icon: t, check: cur === t, fn: () => setType(t) })),
@@ -1287,7 +1558,12 @@ function blockMenu(n, i, x, y) {
 }
 function edgeMenu(id) {
   const ed = env().edges.find(x => x.id === id);
+  const st = lineStyle(ed);
   return [
+    { head: 'Line style' },
+    { label: 'Fluid', icon: 'fluid', check: st === 'fluid', fn: () => edgeSet(id, { style: 'fluid' }) },
+    { label: 'Geometric', icon: 'geo', check: st === 'geometric', fn: () => edgeSet(id, { style: 'geometric' }) },
+    '-',
     { label: 'Arrow', icon: 'arrowr', check: ed.arrow, fn: () => edgeSet(id, { arrow: !ed.arrow }) },
     { label: 'Dashed', icon: 'dash', check: ed.dashed, fn: () => edgeSet(id, { dashed: !ed.dashed }) },
     { label: ed.label ? 'Edit label' : 'Add label', icon: 'edit', fn: () => editEdgeLabel(id) },
@@ -1331,6 +1607,7 @@ window.addEventListener('keydown', e => {
   if (mod && k === '0') { e.preventDefault(); zoomBy(1 / V.z); return; }
   if (e.shiftKey && e.code === 'Digit1') { e.preventDefault(); fitAll(); return; }
   if (e.shiftKey && e.code === 'Digit2') { e.preventDefault(); if (S.sel.size) zoomToNodes([...S.sel]); return; }
+  if (mod && e.altKey && e.code === 'KeyC') { e.preventDefault(); copyText(); return; }
   if (e.key === 'Escape') { clearSel(); closePanels(); return; }
   if (e.key === '?') { openHelp(); return; }
   if (!S.canEdit) {
@@ -1419,6 +1696,7 @@ function switchEnv(id) {
   if (v && isFinite(v.cx) && isFinite(v.z)) { V.z = clamp(v.z, ZMIN, ZMAX); V.x = VR.width / 2 - v.cx * V.z; V.y = VR.height / 2 - v.cy * V.z; applyView(); }
   else { fitAll(true); requestAnimationFrame(() => requestAnimationFrame(() => fitAll(true))); }
   popIn(env().nodes.map(n => n.id), true);
+  animateEdgesIn(120 + Math.min(env().nodes.length, 30) * 10);
 }
 function addEnv() {
   checkpoint();
@@ -1579,6 +1857,7 @@ $('#inspector').addEventListener('click', e => {
     case 'dashed': if (ed) edgeSet(id, { dashed: !ed.dashed }); break;
     case 'elabel': editEdgeLabel(id); break;
     case 'reverse': reverseEdge(id); break;
+    case 'estyle': if (ed) edgeSet(id, { style: b.dataset.v }); break;
     case 'del': deleteSel(); break;
     case 'dup': duplicateSel(); break;
     case 'align': alignSel(b.dataset.v); break;
@@ -1623,6 +1902,7 @@ function openHelp() {
     ['Place freely (no snapping)', 'Hold Ctrl while dragging'], ['Connect nodes', 'Drag from a side dot'],
     ['Move a block', 'Drag its ⋮⋮ handle'], ['Nudge', 'Arrows (Shift ×4, Ctrl 1px)'],
     ['Duplicate', 'Ctrl+D'], ['Copy · paste', 'Ctrl+C · Ctrl+V'],
+    ['Copy text as Markdown', 'Ctrl+Alt+C'],
     ['Group · ungroup', 'Ctrl+G · Ctrl+Shift+G'], ['Hide · show', 'Ctrl+Shift+H or the eye in Layers'],
     ['Disconnect', 'Drag a connection away'], ['Undo · redo', 'Ctrl+Z · Ctrl+Shift+Z'],
     ['Delete', 'Delete'], ['Fit all · selection', 'Shift+1 · Shift+2'],
@@ -1630,6 +1910,13 @@ function openHelp() {
   ].map(([a, b]) => `<div><span>${a}</span><kbd>${esc(b.replace(/Ctrl/g, MOD))}</kbd></div>`).join('');
   openModal(`<div class="mhead"><h3>Keyboard & mouse</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div>
     <div class="mbody"><section><div class="keys">${K}</div></section>
+    <section><h4>Text formatting</h4><div class="keys">
+      <div><span><b>Bold</b></span><kbd>**bold** · ${MOD}+B</kbd></div><div><span><i>Italic</i></span><kbd>*italic* · ${MOD}+I</kbd></div>
+      <div><span><mark>Highlight</mark></span><kbd>==text== · ${MOD}+E</kbd></div><div><span><s>Strikethrough</s></span><kbd>~~text~~</kbd></div>
+      <div><span>Small text line</span><kbd>-# text</kbd></div><div><span>Divider line</span><kbd>___ on its own line</kbd></div>
+      <div><span>Bullet</span><kbd>- text</kbd></div><div><span>Web link</span><kbd>[text](https://…)</kbd></div>
+      <div><span>Link to a node</span><kbd>(text)[Node title] · ${MOD}+K</kbd></div><div><span>Format a word</span><kbd>Right-click it</kbd></div>
+    </div></section>
     <section><p class="hint" style="margin:0">Nodes snap to a 24px grid and line up with their neighbours, with pink guides showing the alignment. Pasting an image or a link onto the board makes a node from it.</p></section></div>`);
 }
 function share() {
@@ -1668,6 +1955,7 @@ function openSettings() {
   const prefs = S.canEdit ? `<section><h4>${ic('settings', 15)} Board</h4>
     <div class="field"><span>Mouse wheel</span><div class="segs" id="s-wheel"><button data-v="zoom" class="${CFG.wheel !== 'pan' ? 'on' : ''}">Zooms</button><button data-v="pan" class="${CFG.wheel === 'pan' ? 'on' : ''}">Scrolls</button></div></div>
     <label class="tog"><input type="checkbox" id="s-snap"${CFG.snap !== false ? ' checked' : ''}><span></span>Snap to the grid and to other nodes (hold Ctrl to bypass)</label>
+    <div class="field"><span>Connection lines<br><small class="hint">Default for every line. Right-click a line to change just that one.</small></span><div class="segs" id="s-lines"><button data-v="fluid" class="${(DOC.lineStyle || 'fluid') === 'fluid' ? 'on' : ''}">Fluid</button><button data-v="geometric" class="${DOC.lineStyle === 'geometric' ? 'on' : ''}">Geometric</button></div></div>
     <label class="tog"><input type="checkbox" id="s-nolimit"${CFG.noLimit ? ' checked' : ''}><span></span>Remove the ${NODE_LIMIT.toLocaleString()}-node limit per environment (very large boards can get slow)</label></section>
     <section><h4>${ic('download', 15)} Backup</h4><p class="hint">Your work autosaves in this browser. Export a copy now and then, or import one to replace this board.</p>
     <div class="mrow" style="margin-top:0"><button class="btn" id="s-exp">${ic('download', 14)} Export JSON</button><button class="btn" id="s-imp">${ic('upload', 14)} Import JSON</button>${S.connected ? `<button class="btn" id="s-pull">${ic('refresh', 14)} Reload from GitHub</button>` : ''}</div></section>` : '';
@@ -1698,6 +1986,13 @@ function openSettings() {
   });
   const auto = q('#s-auto');
   if (auto) auto.addEventListener('change', () => { CFG.autoPublish = auto.checked; saveCfg(); scheduleAuto(); });
+  const lines = q('#s-lines');
+  if (lines) lines.addEventListener('click', e => {
+    const b = e.target.closest('[data-v]');
+    if (!b || (DOC.lineStyle || 'fluid') === b.dataset.v) return;
+    checkpoint(); DOC.lineStyle = b.dataset.v; changed(); drawEdges();
+    $$('button', lines).forEach(x => x.classList.toggle('on', x === b));
+  });
   const lim = q('#s-nolimit');
   if (lim) lim.addEventListener('change', () => { CFG.noLimit = lim.checked; saveCfg(); });
   const wheel = q('#s-wheel');

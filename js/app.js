@@ -54,7 +54,7 @@ function tick() {
     MB.setAttribute('stdDeviation', `${bx.toFixed(2)} ${by.toFixed(2)}`);
     for (const id of held) { const el = NODE_EL.get(id); if (el) el.style.filter = on ? 'url(#mblur)' : ''; }
   }
-  drawEdges(); drawGroups();
+  drawEdges(); drawFrames();
   if (any) RAF = requestAnimationFrame(tick); else queueMinimap();
 }
 function popIn(ids, stagger) {
@@ -71,13 +71,21 @@ function popIn(ids, stagger) {
 /* ===================== selection ===================== */
 function refreshSel(light) {
   for (const [id, el] of NODE_EL) el.classList.toggle('sel', S.sel.has(id));
-  drawEdges(); drawGroups();
+  drawEdges(); drawFrames();
   if (light) return;
   renderLayers(); renderInspector(); queueMinimap();
 }
-function selectNodes(ids, add) { if (!add) S.sel.clear(); ids.forEach(id => S.sel.add(id)); S.edgeSel = null; refreshSel(); }
-function clearSel() { if (!S.sel.size && !S.edgeSel) return; S.sel.clear(); S.edgeSel = null; refreshSel(); }
-function selectEdge(id) { S.sel.clear(); S.edgeSel = id; refreshSel(); }
+function selectNodes(ids, add) { if (!add) S.sel.clear(); ids.forEach(id => S.sel.add(id)); S.edgeSel = null; S.panelSel = null; refreshSel(); }
+function clearSel() { if (!S.sel.size && !S.edgeSel) return; S.sel.clear(); S.edgeSel = null; S.panelSel = null; refreshSel(); }
+function selectEdge(id) { S.sel.clear(); S.edgeSel = id; S.panelSel = null; refreshSel(); }
+/* picking a panel (by its frame, name or Layers row) selects all its nodes, so dragging moves the panel */
+function selectPanel(pid) {
+  const p = panelById(pid);
+  if (!p) return;
+  S.sel = new Set(p.members.filter(id => { const n = nodeById(id); return n && !n.hidden; }));
+  S.edgeSel = null; S.panelSel = pid;
+  refreshSel();
+}
 function groupOrNode(id) { const g = groupOf(id); return g ? g.members.slice() : [id]; }
 function selNodes() { return [...S.sel].map(nodeById).filter(Boolean); }
 
@@ -89,15 +97,12 @@ function changed() {
   renderTop();
   scheduleAuto();
 }
-/* drop connections whose node or group no longer exists (e.g. after ungrouping or deleting) */
-function pruneEdges() {
-  const e = env(), ends = new Set([...e.nodes.map(n => n.id), ...e.groups.map(g => g.id)]);
-  e.edges = e.edges.filter(x => ends.has(x.from) && ends.has(x.to));
-}
+/* tidy groups and panels and drop connections whose node or panel no longer exists (e.g. after deleting) */
+function pruneEdges() { normalizeEnv(env()); }
 function structureChanged() {
   pruneEdges();
   syncNodes();
-  drawEdges(); drawGroups();
+  drawEdges(); drawFrames();
   renderLayers(); renderInspector(); renderEnvs(); renderEmptyHint(); queueMinimap();
   changed();
 }
@@ -600,14 +605,16 @@ function toggleHidden(ids) {
   refreshSel(); changed();
   toast(hide ? `Hidden ${ns.length > 1 ? ns.length + ' nodes' : '“' + nodeName(ns[0]) + '”'}` : 'Shown again', hide ? { actions: [{ label: 'Undo', fn: undo }] } : {});
 }
-function renameGroup(gid) {
-  const g = env().groups.find(x => x.id === gid);
+/* kind: 'g' for a group, 'p' for a panel */
+function renameFrame(kind, id) {
+  const g = kind === 'p' ? panelById(id) : groupById(id), what = kind === 'p' ? 'panel' : 'group';
   if (!g || !S.canEdit) return;
-  /* rename right in the Layers list when the group's row is visible, otherwise in a small pop-up */
-  const row = $(`#layers .layer[data-g="${gid}"]`);
+  /* rename right in the Layers list when the row is visible, otherwise in a small pop-up */
+  const row = $(`#layers .layer[data-${kind}="${id}"]`);
   if (row) {
+    row.scrollIntoView({ block: 'nearest' });
     const span = row.querySelector('.nm'), inp = document.createElement('input');
-    inp.className = 'rename'; inp.value = g.name; inp.setAttribute('aria-label', 'Group name');
+    inp.className = 'rename'; inp.value = g.name; inp.setAttribute('aria-label', what + ' name');
     span.replaceWith(inp); inp.focus(); inp.select();
     let done = false;
     const finish = ok => {
@@ -615,27 +622,14 @@ function renameGroup(gid) {
       done = true;
       const v = inp.value.trim();
       if (ok && v && v !== g.name) { checkpoint(); g.name = v; changed(); }
-      drawGroups(); renderLayers(); renderInspector();
+      drawFrames(); renderLayers(); renderInspector();
     };
     inp.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Enter') finish(true); if (ev.key === 'Escape') finish(false); });
     inp.addEventListener('blur', () => finish(true));
     ['pointerdown', 'click', 'dblclick'].forEach(t => inp.addEventListener(t, ev => ev.stopPropagation()));
     return;
   }
-  promptModal('Rename group', g.name, v => { checkpoint(); g.name = v; drawGroups(); renderLayers(); renderInspector(); changed(); });
-}
-function setGroupLook(gid, look) {
-  const g = groupById(gid);
-  if (!g || (g.look || 'clear') === look) return;
-  checkpoint();
-  if (look === 'clear') delete g.look; else g.look = look;
-  drawGroups(); drawEdges(); renderInspector(); changed();
-}
-function setGroupColor(gid, color) {
-  const g = groupById(gid);
-  if (!g || !COLORS[color]) return;
-  checkpoint(); g.color = color;
-  drawGroups(); renderLayers(); renderInspector(); changed();
+  promptModal('Rename ' + what, g.name, v => { checkpoint(); g.name = v; drawFrames(); renderLayers(); renderInspector(); changed(); });
 }
 /* the group that is exactly the current selection, if any */
 function selectedGroup() {
@@ -645,16 +639,138 @@ function selectedGroup() {
 function groupMenu(g) {
   return [
     { head: g.name },
-    { label: 'Rename', icon: 'edit', fn: () => renameGroup(g.id) },
-    { head: 'Look' },
-    ...GROUP_LOOKS.map(([k, name]) => ({ label: name, icon: 'group', check: (g.look || 'clear') === k, fn: () => setGroupLook(g.id, k) })),
-    { head: 'Frame colour' },
-    { swatches: true, value: g.color || 'slate', fn: c => setGroupColor(g.id, c) },
-    '-',
+    { label: 'Rename', icon: 'edit', fn: () => renameFrame('g', g.id) },
+    { label: 'Put in a new panel', icon: 'panel', kbd: 'P', fn: () => { selectNodes(g.members); panelFromSel(); } },
     { label: 'Tidy up', icon: 'tidy', fn: () => { selectNodes(g.members); tidySel(); } },
     { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: () => { selectNodes(g.members); ungroupSel(); } },
     '-',
     { label: 'Delete group and its nodes', icon: 'trash', danger: true, fn: () => { selectNodes(g.members); deleteSel(); } },
+  ];
+}
+
+/* panels */
+function newPanelName() {
+  const e = env();
+  let k = e.panels.length + 1;
+  while (e.panels.some(p => p.name === 'Panel ' + k)) k++;
+  return 'Panel ' + k;
+}
+/* Put nodes into a panel (pid), or take them out of their panel (pid null). Taking only part of a group
+   takes those nodes out of the group. With relocate, the nodes also move on the board so they land
+   inside the panel (or just outside the one they left) instead of stretching a frame across the board.
+   Returns false when nothing changed. The caller makes the checkpoint and calls structureChanged. */
+function setPanel(ids, pid, relocate) {
+  const e = env(), to = pid ? panelById(pid) : null;
+  if (pid && !to) return false;
+  const movers = ids.filter(id => nodeById(id) && (panelOf(id) || null) !== to);
+  if (!movers.length) return false;
+  const ms = new Set(movers);
+  e.groups.forEach(g => { if (g.members.some(id => ms.has(id)) && !g.members.every(id => ms.has(id))) g.members = g.members.filter(id => !ms.has(id)); });
+  if (relocate) placeNodes(movers, to);
+  e.panels.forEach(p => { p.members = p.members.filter(id => !ms.has(id)); });
+  if (to) to.members.push(...movers);
+  return true;
+}
+function placeNodes(ids, to) {
+  const ns = ids.map(nodeById), mb = bboxOf(ns, true), ms = new Set(ids);
+  let dx = 0, dy = 0;
+  if (to) {
+    const rest = to.members.filter(id => !ms.has(id)).map(nodeById).filter(Boolean);
+    if (!rest.length) return;
+    const bb = bboxOf(rest, true), cx = mb.x + mb.w / 2, cy = mb.y + mb.h / 2;
+    if (cx > bb.x - PANEL_PAD && cx < bb.x + bb.w + PANEL_PAD && cy > bb.y - PANEL_PAD && cy < bb.y + bb.h + PANEL_PAD) return;
+    dx = snapV(bb.x - mb.x); dy = snapV(bb.y + bb.h + GAP - mb.y);
+  } else {
+    const from = panelOf(ids[0]);
+    const rest = from ? from.members.filter(id => !ms.has(id)).map(nodeById).filter(Boolean) : [];
+    if (!rest.length) return;
+    const bb = bboxOf(rest, true), r = { x: bb.x - PANEL_PAD, y: bb.y - PANEL_PAD, w: bb.w + PANEL_PAD * 2, h: bb.h + PANEL_PAD * 2 };
+    if (mb.x > r.x + r.w || mb.x + mb.w < r.x || mb.y > r.y + r.h || mb.y + mb.h < r.y) return;
+    dx = snapV(r.x + r.w + GAP - mb.x);
+  }
+  captureDisp(ids);
+  ns.forEach(n => { n.x = clamp(n.x + dx, -WORLD, WORLD); n.y = clamp(n.y + dy, -WORLD, WORLD); });
+  kick();
+}
+function moveToPanel(ids, pid) {
+  const p = pid ? panelById(pid) : null;
+  if (!ids.some(id => nodeById(id) && (panelOf(id) || null) !== p)) return;
+  endEdit(); checkpoint();
+  setPanel(ids, pid, true);
+  structureChanged(); refreshSel();
+  toast(p ? `Moved into “${p.name}”${p.folded ? ' (folded)' : ''}` : 'Taken out of the panel');
+}
+function panelFromSel() {
+  const ids = [...S.sel].filter(id => nodeById(id));
+  if (!ids.length) return toast('Select one or more nodes to put them in a panel');
+  const cur = panelOf(ids[0]);
+  if (cur && cur.members.length === ids.length && ids.every(id => cur.members.includes(id))) { selectPanel(cur.id); return toast(`That is already the panel “${cur.name}”`); }
+  endEdit(); checkpoint();
+  const p = { id: uid('p'), name: newPanelName(), members: [], look: 'dotted' };
+  env().panels.push(p);
+  setPanel(ids, p.id, false);
+  structureChanged(); selectPanel(p.id);
+}
+function unpanel(pid) {
+  const e = env(), p = panelById(pid);
+  if (!p) return;
+  checkpoint();
+  e.panels = e.panels.filter(x => x !== p);
+  structureChanged(); selectNodes(p.members.filter(id => isShown(nodeById(id))));
+  toast(`Removed the panel “${p.name}”`, { actions: [{ label: 'Undo', fn: undo }] });
+}
+function setPanelLook(pid, look) {
+  const p = panelById(pid);
+  if (!p || p.look === look || !PANEL_LOOK_IDS.includes(look)) return;
+  checkpoint(); p.look = look;
+  drawFrames(); drawEdges(); renderInspector(); changed();
+}
+function setPanelColor(pid, color) {
+  const p = panelById(pid);
+  if (!p || !COLORS[color]) return;
+  checkpoint(); p.color = color;
+  drawFrames(); renderLayers(); renderInspector(); queueMinimap(); changed();
+}
+/* fold a panel into a small box (its nodes are tucked away, lines go to the box) or open it again.
+   Visitors can fold and unfold too; for them it is not saved. */
+function toggleFold(pid) {
+  const p = panelById(pid);
+  if (!p) return;
+  endEdit();
+  if (S.canEdit) checkpoint();
+  if (p.folded) delete p.folded; else p.folded = true;
+  const el = PANEL_EL.get(pid);
+  if (el) { el.classList.add('pf-anim'); clearTimeout(el._ft); el._ft = setTimeout(() => el.classList.remove('pf-anim'), 380); }
+  if (p.folded && !selectedPanel()) p.members.forEach(id => S.sel.delete(id));
+  if (!p.folded) popIn(p.members.filter(id => isShown(nodeById(id))), true);
+  syncNodes(); drawEdges(); drawFrames(); renderLayers(); renderInspector(); queueMinimap();
+  if (S.canEdit) changed();
+}
+function panelMenu(p) {
+  return [
+    { head: p.name },
+    { label: p.folded ? 'Unfold' : 'Fold', icon: 'chevr', fn: () => toggleFold(p.id) },
+    { label: 'Rename', icon: 'edit', fn: () => renameFrame('p', p.id) },
+    { head: 'Look' },
+    ...PANEL_LOOKS.map(([k, name]) => ({ label: name, icon: 'panel', check: p.look === k, fn: () => setPanelLook(p.id, k) })),
+    { head: 'Frame colour' },
+    { swatches: true, value: p.color || 'slate', fn: c => setPanelColor(p.id, c) },
+    '-',
+    !p.folded && { label: 'Tidy up', icon: 'tidy', fn: () => { selectPanel(p.id); tidySel(); } },
+    { label: 'Remove panel (keep nodes)', icon: 'panel', fn: () => unpanel(p.id) },
+    '-',
+    { label: 'Delete panel and its nodes', icon: 'trash', danger: true, fn: () => { selectPanel(p.id); deleteSel(); } },
+  ];
+}
+/* "Panel" part of a node's menu: new panel, move into another panel, take out */
+function panelMenuItems(ids) {
+  const e = env(), cur = ids.map(id => panelOf(id) || null), same = cur.every(p => p === cur[0]) ? cur[0] : undefined;
+  const others = e.panels.filter(p => p !== same);
+  return [
+    { head: 'Panel' },
+    { label: 'Put in a new panel', icon: 'panel', kbd: 'P', fn: panelFromSel },
+    ...others.slice(0, 10).map(p => ({ label: `Move into “${p.name}”`, icon: 'panel', fn: () => moveToPanel(ids, p.id) })),
+    cur.some(Boolean) && { label: 'Take out of panel', icon: 'panel', fn: () => moveToPanel(ids, null) },
   ];
 }
 
@@ -1018,8 +1134,10 @@ function onDown(e) {
   const ae = document.activeElement;
   if (ae && ae !== document.body && !t.closest('input, .src-form') && ae.blur) ae.blur();
   const ne = t.closest('.node');
-  const gport = S.canEdit && t.closest('.gport');
-  if (gport) { e.preventDefault(); startConnect(e, gport.dataset.g, gport.dataset.side); return; }
+  const pport = S.canEdit && t.closest('.pport');
+  if (pport) { e.preventDefault(); startConnect(e, pport.dataset.p, pport.dataset.side); return; }
+  const pfold = t.closest('[data-pfold]');
+  if (pfold) { e.preventDefault(); toggleFold(pfold.dataset.pfold); return; }
   if (S.canEdit && ne) {
     const port = t.closest('.port');
     if (port) { e.preventDefault(); startConnect(e, ne.dataset.id, port.dataset.side); return; }
@@ -1027,10 +1145,14 @@ function onDown(e) {
     if (grip) { e.preventDefault(); startBlockDrag(e, grip.closest('.blk'), ne); return; }
     if (t.closest('.rz')) { e.preventDefault(); startResize(e, ne.dataset.id); return; }
   }
-  const gl = t.closest('.glabel');
-  if (gl) {
-    const g = env().groups.find(x => x.id === gl.dataset.g);
-    if (g) { selectNodes(g.members); if (S.canEdit) startDrag(e, g.members[0], false); else startPan(e); }
+  /* a panel's name tag or its thick edge: select the panel and drag it */
+  const pe = t.closest('.plabel, .pedge');
+  if (pe) {
+    const p = panelById(pe.dataset.p);
+    if (!p) return;
+    if (e.shiftKey) { p.members.forEach(id => S.sel.add(id)); S.edgeSel = null; refreshSel(); return; }
+    selectPanel(p.id);
+    if (S.canEdit && S.sel.size) { startDrag(e, [...S.sel][0], false); if (DRAG) DRAG.panel = p.id; } else startPan(e);
     return;
   }
   const eg = t.closest('[data-e]');
@@ -1156,6 +1278,28 @@ function moveDrag(e) {
     capture(e); checkpoint(); captureDisp(d.ids);
     document.body.classList.add('dragging-nodes');
     d.ids.forEach((id, i) => { const el = NODE_EL.get(id); if (el) { el.classList.add('lifted'); el.style.zIndex = 100000 + i; } });
+    /* Dragging some (not all) of a panel's nodes can pull them out of it: the frame stays put while they
+       move and they leave if dropped outside. Dropping nodes onto another panel puts them in it.
+       A whole panel being moved never changes what is in it. */
+    d.whole = new Set();
+    if (!d.panel) {
+      for (const p of env().panels) {
+        const ms = p.members.filter(id => isShown(nodeById(id)));
+        if (!ms.some(id => d.set.has(id))) continue;
+        if (ms.every(id => d.set.has(id))) d.whole.add(p.id);
+        else ms.forEach(id => { if (d.set.has(id)) PANEL_FREE.add(id); });
+      }
+    }
+  }
+  if (!d.panel) {
+    const w = toWorld(e.clientX, e.clientY);
+    let best = null, ba = Infinity;
+    for (const p of env().panels) {
+      if (p.folded || d.whole.has(p.id)) continue;
+      const r = panelRect(p);
+      if (r && w.x > r.x && w.x < r.x + r.w && w.y > r.y && w.y < r.y + r.h && r.w * r.h < ba) { ba = r.w * r.h; best = p.id; }
+    }
+    PANEL_DROP = best;
   }
   let dx = (e.clientX - d.sx) / V.z, dy = (e.clientY - d.sy) / V.z, guides = [];
   if (!(e.ctrlKey || e.metaKey) && CFG.snap !== false) {
@@ -1182,13 +1326,27 @@ function endDrag(aborted) {
   document.body.classList.remove('dragging-nodes');
   drawGuides([]);
   d.ids.forEach(id => { const el = NODE_EL.get(id); if (el) el.style.filter = ''; });
-  syncZ(); changed(); renderInspector(); kick();
+  /* into the panel under the pointer, or out of the panel they were pulled from */
+  const target = PANEL_DROP, free = [...PANEL_FREE];
+  PANEL_DROP = null; PANEL_FREE.clear();
+  let moved = false;
+  if (!aborted && !d.panel) {
+    if (target) moved = setPanel(d.ids.filter(id => !d.whole.has((panelOf(id) || {}).id)), target, false);
+    else if (free.length) moved = setPanel(free, null, false);
+  }
+  syncZ();
+  if (moved) {
+    structureChanged(); refreshSel();
+    const p = target && panelById(target);
+    toast(p ? `Moved into “${p.name}”` : 'Taken out of the panel', { actions: [{ label: 'Undo', fn: undo }] });
+  } else { changed(); renderInspector(); drawFrames(); }
+  kick();
 }
 /* Snap a moving rect to neighbours (edges, centres, preferred gap) or else to the grid. */
 function snapRect(r, ex) {
   const thr = 8 / V.z, others = [];
   for (const n of env().nodes) {
-    if (ex.has(n.id) || n.hidden) continue;
+    if (ex.has(n.id) || !isShown(n)) continue;
     const o = rectOf(n, true);
     if (Math.abs(o.x - r.x) < 2600 && Math.abs(o.y - r.y) < 2600) others.push(o);
   }
@@ -1236,7 +1394,7 @@ function moveMarquee(e) {
   Object.assign(m.style, { display: 'block', left: x1 - VR.left + 'px', top: y1 - VR.top + 'px', width: x2 - x1 + 'px', height: y2 - y1 + 'px' });
   const a = toWorld(x1, y1), b = toWorld(x2, y2);
   S.sel = new Set(MQ.base); S.edgeSel = null;
-  for (const n of env().nodes) { if (n.hidden) continue; const r = rectOf(n, true); if (r.x < b.x && r.x + r.w > a.x && r.y < b.y && r.y + r.h > a.y) S.sel.add(n.id); }
+  for (const n of env().nodes) { if (!isShown(n)) continue; const r = rectOf(n, true); if (r.x < b.x && r.x + r.w > a.x && r.y < b.y && r.y + r.h > a.y) S.sel.add(n.id); }
   refreshSel(true);
 }
 function endMarquee() { $('#marquee').style.display = 'none'; const m = MQ; MQ = null; if (m.moved) refreshSel(); }
@@ -1246,8 +1404,7 @@ function startConnect(e, id, side) {
   CONN = { from: id, side, target: null, key: '' };
   capture(e);
   document.body.classList.add('connecting');
-  const g = groupById(id);
-  if (g) selectNodes(g.members); else if (!S.sel.has(id)) selectNodes([id]);
+  if (panelById(id)) { if (!selectedPanel() || S.panelSel !== id) selectPanel(id); } else if (!S.sel.has(id)) selectNodes([id]);
   moveConnect(e);
 }
 /* Grab an existing connection and pull: the end nearer the cursor comes loose and follows it.
@@ -1302,19 +1459,19 @@ function resetBend(id) {
 }
 function clearConnHL() { $$('.port.magnet').forEach(p => p.classList.remove('magnet')); $$('.conn-target').forEach(x => x.classList.remove('conn-target')); }
 /* the board element that represents a connection end (a node, or a group's frame) */
-function endEl(id) { return NODE_EL.get(id) || GROUP_EL.get(id); }
+function endEl(id) { return NODE_EL.get(id) || PANEL_EL.get(id); }
 function moveConnect(e) {
   const w = toWorld(e.clientX, e.clientY), p0 = endPort(CONN.from, CONN.side);
   if (!p0) return;
-  /* everything that can be connected to: visible nodes and groups */
-  const ends = env().nodes.filter(n => !n.hidden).map(n => n.id).concat(env().groups.map(g => g.id)).filter(id => id !== CONN.from);
+  /* everything that can be connected to: visible nodes and panels */
+  const ends = env().nodes.filter(isShown).map(n => n.id).concat(env().panels.map(p => p.id)).filter(id => id !== CONN.from);
   let best = null, bd = 48 / V.z;
   for (const id of ends) {
     for (const s of SIDES) { const p = endPort(id, s); if (!p) continue; const d = Math.hypot(p.x - w.x, p.y - w.y); if (d < bd) { bd = d; best = { id, side: s, p }; } }
   }
   if (!best) {
-    const hit = document.elementFromPoint(e.clientX, e.clientY), ne = hit && hit.closest && (hit.closest('.node') || hit.closest('.gframe'));
-    const id = ne && (ne.dataset.id || ne.dataset.gid);
+    const hit = document.elementFromPoint(e.clientX, e.clientY), ne = hit && hit.closest && (hit.closest('.node') || hit.closest('.pframe'));
+    const id = ne && (ne.dataset.id || ne.dataset.pid);
     if (id && id !== CONN.from) {
       let dd = Infinity;
       for (const s of SIDES) { const p = endPort(id, s); if (!p) continue; const d = Math.hypot(p.x - w.x, p.y - w.y); if (d < dd) { dd = d; best = { id, side: s, p }; } }
@@ -1615,12 +1772,12 @@ vp.addEventListener('contextmenu', e => {
   endEdit();
   const eg = t.closest('[data-e]');
   if (eg) { selectEdge(eg.dataset.e); openMenu(x, y, edgeMenu(eg.dataset.e), edgeMenuOpts(eg.dataset.e)); return; }
-  const gl = t.closest('.glabel');
-  if (gl) {
-    const g = env().groups.find(q => q.id === gl.dataset.g);
-    if (!g) return;
-    selectNodes(g.members);
-    openMenu(x, y, groupMenu(g));
+  const pe = t.closest('.plabel, .pedge');
+  if (pe) {
+    const p = panelById(pe.dataset.p);
+    if (!p) return;
+    selectPanel(p.id);
+    openMenu(x, y, panelMenu(p));
     return;
   }
   const ne = t.closest('.node');
@@ -1645,7 +1802,7 @@ vp.addEventListener('contextmenu', e => {
     { label: 'Sub-note', icon: 'sub', kbd: 'S', fn: () => createNode('sub', w.x, w.y) },
     '-',
     { label: 'Paste', icon: 'copy', kbd: MOD + 'V', disabled: !CLIP, fn: () => pasteData(CLIP, w) },
-    { label: 'Select all', icon: 'cursor', kbd: MOD + 'A', disabled: !env().nodes.length, fn: () => selectNodes(env().nodes.filter(n => !n.hidden).map(n => n.id)) },
+    { label: 'Select all', icon: 'cursor', kbd: MOD + 'A', disabled: !env().nodes.length, fn: () => selectNodes(env().nodes.filter(isShown).map(n => n.id)) },
     { label: 'Tidy up everything', icon: 'tidy', disabled: env().nodes.length < 2, fn: () => { S.sel.clear(); tidySel(); } },
     { label: 'Fit to screen', icon: 'fit', kbd: '⇧1', fn: () => fitAll() },
   ], { keys: { t: 2, n: 3, s: 4 } });
@@ -1669,6 +1826,8 @@ function nodeMenu(x, y) {
     multi && { label: 'Group', icon: 'group', kbd: MOD + 'G', fn: groupSel },
     inGroup && { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: ungroupSel },
     multi && { label: 'Tidy up', icon: 'tidy', fn: tidySel },
+    ...panelMenuItems(ns.map(m => m.id)),
+    '-',
     { label: 'Hide', icon: 'eyeoff', kbd: MOD + '⇧H', fn: () => toggleHidden(ns.map(m => m.id)) },
     { label: 'Bring to front', icon: 'front', fn: () => reorder(true) },
     { label: 'Send to back', icon: 'back', fn: () => reorder(false) },
@@ -1766,12 +1925,13 @@ window.addEventListener('keydown', e => {
   }
   if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (mod && k === 'y') { e.preventDefault(); redo(); return; }
-  if (mod && k === 'a') { e.preventDefault(); selectNodes(env().nodes.filter(n => !n.hidden).map(n => n.id)); return; }
+  if (mod && k === 'a') { e.preventDefault(); selectNodes(env().nodes.filter(isShown).map(n => n.id)); return; }
   if (mod && k === 'c') { copySel(); return; }
   if (mod && k === 'x') { copySel(true); deleteSel(); return; }
   if (mod && k === 'd') { e.preventDefault(); duplicateSel(); return; }
   if (mod && e.shiftKey && k === 'h') { e.preventDefault(); toggleHidden([...S.sel]); return; }
   if (mod && k === 'g') { e.preventDefault(); e.shiftKey ? ungroupSel() : groupSel(); return; }
+  if (k === 'p' && !mod && !e.altKey) { e.preventDefault(); panelFromSel(); return; }
   if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSel(); return; }
   if (e.key.startsWith('Arrow')) {
     e.preventDefault();
@@ -1839,9 +1999,8 @@ function switchEnv(id) {
   NODE_EL.clear(); SIZE.clear(); DISP.clear();
   for (const [, r] of EDGE_EL) { r.g.remove(); r.lab.remove(); }
   EDGE_EL.clear();
-  for (const [, el] of GROUP_EL) el.remove();
-  GROUP_EL.clear();
-  S.sel.clear(); S.edgeSel = null;
+  for (const M of [PANEL_EL, GROUP_EL]) { for (const [, el] of M) el.remove(); M.clear(); }
+  S.sel.clear(); S.edgeSel = null; S.panelSel = null;
   $('#layer-filter').value = '';
   renderAll();
   const v = UI.views[id];
@@ -1939,8 +2098,10 @@ function duplicateEnv(id) {
   const c = clone(src), map = {};
   c.id = uid('e'); c.name = src.name + ' copy';
   c.nodes.forEach(n => { const o = n.id; reIdNode(n); map[o] = n.id; });
-  c.edges.forEach(x => { x.id = uid('l'); x.from = map[x.from]; x.to = map[x.to]; });
+  c.edges.forEach(x => { x.id = uid('l'); });
   c.groups.forEach(g => { g.id = uid('g'); g.members = g.members.map(m => map[m]); });
+  c.panels.forEach(p => { const o = p.id; p.id = uid('p'); map[o] = p.id; p.members = p.members.map(m => map[m]); });
+  c.edges.forEach(x => { x.from = map[x.from] || x.from; x.to = map[x.to] || x.to; });
   DOC.envs.splice(DOC.envs.indexOf(src) + 1, 0, c);
   changed(); switchEnv(c.id);
 }
@@ -2081,49 +2242,108 @@ window.addEventListener('hashchange', () => {
 
 /* layers */
 const layersEl = $('#layers');
+/* the nodes a Layers row stands for: a node, or a group's or a panel's nodes */
+function rowNodes(row) {
+  if (row.dataset.id) return [row.dataset.id];
+  const g = row.dataset.g ? groupById(row.dataset.g) : panelById(row.dataset.p);
+  return g ? g.members.slice() : [];
+}
 layersEl.addEventListener('click', e => {
   const eye = e.target.closest('[data-act="leye"]');
-  if (eye) {
-    const row = eye.closest('.layer');
-    if (row.dataset.g) { const g = env().groups.find(x => x.id === row.dataset.g); if (g) toggleHidden(g.members); }
-    else toggleHidden([row.dataset.id]);
-    return;
-  }
+  if (eye) { toggleHidden(rowNodes(eye.closest('.layer'))); return; }
   const ch = e.target.closest('[data-act="lcollapse"]');
-  if (ch) { const g = ch.closest('[data-g]').dataset.g; UI.collapsed[g] = !UI.collapsed[g]; saveUI(); renderLayers(); return; }
+  if (ch) { const r = ch.closest('.layer'), k = r.dataset.g || r.dataset.p; UI.collapsed[k] = !UI.collapsed[k]; saveUI(); renderLayers(); return; }
   const row = e.target.closest('.layer');
   if (!row) return;
   endEdit();
-  if (row.dataset.g) {
-    const g = env().groups.find(x => x.id === row.dataset.g);
-    if (g) { selectNodes(g.members, e.shiftKey); panToNodes(g.members); }
+  if (row.dataset.p) {
+    const p = panelById(row.dataset.p);
+    if (!p) return;
+    if (e.shiftKey) selectNodes(p.members.filter(id => isShown(nodeById(id))), true); else selectPanel(p.id);
+    panToNodes(p.members);
     return;
   }
-  const id = row.dataset.id;
+  if (row.dataset.g) {
+    const g = groupById(row.dataset.g);
+    if (g) { selectNodes(g.members.filter(id => isShown(nodeById(id))), e.shiftKey); panToNodes(g.members); }
+    return;
+  }
+  const id = row.dataset.id, fp = foldMap().get(id);
+  if (fp) toggleFold(fp);   /* a node tucked into a folded panel: open the panel to show it */
   if (e.shiftKey) { if (S.sel.has(id)) S.sel.delete(id); else S.sel.add(id); S.edgeSel = null; refreshSel(); }
   else selectNodes([id]);
   panToNodes([id]);
 });
 layersEl.addEventListener('dblclick', e => {
   const row = e.target.closest('.layer');
-  if (!row) return;
-  if (row.dataset.g) { if (S.canEdit) renameGroup(row.dataset.g); return; }
+  if (!row || e.target.closest('button')) return;
+  if (row.dataset.p || row.dataset.g) { if (S.canEdit) renameFrame(row.dataset.p ? 'p' : 'g', row.dataset.p || row.dataset.g); return; }
   zoomToNodes([row.dataset.id]);
 });
 layersEl.addEventListener('contextmenu', e => {
-  const grow = e.target.closest('.layer[data-g]');
-  if (grow && S.canEdit) {
-    e.preventDefault();
-    const g = groupById(grow.dataset.g);
-    if (g) { selectNodes(g.members); openMenu(e.clientX, e.clientY, groupMenu(g)); }
-    return;
-  }
-  const row = e.target.closest('.layer[data-id]');
+  const row = e.target.closest('.layer');
   if (!row || !S.canEdit) return;
   e.preventDefault();
+  if (row.dataset.p) { const p = panelById(row.dataset.p); if (p) { selectPanel(p.id); openMenu(e.clientX, e.clientY, panelMenu(p)); } return; }
+  if (row.dataset.g) { const g = groupById(row.dataset.g); if (g) { selectNodes(g.members); openMenu(e.clientX, e.clientY, groupMenu(g)); } return; }
   if (!S.sel.has(row.dataset.id)) selectNodes([row.dataset.id]);
   openMenu(e.clientX, e.clientY, nodeMenu(e.clientX, e.clientY));
 });
+/* Drag rows in Layers: onto a panel (or anything inside it) to move them into that panel, onto a group
+   (or a node in it) to add nodes to that group, onto a loose row or empty space to take them out. */
+let LDRAG = null;
+const clearLDrop = () => { $$('.ldrop', layersEl).forEach(x => x.classList.remove('ldrop')); layersEl.classList.remove('ldrop-out'); };
+layersEl.addEventListener('dragstart', e => {
+  const row = e.target.closest('.layer[draggable]');
+  if (!row || !S.canEdit) return;
+  let ids = rowNodes(row);
+  if (row.dataset.id && S.sel.has(row.dataset.id) && S.sel.size > 1) ids = [...S.sel];
+  LDRAG = { ids, group: row.dataset.g || null };
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', row.querySelector('.nm').textContent); } catch (_) {}
+  requestAnimationFrame(() => row.classList.add('dragging'));
+});
+layersEl.addEventListener('dragend', () => { LDRAG = null; clearLDrop(); $$('.layer.dragging', layersEl).forEach(x => x.classList.remove('dragging')); });
+function layerDropTarget(e) {
+  const row = e.target.closest('.layer');
+  if (!row) return { panel: null, group: null, el: null };
+  if (row.dataset.p) return { panel: row.dataset.p, group: null, el: row };
+  const first = rowNodes(row)[0], p = first && panelOf(first);
+  const g = row.dataset.g ? groupById(row.dataset.g) : first && groupOf(first);
+  /* a dragged group can only go into a panel, so it ignores the group it is dropped on */
+  const useG = g && !LDRAG.group ? g : null;
+  const el = useG ? layersEl.querySelector(`.layer[data-g="${useG.id}"]`) : p ? layersEl.querySelector(`.layer[data-p="${p.id}"]`) : null;
+  return { panel: p ? p.id : null, group: useG ? useG.id : null, el };
+}
+layersEl.addEventListener('dragover', e => {
+  if (!LDRAG) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  clearLDrop();
+  const t = layerDropTarget(e);
+  if (t.el) t.el.classList.add('ldrop'); else layersEl.classList.add('ldrop-out');
+});
+layersEl.addEventListener('dragleave', e => { if (!layersEl.contains(e.relatedTarget)) clearLDrop(); });
+layersEl.addEventListener('drop', e => {
+  const d = LDRAG;
+  if (!d) return;
+  e.preventDefault();
+  const t = layerDropTarget(e);
+  clearLDrop();
+  const en = env(), ids = d.ids.filter(id => nodeById(id));
+  if (!ids.length) return;
+  const g = t.group && groupById(t.group);
+  if (g && ids.every(id => g.members.includes(id))) return;
+  endEdit(); checkpoint();
+  setPanel(ids, t.panel, true);
+  if (!d.group) {
+    /* nodes leave the groups they were in, unless they were dropped back into the same group */
+    en.groups.forEach(x => { if (x !== g) x.members = x.members.filter(id => !ids.includes(id)); });
+    if (g) ids.forEach(id => { if (!g.members.includes(id)) g.members.push(id); });
+  }
+  structureChanged(); refreshSel();
+});
+
 /* Layers: drag on empty space to box-select rows; click empty space to deselect everything */
 let LMQ = null;
 layersEl.addEventListener('pointerdown', e => {
@@ -2145,14 +2365,13 @@ window.addEventListener('pointermove', e => {
   const x1 = clamp(Math.min(m.sx, e.clientX), lr.left, lr.right), x2 = clamp(Math.max(m.sx, e.clientX), lr.left, lr.right);
   const y1 = clamp(Math.min(m.sy, e.clientY), lr.top, lr.bottom), y2 = clamp(Math.max(m.sy, e.clientY), lr.top, lr.bottom);
   Object.assign(m.box.style, { left: x1 + 'px', top: y1 + 'px', width: x2 - x1 + 'px', height: y2 - y1 + 'px' });
-  /* rows the box touches; a group row brings all its nodes */
+  /* rows the box touches; a group or panel row brings all its nodes */
   const sel = new Set(m.add ? m.base : []);
   $$('.layer', layersEl).forEach(row => {
     const r = row.getBoundingClientRect(), hit = r.bottom > y1 && r.top < y2;
     row.classList.toggle('boxed', hit);
     if (!hit) return;
-    if (row.dataset.id) sel.add(row.dataset.id);
-    else { const g = groupById(row.dataset.g); if (g) g.members.forEach(id => sel.add(id)); }
+    rowNodes(row).forEach(id => { if (isShown(nodeById(id))) sel.add(id); });
   });
   /* auto-scroll the list when the box reaches its top or bottom edge */
   if (e.clientY > lr.bottom - 12) layersEl.scrollTop += 12; else if (e.clientY < lr.top + 12) layersEl.scrollTop -= 12;
@@ -2184,16 +2403,21 @@ $('#layer-filter').addEventListener('keydown', e => {
 $('#inspector').addEventListener('click', e => {
   const et = e.target.closest('[data-etype]');
   if (et) { setEdgeType(S.edgeSel, et.dataset.etype); return; }
-  const gc = e.target.closest('[data-gc]'), sg = selectedGroup();
-  if (gc) { if (sg) setGroupColor(sg.id, gc.dataset.gc); return; }
+  const pc = e.target.closest('[data-pc]'), sp = selectedPanel(), sg = selectedGroup();
+  if (pc) { if (sp) setPanelColor(sp.id, pc.dataset.pc); return; }
   const sw = e.target.closest('[data-sw]');
   if (sw) { setColor(sw.dataset.sw); return; }
   const b = e.target.closest('[data-ia]');
   if (!b) return;
   const id = S.edgeSel, ed = id && env().edges.find(x => x.id === id);
   switch (b.dataset.ia) {
-    case 'glook': if (sg) setGroupLook(sg.id, b.dataset.v); break;
-    case 'grename': if (sg) renameGroup(sg.id); break;
+    case 'plook': if (sp) setPanelLook(sp.id, b.dataset.v); break;
+    case 'prename': if (sp) renameFrame('p', sp.id); break;
+    case 'pfold': if (sp) toggleFold(sp.id); break;
+    case 'unpanel': if (sp) unpanel(sp.id); break;
+    case 'panel': panelFromSel(); break;
+    case 'outpanel': moveToPanel([...S.sel], null); break;
+    case 'grename': if (sg) renameFrame('g', sg.id); break;
     case 'type': setType(b.dataset.v); break;
     case 'arrow': if (ed) edgeSet(id, { arrow: !ed.arrow }); break;
     case 'dashed': if (ed) edgeSet(id, { dashed: !ed.dashed }); break;
@@ -2217,8 +2441,8 @@ vp.addEventListener('dblclick', e => {
   if (knob) { resetBend(knob.parentNode.dataset.e); return; }
   const eg = t.closest('[data-e]');
   if (eg) { editEdgeLabel(eg.dataset.e); return; }
-  const gl = t.closest('.glabel');
-  if (gl) renameGroup(gl.dataset.g);
+  const pl = t.closest('.plabel');
+  if (pl && S.canEdit && !t.closest('[data-pfold]')) renameFrame('p', pl.dataset.p);
 });
 
 /* ===================== theme, help, share, preview ===================== */
@@ -2247,6 +2471,8 @@ function openHelp() {
     ['Duplicate', 'Ctrl+D'], ['Copy · paste', 'Ctrl+C · Ctrl+V'],
     ['Copy text as Markdown', 'Ctrl+Alt+C'],
     ['Group · ungroup', 'Ctrl+G · Ctrl+Shift+G'], ['Hide · show', 'Ctrl+Shift+H or the eye in Layers'],
+    ['Put selection in a panel', 'P'], ['Move into · out of a panel', 'Drag nodes onto it · off it'],
+    ['Move a panel', 'Drag its edge or name'], ['Fold a panel', 'The arrow by its name'],
     ['Undo · redo', 'Ctrl+Z · Ctrl+Shift+Z'],
     ['Delete', 'Delete'], ['Fit all · selection', 'Shift+1 · Shift+2'],
     ['Zoom to 100%', 'Ctrl+0'], ['Publish', 'Ctrl+S'],

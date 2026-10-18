@@ -540,7 +540,8 @@
      "bend": {
       "dx": 474,
       "dy": 181
-     }
+     },
+     "style": "geometric"
     },
     {
      "id": "l59kwd717m",
@@ -560,7 +561,8 @@
      "ts": "l",
      "label": "",
      "arrow": true,
-     "dashed": false
+     "dashed": false,
+     "style": "fluid"
     },
     {
      "id": "lgzbsmrl7n",
@@ -578,7 +580,8 @@
     }
    ],
    "groups": [],
-   "folder": "f6bboigff2"
+   "folder": "f6bboigff2",
+   "panels": []
   },
   {
    "id": "eiw6bxmnsf",
@@ -605,7 +608,8 @@
    ],
    "edges": [],
    "groups": [],
-   "folder": "f6bboigff2"
+   "folder": "f6bboigff2",
+   "panels": []
   }
  ],
  "lineStyle": "geometric",

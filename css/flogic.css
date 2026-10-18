@@ -18,7 +18,7 @@
   --node-b:rgba(20,30,60,.12); --node-b2:rgba(20,30,60,.19); --node-hi:rgba(255,255,255,.55);
   --inset:rgba(20,30,60,.045);
   --sel:#4d6bf5; --sel-soft:rgba(77,107,245,.15); --on-sel:#fff;
-  --line:rgba(60,72,100,.45); --guide:#ff3d7f;
+  --line:rgba(60,72,100,.45); --guide:#ff3d7f; --edge-sh:rgba(20,30,60,.28);
   --sh-1:0 1px 2px rgba(20,30,60,.05),0 6px 22px rgba(20,30,60,.07);
   --sh-2:0 22px 56px rgba(20,30,60,.2),0 6px 14px rgba(20,30,60,.08);
   --sh-menu:0 14px 44px rgba(20,30,60,.2),0 2px 6px rgba(20,30,60,.08);
@@ -36,7 +36,7 @@
     --node-b:rgba(255,255,255,.08); --node-b2:rgba(255,255,255,.14); --node-hi:rgba(255,255,255,.05);
     --inset:rgba(255,255,255,.035);
     --sel:#7b93ff; --sel-soft:rgba(123,147,255,.18); --on-sel:#0c0e13;
-    --line:rgba(165,177,205,.42);
+    --line:rgba(165,177,205,.42); --edge-sh:rgba(0,0,0,.7);
     --sh-1:0 1px 0 rgba(255,255,255,.03) inset,0 8px 28px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.25);
     --sh-2:0 28px 70px rgba(0,0,0,.55),0 8px 18px rgba(0,0,0,.3);
     --sh-menu:0 16px 50px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
@@ -53,7 +53,7 @@
   --node-b:rgba(255,255,255,.08); --node-b2:rgba(255,255,255,.14); --node-hi:rgba(255,255,255,.05);
   --inset:rgba(255,255,255,.035);
   --sel:#7b93ff; --sel-soft:rgba(123,147,255,.18); --on-sel:#0c0e13;
-  --line:rgba(165,177,205,.42);
+  --line:rgba(165,177,205,.42); --edge-sh:rgba(0,0,0,.7);
   --sh-1:0 1px 0 rgba(255,255,255,.03) inset,0 8px 28px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.25);
   --sh-2:0 28px 70px rgba(0,0,0,.55),0 8px 18px rgba(0,0,0,.3);
   --sh-menu:0 16px 50px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
@@ -219,7 +219,7 @@ body.panning #viewport,body.panning *{cursor:grabbing !important}
 @keyframes fadeUp{from{opacity:0;transform:translate(-50%,-44%)}}
 
 /* edges */
-.edge .vis{fill:none;stroke:var(--line);stroke-width:1.7;stroke-linecap:round;transition:stroke .15s}
+.edge .vis{fill:none;stroke:var(--line);stroke-width:1.7;stroke-linecap:round;transition:stroke .15s;filter:drop-shadow(0 1px 1.6px var(--edge-sh))}
 .edge .hit{fill:none;stroke:transparent;stroke-width:18;pointer-events:stroke;cursor:grab}
 body.viewer .edge .hit{cursor:pointer}
 .edge .bend{fill:var(--panel-solid);stroke:var(--sel);stroke-width:2;opacity:0;pointer-events:none;cursor:move;r:calc(5.5px / min(var(--z,1), 1));transition:opacity .12s}
@@ -259,7 +259,7 @@ body.bending,body.bending *{cursor:move !important}
 .elabel.typed.notext .et-tx{display:none}
 .edge.typed .vis,.edge.typed:hover .vis,.edge.typed.rel .vis{stroke:var(--ec)}
 .edge.typed .vis{stroke-width:2}
-.edge.typed.sel .vis{stroke:var(--ec);stroke-width:3;filter:drop-shadow(0 0 3px color-mix(in srgb,var(--ec) 60%,transparent))}
+.edge.typed.sel .vis{stroke:var(--ec);stroke-width:3;filter:drop-shadow(0 0 3px color-mix(in srgb,var(--ec) 60%,transparent)) drop-shadow(0 1px 1.6px var(--edge-sh))}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px 5px 4px}
 .tgroup{grid-column:1/-1;font-size:9.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:6px 5px 2px}
 .tt{display:flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 5px;border-radius:8px;font-size:12px;color:var(--text2);text-align:left;transition:background .1s}
@@ -274,40 +274,75 @@ body.bending,body.bending *{cursor:move !important}
 .ihead{font-size:10px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:2px}
 body.viewer .elabel{cursor:default}
 
-/* groups */
-/* group looks: clear (name tag only), dotted, hatched, panel. --gc is the group's frame colour */
-.gframe{--gc:#8f9bb3;position:absolute;left:0;top:0;border:2px solid transparent;border-radius:28px;pointer-events:none;transition:border-color .15s,background .15s,box-shadow .15s}
-.gframe[data-look="clear"].sel{border:1.5px dashed color-mix(in srgb,var(--sel) 60%,transparent)}
-.gframe[data-look="dotted"]{border:2.5px dotted color-mix(in srgb,var(--gc) 75%,transparent);background:color-mix(in srgb,var(--gc) 4%,transparent)}
-.gframe[data-look="hatched"]{border:1.5px solid color-mix(in srgb,var(--gc) 50%,transparent);
+/* panels: framed areas around nodes. --gc is the panel's frame colour.
+   Looks: dotted (default), outline, tinted, hatched, grid, card. */
+.pframe{--gc:#8f9bb3;position:absolute;left:0;top:0;z-index:0;border:2px solid transparent;border-radius:28px;pointer-events:none;transition:border-color .15s,background .15s,box-shadow .15s}
+.pframe[data-look="dotted"]{border:2.5px dotted color-mix(in srgb,var(--gc) 75%,transparent);background:color-mix(in srgb,var(--gc) 4%,transparent)}
+.pframe[data-look="outline"]{border:1.5px solid color-mix(in srgb,var(--gc) 60%,transparent)}
+.pframe[data-look="tinted"]{border:1px solid color-mix(in srgb,var(--gc) 22%,transparent);background:color-mix(in srgb,var(--gc) 11%,transparent)}
+.pframe[data-look="hatched"]{border:1.5px solid color-mix(in srgb,var(--gc) 50%,transparent);
   background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--gc) 18%,transparent) 0 1.5px,transparent 1.5px 13px),color-mix(in srgb,var(--gc) 3%,transparent)}
-.gframe[data-look="panel"]{border:1px solid color-mix(in srgb,var(--gc) 40%,var(--node-b));border-radius:24px;box-shadow:var(--sh-1);
+.pframe[data-look="grid"]{border:1.5px dashed color-mix(in srgb,var(--gc) 55%,transparent);
+  background:radial-gradient(circle,color-mix(in srgb,var(--gc) 45%,transparent) 1.2px,transparent 1.7px) 0 0/16px 16px,color-mix(in srgb,var(--gc) 4%,transparent)}
+.pframe[data-look="card"]{border:1px solid color-mix(in srgb,var(--gc) 40%,var(--node-b));border-radius:24px;box-shadow:var(--sh-1);
   background:linear-gradient(180deg,color-mix(in srgb,var(--gc) 16%,var(--node)) 0 34px,color-mix(in srgb,var(--node) 62%,transparent) 34px)}
-.gframe.sel:not([data-look="clear"]){box-shadow:0 0 0 2px color-mix(in srgb,var(--sel) 65%,transparent),var(--sh-1)}
-.gframe.conn-target{box-shadow:0 0 0 4px var(--sel-soft),0 0 0 2px var(--sel) !important}
-.glabel{position:absolute;left:18px;bottom:100%;margin-bottom:6px;display:flex;align-items:center;gap:6px;padding:4px 9px;border-radius:9px;
+.pframe.folded{border-radius:16px}
+.pframe.folded[data-look="card"]{background:color-mix(in srgb,var(--gc) 16%,var(--node))}
+.pframe.pf-anim{transition:width .32s var(--ease),height .32s var(--ease),border-color .15s,background .15s,box-shadow .15s}
+.pframe.sel{box-shadow:0 0 0 2px color-mix(in srgb,var(--sel) 65%,transparent),var(--sh-1)}
+.pframe:not(.sel):has(>.pedge:hover),.pframe:not(.sel):has(>.plabel:hover){box-shadow:0 0 0 2px color-mix(in srgb,var(--gc) 45%,transparent)}
+.pframe.drop{box-shadow:0 0 0 3px var(--sel),0 0 0 9px var(--sel-soft) !important}
+.pframe.conn-target{box-shadow:0 0 0 4px var(--sel-soft),0 0 0 2px var(--sel) !important}
+/* the thick edge all the way round: grab it to select and move the panel */
+.pedge{position:absolute;pointer-events:auto;cursor:grab}
+.pedge.e-t{left:-10px;right:-10px;top:-10px;height:20px}
+.pedge.e-b{left:-10px;right:-10px;bottom:-10px;height:20px}
+.pedge.e-l{top:-10px;bottom:-10px;left:-10px;width:20px}
+.pedge.e-r{top:-10px;bottom:-10px;right:-10px;width:20px}
+body.viewer .pedge,body.viewer .plabel{cursor:pointer}
+.plabel{position:absolute;left:14px;bottom:100%;margin-bottom:6px;display:flex;align-items:center;gap:5px;padding:3px 9px 3px 3px;border-radius:9px;
   font-size:12px;font-weight:600;color:color-mix(in srgb,var(--gc) 65%,var(--text2));pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
-.glabel .ic{color:var(--gc)}
-.gframe[data-look="panel"] .glabel{bottom:auto;top:5px;left:12px;margin:0;color:var(--text)}
-.glabel:hover,.gframe.sel .glabel{background:var(--sel-soft);color:var(--sel)}
-/* side dots on groups, shown when the group is selected, its name is hovered, or while connecting */
-.gport{pointer-events:auto}
-.gframe.sel .gport::before,.gframe:has(.glabel:hover) .gport::before,body.connecting .gframe .gport::before,.gport:hover::before{opacity:1;transform:scale(1)}
-/* inspector: group look picker */
-.glooks{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.plabel>.ic{color:var(--gc)}
+.pframe[data-look="card"] .plabel{bottom:auto;top:4px;left:8px;margin:0;color:var(--text)}
+.pframe.folded .plabel{bottom:auto;top:50%;left:8px;margin:0;transform:translateY(-50%);color:var(--text)}
+.plabel:hover,.pframe.sel .plabel{background:var(--sel-soft);color:var(--sel)}
+.pfold{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+.pfold .ic{transform:rotate(90deg);transition:transform .22s var(--ease)}
+.pframe.folded .pfold .ic{transform:none}
+.pfold:hover{background:var(--hover);color:var(--text)}
+.pcnt:empty{display:none}
+.pcnt{min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:grid;place-items:center;font-size:10.5px;font-weight:650;color:var(--muted);background:var(--inset);margin-left:2px}
+/* side dots on panels, shown when the panel is selected or hovered, or while connecting */
+.pport{pointer-events:auto;z-index:6}
+.pframe.sel .pport::before,.pframe:has(>.pedge:hover) .pport::before,.pframe:has(>.plabel:hover) .pport::before,body.connecting .pframe .pport::before,.pport:hover::before{opacity:1;transform:scale(1)}
+/* groups only bundle nodes: a light dashed outline while the group is selected */
+.gout{position:absolute;left:0;top:0;z-index:1;border:1.5px dashed color-mix(in srgb,var(--sel) 55%,transparent);border-radius:24px;pointer-events:none}
+.gout span{position:absolute;left:14px;bottom:100%;margin-bottom:4px;display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--sel);white-space:nowrap}
+/* nodes tucked into a folded panel */
+.node.is-folded{visibility:hidden;pointer-events:none;opacity:0;transition:opacity .16s,visibility 0s .16s}
+/* inspector: panel look picker */
+.glooks{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
 .glook{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px 5px;border-radius:9px;font-size:10.5px;color:var(--muted);border:1px solid var(--panel-b);background:var(--inset);transition:background .12s,color .12s,border-color .12s}
 .glook:hover{color:var(--text)}
 .glook.on{border-color:var(--sel);color:var(--text);background:var(--sel-soft)}
 .gl-prev{width:30px;height:20px;border-radius:6px;border:1.5px solid transparent}
-.gl-clear{border:1.5px dashed var(--faint);opacity:.5}
 .gl-dotted{border:2px dotted var(--muted)}
+.gl-outline{border:1.5px solid var(--muted)}
+.gl-tinted{border:1px solid var(--node-b);background:var(--press)}
 .gl-hatched{border:1px solid var(--muted);background:repeating-linear-gradient(45deg,var(--node-b2) 0 1px,transparent 1px 5px)}
-.gl-panel{border:1px solid var(--node-b2);background:linear-gradient(180deg,var(--press) 0 6px,var(--node) 6px);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.gl-grid{border:1.5px dashed var(--muted);background:radial-gradient(circle,var(--muted) .8px,transparent 1.1px) 0 0/5px 5px}
+.gl-card{border:1px solid var(--node-b2);background:linear-gradient(180deg,var(--press) 0 6px,var(--node) 6px);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+/* Layers: nesting and dragging rows into panels and groups */
+.layer.child.d2{padding-left:52px}
+.layer.pnl{font-weight:600;color:var(--text2)}
+.layer.pnl.folded>.nm{font-style:italic}
+.layer.dragging{opacity:.45}
+.layer.ldrop{background:var(--sel-soft);box-shadow:inset 0 0 0 1.5px var(--sel);color:var(--text)}
+#layers.ldrop-out{box-shadow:inset 0 0 0 1.5px var(--sel-soft)}
 /* Layers: box selection */
 .lmarquee{position:fixed;z-index:40;border:1px solid var(--sel);background:var(--sel-soft);border-radius:4px;pointer-events:none}
 .layer.boxed{background:var(--sel-soft)}
 #layers{user-select:none}
-body.viewer .glabel{cursor:pointer}
 
 /* ---------- nodes ---------- */
 .node{--c:#7b93ff;position:absolute;left:0;top:0;border-radius:20px;padding:16px 18px 16px;

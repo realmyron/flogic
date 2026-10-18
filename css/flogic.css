@@ -327,7 +327,9 @@ body.editor .node:hover{border-color:var(--node-b2)}
 /* editable text */
 .ed{outline:none;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 -4px;padding:0 4px;min-height:1.3em;transition:background .12s,box-shadow .12s}
 .ed:empty::before{content:attr(data-ph);color:var(--faint);pointer-events:none}
-body.viewer .ed:empty{display:none}
+/* visitors keep the same layout as the owner: empty fields and edit-only buttons take their space, invisibly */
+body.viewer .ed:empty{visibility:hidden}
+body.viewer .eo{visibility:hidden;pointer-events:none}
 body.editor .node .ed:hover{background:var(--hover)}
 .ed[contenteditable]{user-select:text;-webkit-user-select:text;cursor:text;background:var(--inset) !important;box-shadow:0 0 0 1.5px var(--sel);caret-color:var(--sel)}
 .ed[contenteditable]::selection{background:var(--sel-soft)}
@@ -401,7 +403,7 @@ body.connecting .node,body.connecting #viewport{cursor:crosshair}
 .menu.scroll{max-height:340px;overflow:auto}
 .menu .mi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lab{font-size:10px;font-weight:650;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;min-height:0}
-body.editor .lab:empty{min-height:1.2em}
+.lab:empty{min-height:1.2em}
 .b-hl{padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--c) 11%,transparent);border:1px solid color-mix(in srgb,var(--c) 26%,transparent)}
 .b-hl .lab{color:var(--c)}
 .b-hl .b-text{color:var(--text)}

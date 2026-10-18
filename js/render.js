@@ -24,8 +24,40 @@ function portPos(n, side) {
    Lines start and end on the sides you dragged between. */
 const f1 = v => v.toFixed(1);
 function lineStyle(ed) { return (ed && ed.style) || DOC.lineStyle || 'fluid'; }
-function bez(p1, s1, p2, s2, style, avoid) {
-  return (style || lineStyle()) === 'geometric' ? routeGeo(p1, s1, p2, s2, avoid) : routeFluid(p1, s1, p2, s2);
+/* `via` is an optional point the line is bent through (set by dragging the line's middle handle) */
+function bez(p1, s1, p2, s2, style, avoid, via) {
+  if ((style || lineStyle()) === 'geometric') return via ? routeGeoVia(p1, s1, p2, s2, via) : routeGeo(p1, s1, p2, s2, avoid);
+  return via ? routeFluidVia(p1, s1, p2, s2, via) : routeFluid(p1, s1, p2, s2);
+}
+/* two smooth curves meeting at B, with a shared tangent there so the line never kinks */
+function routeFluidVia(p1, s1, p2, s2, B) {
+  const a = DIR[s1], b = DIR[s2];
+  const d1 = Math.hypot(B.x - p1.x, B.y - p1.y), d2 = Math.hypot(p2.x - B.x, p2.y - B.y);
+  const k1 = clamp(d1 * 0.5, 20, 220), k2 = clamp(d2 * 0.5, 20, 220);
+  const c1 = { x: p1.x + a.x * k1, y: p1.y + a.y * k1 }, c4 = { x: p2.x + b.x * k2, y: p2.y + b.y * k2 };
+  /* direction of travel through B: from start to end (so a sideways bend bulges instead of looping) */
+  let tx = p2.x - p1.x, ty = p2.y - p1.y;
+  if (Math.hypot(tx, ty) < 8) { tx = c4.x - c1.x; ty = c4.y - c1.y; }
+  const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+  const c2 = { x: B.x - tx * d1 * 0.4, y: B.y - ty * d1 * 0.4 }, c3 = { x: B.x + tx * d2 * 0.4, y: B.y + ty * d2 * 0.4 };
+  return {
+    d: `M${f1(p1.x)} ${f1(p1.y)} C${f1(c1.x)} ${f1(c1.y)} ${f1(c2.x)} ${f1(c2.y)} ${f1(B.x)} ${f1(B.y)} C${f1(c3.x)} ${f1(c3.y)} ${f1(c4.x)} ${f1(c4.y)} ${f1(p2.x)} ${f1(p2.y)}`,
+    mid: { x: B.x, y: B.y },
+  };
+}
+/* geometric with a bend: the middle segment runs through B */
+function routeGeoVia(p1, s1, p2, s2, B) {
+  const a = DIR[s1], b = DIR[s2];
+  let pts;
+  if (a.y && b.y) pts = [p1, { x: p1.x, y: B.y }, { x: p2.x, y: B.y }, p2];
+  else if (a.x && b.x) pts = [p1, { x: B.x, y: p1.y }, { x: B.x, y: p2.y }, p2];
+  else if (a.y) pts = [p1, { x: p1.x, y: B.y }, { x: B.x, y: B.y }, { x: B.x, y: p2.y }, p2];
+  else pts = [p1, { x: B.x, y: p1.y }, { x: B.x, y: B.y }, { x: p2.x, y: B.y }, p2];
+  return roundedPath(pts, 14);
+}
+/* where a stored bend sits: it's kept relative to the middle of the two ends so it follows the nodes */
+function bendPoint(ed, p1, p2) {
+  return ed.bend ? { x: (p1.x + p2.x) / 2 + ed.bend.dx, y: (p1.y + p2.y) / 2 + ed.bend.dy } : null;
 }
 function routeFluid(p1, s1, p2, s2) {
   const a = DIR[s1], b = DIR[s2], dx = p2.x - p1.x, dy = p2.y - p1.y;
@@ -199,8 +231,12 @@ function blockHTML(n, b, i) {
       inner = fld(n, P + '.text', 'div', 'b-text', { ph: 'Write something…' }); break;
     case 'highlight':
       inner = `<div class="b-hl">${fld(n, P + '.label', 'div', 'lab', { ph: 'Label', single: 1 })}${fld(n, P + '.text', 'div', 'b-text', { ph: 'Highlighted text…' })}</div>`; break;
-    case 'category':
-      inner = `<div class="b-cat">${fld(n, P + '.label', 'div', 'lab', { ph: 'Category', single: 1 })}${fld(n, P + '.text', 'div', 'b-text', { ph: 'Write something…' })}</div>`; break;
+    case 'category': {
+      const closed = catClosed(b), tog = ' data-act="toggle-fold"';
+      inner = `<div class="b-cat${closed ? ' closed' : ''}" data-fold="${b.id}"><div class="cat-h"${E ? '' : tog}>${fld(n, P + '.label', 'div', 'lab', { ph: 'Category', single: 1 })}<button class="chev"${tog} aria-label="Open or close" title="${closed ? 'Open' : 'Close'}">${ic('chev', 14)}</button></div>` +
+        `<div class="fold-b"><div class="fold-bi">${fld(n, P + '.text', 'div', 'b-text', { ph: 'Write something…' })}</div></div></div>`;
+      break;
+    }
     case 'conclusion':
       inner = `<div class="b-concl">${fld(n, P + '.label', 'div', 'lab', { ph: 'Conclusion', single: 1 })}${fld(n, P + '.text', 'div', 'b-text', { ph: 'The takeaway…' })}</div>`; break;
     case 'scenarios':
@@ -218,12 +254,22 @@ function blockHTML(n, b, i) {
       else if (E) inner = `<div class="img-drop"><div class="idr" data-act="pick-img">${ic('image', 22)}<div><b>Add an image</b><small>Click to upload, drop a file, or paste</small></div></div><input class="img-url" placeholder="…or paste an image link and press Enter"></div>`;
       break;
     case 'sources':
-      inner = `<div class="b-src">${fld(n, P + '.label', 'div', 'lab', { ph: 'Sources', single: 1 })}<div class="chips">` +
-        b.items.map((s, si) => `<span class="chip"><a href="${esc(s.u)}" target="_blank" rel="noopener noreferrer" title="${esc(s.u)}">${ic('link', 11)}<span>${esc(s.t || hostOf(s.u))}</span></a>${E ? `<button data-act="del-src" data-si="${si}" aria-label="Remove source">${ic('x', 10)}</button>` : ''}</span>`).join('') +
-        (E ? `<button class="chip add" data-act="add-src">${ic('plus', 11)} Source</button>` : '') + '</div></div>';
+      inner = `<div class="b-src">${fld(n, P + '.label', 'div', 'lab', { ph: 'Sources', single: 1 })}<div class="src-list">` +
+        b.items.map((s, si) => sourceHTML(n, P, s, si)).join('') +
+        `</div>${E ? `<button class="chip add" data-act="add-src">${ic('plus', 11)} Source</button>` : ''}</div>`;
       break;
   }
   return `<div class="blk k-${b.kind}" data-i="${i}">${E ? `<span class="grip" title="Drag to move">${ic('grip', 14)}</span>` : ''}${inner}${E ? `<button class="blk-x" data-act="del-block" title="Remove block" aria-label="Remove block">${ic('x', 11)}</button>` : ''}</div>`;
+}
+/* categories start open; the owner's open/closed choice is saved, visitors can fold them for themselves */
+function catClosed(b) { const k = 'f:' + b.id; return k in S.open ? S.open[k] : !!b.closed; }
+/* a source: title link, and (folded away by default) what it explains + the remove button */
+function sourceHTML(n, P, s, si) {
+  const E = S.canEdit, hasBody = E || (s.note && s.note.trim()), open = hasBody && !!S.open['s:' + s.id];
+  return `<div class="src-it${open ? ' open' : ''}" data-sk="${esc(s.id || '')}">
+    <div class="src-h">${hasBody ? `<button class="chev" data-act="toggle-src" aria-label="Show details" title="${open ? 'Hide' : 'Show'} details">${ic('chev', 13)}</button>` : `<span class="src-dot">${ic('link', 12)}</span>`}<a href="${esc(s.u)}" target="_blank" rel="noopener noreferrer" title="${esc(s.u)}"><span>${esc(s.t || hostOf(s.u))}</span>${ic('arrowr', 11)}</a></div>
+    ${hasBody ? `<div class="fold-b"><div class="fold-bi"><div class="src-body">${fld(n, `${P}.items.${si}.note`, 'div', 'b-text', { ph: 'What this source explains or why it matters (optional)…' })}<div class="src-meta"><span>${esc(hostOf(s.u))}</span>${E ? `<button class="ghost-btn danger" data-act="del-src" data-si="${si}">${ic('trash', 12)} Remove source</button>` : ''}</div></div></div></div>` : ''}
+  </div>`;
 }
 function scenarioHTML(n, b, i, s, si) {
   const E = S.canEdit, SP = `blocks.${i}.items.${si}`, open = !!S.open[s.id];
@@ -318,7 +364,7 @@ function drawEdges() {
     const p1 = sidePoint(it.ra, it.s1, it.o1), p2 = sidePoint(it.rb, it.s2, it.o2);
     let avoid = null;
     if (style === 'geometric') { avoid = []; for (const [id, rc] of rects) if (id !== ed.from && id !== ed.to) avoid.push(rc); }
-    const g = bez(p1, it.s1, p2, it.s2, style, avoid);
+    const g = bez(p1, it.s1, p2, it.s2, style, avoid, bendPoint(ed, p1, p2));
     seen.add(ed.id);
     let r = EDGE_EL.get(ed.id);
     if (!r) {
@@ -326,43 +372,61 @@ function drawEdges() {
       gEl.dataset.e = ed.id;
       const hit = document.createElementNS(SVGNS, 'path'); hit.setAttribute('class', 'hit');
       const vis = document.createElementNS(SVGNS, 'path'); vis.setAttribute('class', 'vis');
-      gEl.append(hit, vis); edgeG.appendChild(gEl);
+      const knob = document.createElementNS(SVGNS, 'circle'); knob.setAttribute('class', 'bend'); knob.setAttribute('r', '5.5');
+      gEl.append(hit, vis, knob); edgeG.appendChild(gEl);
       const lab = document.createElement('div'); lab.className = 'elabel'; lab.dataset.e = ed.id;
       labelsWrap.appendChild(lab);
-      r = { g: gEl, hit, vis, lab, cls: '' };
+      r = { g: gEl, hit, vis, knob, lab, cls: '' };
       EDGE_EL.set(ed.id, r);
     }
     r.hit.setAttribute('d', g.d); r.vis.setAttribute('d', g.d);
-    Object.assign(r, { p1, p2, s1: it.s1, s2: it.s2 });
+    if (r.maskPath) r.maskPath.setAttribute('d', g.d);
+    r.knob.setAttribute('cx', f1(g.mid.x)); r.knob.setAttribute('cy', f1(g.mid.y));
+    Object.assign(r, { p1, p2, s1: it.s1, s2: it.s2, mid: g.mid });
     const sel = S.edgeSel === ed.id, rel = !sel && !r.drawing && (S.sel.has(ed.from) || S.sel.has(ed.to));
-    const cls = 'edge' + (sel ? ' sel' : '') + (rel ? ' rel' : '') + (ed.dashed && !r.drawing ? ' dashed' : '') + (r.drawing ? ' draw' : '');
+    const cls = 'edge' + (sel ? ' sel' : '') + (rel ? ' rel' : '') + (ed.dashed ? ' dashed' : '') + (ed.label ? ' haslabel' : '') + (ed.bend ? ' bent' : '') + (r.drawing ? ' draw' : '');
     if (r.cls !== cls) { r.g.setAttribute('class', cls); r.cls = cls; }
-    if (ed.arrow && !r.drawing) r.vis.setAttribute('marker-end', sel || rel ? 'url(#arrow-hi)' : 'url(#arrow)');
+    if (ed.arrow) r.vis.setAttribute('marker-end', sel || rel ? 'url(#arrow-hi)' : 'url(#arrow)');
     else r.vis.removeAttribute('marker-end');
     const editingLabel = r.lab.hasAttribute('contenteditable');
     if (ed.label || editingLabel || (sel && S.canEdit)) {
       r.lab.style.display = '';
       if (!editingLabel && r.lab.textContent !== ed.label) r.lab.textContent = ed.label;
       r.lab.classList.toggle('empty', !ed.label);
-      r.lab.style.transform = `translate(${g.mid.x}px,${g.mid.y}px) translate(-50%,-50%)`;
+      /* an empty label hint sits just below the middle dot instead of covering it */
+      r.lab.style.transform = `translate(${g.mid.x}px,${g.mid.y}px) translate(-50%,${ed.label || editingLabel ? '-50%' : '12px'})`;
     } else r.lab.style.display = 'none';
   }
-  for (const [id, r] of EDGE_EL) if (!seen.has(id)) { r.g.remove(); r.lab.remove(); EDGE_EL.delete(id); }
+  for (const [id, r] of EDGE_EL) if (!seen.has(id)) { r.g.remove(); r.lab.remove(); if (r.mask) r.mask.remove(); EDGE_EL.delete(id); }
 }
-/* Lines draw themselves in, one after another, after the nodes pop in (used when switching environments). */
+/* Lines draw themselves in, one after another, after the nodes pop in (used when switching environments).
+   A mask stroke grows along each line and reveals it, so dashed lines stay dashed while they draw. */
 function animateEdgesIn(baseDelay = 160) {
+  const defs = $('#edges defs');
   let i = 0;
-  for (const [, r] of EDGE_EL) {
+  for (const [id, r] of EDGE_EL) {
     const delay = baseDelay + Math.min(i++, 24) * 45;
+    if (!r.mask) {
+      const m = document.createElementNS(SVGNS, 'mask');
+      m.id = 'mk-' + id;
+      m.setAttribute('maskUnits', 'userSpaceOnUse');
+      ['x', 'y'].forEach(k => m.setAttribute(k, '-60000'));
+      ['width', 'height'].forEach(k => m.setAttribute(k, '120000'));
+      const mp = document.createElementNS(SVGNS, 'path');
+      mp.setAttribute('class', 'mdraw'); mp.setAttribute('pathLength', '1'); mp.setAttribute('d', r.vis.getAttribute('d') || '');
+      m.appendChild(mp); defs.appendChild(m);
+      r.mask = m; r.maskPath = mp;
+    }
+    r.maskPath.style.animationDelay = delay + 'ms';
+    r.vis.setAttribute('mask', `url(#mk-${id})`);
     r.drawing = true;
-    r.vis.setAttribute('pathLength', '1');
-    r.g.style.setProperty('--d', delay + 'ms');
     r.lab.style.setProperty('--d', delay + 380 + 'ms');
     r.lab.classList.add('lab-in');
     clearTimeout(r.drawT);
     r.drawT = setTimeout(() => {
       r.drawing = false;
-      r.vis.removeAttribute('pathLength');
+      r.vis.removeAttribute('mask');
+      if (r.mask) { r.mask.remove(); r.mask = r.maskPath = null; }
       r.lab.classList.remove('lab-in');
       drawEdges();
     }, delay + 720);
@@ -507,6 +571,7 @@ function renderInspector() {
       <div class="row2"><button class="seg${ed.arrow ? ' on' : ''}" data-ia="arrow">${ic('arrowr', 14)} Arrow</button><button class="seg${ed.dashed ? ' on' : ''}" data-ia="dashed">${ic('dash', 14)} Dashed</button></div>
       <button class="ibtn" data-ia="elabel">${ic('edit', 14)} ${ed.label ? 'Edit label' : 'Add label'}</button>
       <button class="ibtn" data-ia="reverse">${ic('swap', 14)} Reverse direction</button>
+      ${ed.bend ? `<button class="ibtn" data-ia="unbend">${ic('refresh', 14)} Reset curve</button>` : ''}
       <button class="ibtn danger" data-ia="del">${ic('trash', 14)} Delete <kbd>Del</kbd></button></div>`;
   } else if (S.sel.size === 1) {
     const n = nodeById([...S.sel][0]);

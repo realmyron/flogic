@@ -29,17 +29,24 @@ function bez(p1, s1, p2, s2, style, avoid, via) {
   if ((style || lineStyle()) === 'geometric') return via ? routeGeoVia(p1, s1, p2, s2, via) : routeGeo(p1, s1, p2, s2, avoid);
   return via ? routeFluidVia(p1, s1, p2, s2, via) : routeFluid(p1, s1, p2, s2);
 }
-/* two smooth curves meeting at B, with a shared tangent there so the line never kinks */
+/* A smooth curve through start -> B -> end that picks its own angles (centripetal Catmull-Rom).
+   Hidden guide points sit just inside each node, so the line still leaves and arrives straight
+   out of its side, then eases toward the bend point without steep kinks or loops. */
 function routeFluidVia(p1, s1, p2, s2, B) {
   const a = DIR[s1], b = DIR[s2];
   const d1 = Math.hypot(B.x - p1.x, B.y - p1.y), d2 = Math.hypot(p2.x - B.x, p2.y - B.y);
-  const k1 = clamp(d1 * 0.5, 20, 220), k2 = clamp(d2 * 0.5, 20, 220);
-  const c1 = { x: p1.x + a.x * k1, y: p1.y + a.y * k1 }, c4 = { x: p2.x + b.x * k2, y: p2.y + b.y * k2 };
-  /* direction of travel through B: from start to end (so a sideways bend bulges instead of looping) */
-  let tx = p2.x - p1.x, ty = p2.y - p1.y;
-  if (Math.hypot(tx, ty) < 8) { tx = c4.x - c1.x; ty = c4.y - c1.y; }
-  const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
-  const c2 = { x: B.x - tx * d1 * 0.4, y: B.y - ty * d1 * 0.4 }, c3 = { x: B.x + tx * d2 * 0.4, y: B.y + ty * d2 * 0.4 };
+  const L1 = clamp(d1 * 0.55, 24, 180), L2 = clamp(d2 * 0.55, 24, 180);
+  const P = [{ x: p1.x - a.x * L1, y: p1.y - a.y * L1 }, p1, B, p2, { x: p2.x - b.x * L2, y: p2.y - b.y * L2 }];
+  const seg = (q0, q1, q2, q3) => {
+    const t01 = Math.pow(Math.hypot(q1.x - q0.x, q1.y - q0.y), 0.5) || 1e-4;
+    const t12 = Math.pow(Math.hypot(q2.x - q1.x, q2.y - q1.y), 0.5) || 1e-4;
+    const t23 = Math.pow(Math.hypot(q3.x - q2.x, q3.y - q2.y), 0.5) || 1e-4;
+    /* tangents at q1 and q2 (Barry–Goldman form), then convert to cubic Bézier handles */
+    const m1 = { x: t12 * ((q1.x - q0.x) / t01 - (q2.x - q0.x) / (t01 + t12) + (q2.x - q1.x) / t12), y: t12 * ((q1.y - q0.y) / t01 - (q2.y - q0.y) / (t01 + t12) + (q2.y - q1.y) / t12) };
+    const m2 = { x: t12 * ((q2.x - q1.x) / t12 - (q3.x - q1.x) / (t12 + t23) + (q3.x - q2.x) / t23), y: t12 * ((q2.y - q1.y) / t12 - (q3.y - q1.y) / (t12 + t23) + (q3.y - q2.y) / t23) };
+    return [{ x: q1.x + m1.x / 3, y: q1.y + m1.y / 3 }, { x: q2.x - m2.x / 3, y: q2.y - m2.y / 3 }];
+  };
+  const [c1, c2] = seg(P[0], P[1], P[2], P[3]), [c3, c4] = seg(P[1], P[2], P[3], P[4]);
   return {
     d: `M${f1(p1.x)} ${f1(p1.y)} C${f1(c1.x)} ${f1(c1.y)} ${f1(c2.x)} ${f1(c2.y)} ${f1(B.x)} ${f1(B.y)} C${f1(c3.x)} ${f1(c3.y)} ${f1(c4.x)} ${f1(c4.y)} ${f1(p2.x)} ${f1(p2.y)}`,
     mid: { x: B.x, y: B.y },
@@ -165,6 +172,7 @@ function applyView() {
   if (cy < -WORLD) V.y = VR.height / 2 + WORLD * V.z;
   if (cy > WORLD) V.y = VR.height / 2 - WORLD * V.z;
   world.style.transform = `translate(${V.x}px,${V.y}px) scale(${V.z})`;
+  world.style.setProperty('--z', V.z);
   let g = GRID * V.z;
   while (g < 14) g *= 4;
   vp.style.backgroundSize = `${g}px ${g}px`;
@@ -259,7 +267,7 @@ function blockHTML(n, b, i) {
         `</div>${E ? `<button class="chip add" data-act="add-src">${ic('plus', 11)} Source</button>` : ''}</div>`;
       break;
   }
-  return `<div class="blk k-${b.kind}" data-i="${i}">${E ? `<span class="grip" title="Drag to move">${ic('grip', 14)}</span>` : ''}${inner}${E ? `<button class="blk-x" data-act="del-block" title="Remove block" aria-label="Remove block">${ic('x', 11)}</button>` : ''}</div>`;
+  return `<div class="blk k-${b.kind}" data-i="${i}">${E ? `<span class="grip" title="Drag to move">${ic('grip', 14)}</span>` : ''}${inner}</div>`;   /* blocks are deleted from the right-click menu only, so they can't be removed by accident */
 }
 /* categories start open; the owner's open/closed choice is saved, visitors can fold them for themselves */
 function catClosed(b) { const k = 'f:' + b.id; return k in S.open ? S.open[k] : !!b.closed; }
@@ -372,16 +380,17 @@ function drawEdges() {
       gEl.dataset.e = ed.id;
       const hit = document.createElementNS(SVGNS, 'path'); hit.setAttribute('class', 'hit');
       const vis = document.createElementNS(SVGNS, 'path'); vis.setAttribute('class', 'vis');
+      const knobHit = document.createElementNS(SVGNS, 'circle'); knobHit.setAttribute('class', 'bend-hit'); knobHit.setAttribute('r', '14');
       const knob = document.createElementNS(SVGNS, 'circle'); knob.setAttribute('class', 'bend'); knob.setAttribute('r', '5.5');
-      gEl.append(hit, vis, knob); edgeG.appendChild(gEl);
+      gEl.append(hit, vis, knobHit, knob); edgeG.appendChild(gEl);
       const lab = document.createElement('div'); lab.className = 'elabel'; lab.dataset.e = ed.id;
       labelsWrap.appendChild(lab);
-      r = { g: gEl, hit, vis, knob, lab, cls: '' };
+      r = { g: gEl, hit, vis, knob, knobHit, lab, cls: '' };
       EDGE_EL.set(ed.id, r);
     }
     r.hit.setAttribute('d', g.d); r.vis.setAttribute('d', g.d);
     if (r.maskPath) r.maskPath.setAttribute('d', g.d);
-    r.knob.setAttribute('cx', f1(g.mid.x)); r.knob.setAttribute('cy', f1(g.mid.y));
+    for (const c of [r.knob, r.knobHit]) { c.setAttribute('cx', f1(g.mid.x)); c.setAttribute('cy', f1(g.mid.y)); }
     Object.assign(r, { p1, p2, s1: it.s1, s2: it.s2, mid: g.mid });
     const sel = S.edgeSel === ed.id, rel = !sel && !r.drawing && (S.sel.has(ed.from) || S.sel.has(ed.to));
     const cls = 'edge' + (sel ? ' sel' : '') + (rel ? ' rel' : '') + (ed.dashed ? ' dashed' : '') + (ed.label ? ' haslabel' : '') + (ed.bend ? ' bent' : '') + (r.drawing ? ' draw' : '');
@@ -513,8 +522,21 @@ function drawMinimap() {
 }
 
 /* ---------- side panels ---------- */
+/* sidebar: environments without a category first, then each category with its environments */
+function envRow(e, child) {
+  return `<div class="env${e.id === S.envId ? ' active' : ''}${child ? ' child' : ''}" data-env="${e.id}"${S.canEdit ? ' draggable="true" title="Double-click to rename · drag to move"' : ''}>${ic('board', 15)}<span class="nm">${esc(e.name)}</span><span class="cnt">${e.nodes.length || ''}</span></div>`;
+}
 function renderEnvs() {
-  $('#env-list').innerHTML = DOC.envs.map(e => `<div class="env${e.id === S.envId ? ' active' : ''}" data-env="${e.id}"${S.canEdit ? ' title="Double-click to rename"' : ''}>${ic('board', 15)}<span class="nm">${esc(e.name)}</span><span class="cnt">${e.nodes.length || ''}</span></div>`).join('');
+  const folders = DOC.folders || [], known = new Set(folders.map(f => f.id));
+  let h = DOC.envs.filter(e => !known.has(e.folder)).map(e => envRow(e, false)).join('');
+  for (const f of folders) {
+    const items = DOC.envs.filter(e => e.folder === f.id);
+    if (!S.canEdit && !items.length) continue;
+    const open = !UI.collapsed['fold:' + f.id], active = items.some(e => e.id === S.envId);
+    h += `<div class="efold${active ? ' has-active' : ''}" data-fold="${f.id}"${S.canEdit ? ' title="Click to open or close · double-click to rename"' : ''}><span class="lchev${open ? ' open' : ''}">${ic('chevr', 12)}</span>${ic(open ? 'folderopen' : 'folder', 15)}<span class="nm">${esc(f.name)}</span><span class="cnt">${items.length || ''}</span></div>`;
+    if (open) h += `<div class="efold-items" data-fold-items="${f.id}">${items.length ? items.map(e => envRow(e, true)).join('') : (S.canEdit ? '<div class="efold-empty">Drag environments here</div>' : '')}</div>`;
+  }
+  $('#env-list').innerHTML = h;
 }
 function layerRow(n, child, snip) {
   const icn = n.type === 'title' ? 'title' : n.type === 'note' ? 'note' : 'sub';

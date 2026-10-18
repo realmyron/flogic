@@ -5,7 +5,7 @@ const DATA_PATH = 'data/flogic.json';
 const ASSET_DIR = 'data/assets';
 const LS = { doc: 'flogic.doc', meta: 'flogic.meta', cfg: 'flogic.cfg', ui: 'flogic.ui' };
 
-const NODE_W = { title: 480, note: 336, sub: 240 };
+const NODE_W = { title: 480, note: 336, sub: 216 };
 const NODE_LIMIT = 1000;   // per environment; Settings → "Remove the node limit" lifts it
 const NODE_LABEL = { title: 'Title', note: 'Note', sub: 'Sub-note' };
 const COLORS = { default: '#7b93ff', sky: '#3fb2ec', violet: '#a98bfa', pink: '#ee6eae', amber: '#e9a43a', green: '#36c08c', red: '#ef6a6a', slate: '#8f9bb3' };
@@ -66,15 +66,17 @@ function nodeText(n) {
   return out.filter(Boolean).join(' \n ');
 }
 function nodeName(n) {
-  if (n.title && n.title.trim()) return n.title.trim();
+  const t = mdPlain(n.title).trim();
+  if (t) return t;
   const b = n.blocks.find(b => b.text && b.text.trim());
-  if (b) return b.text.trim().slice(0, 48);
+  if (b) return mdPlain(b.text).trim().slice(0, 48);
   return 'Untitled ' + NODE_LABEL[n.type].toLowerCase();
 }
 
 function migrate(doc) {
   if (!doc || !Array.isArray(doc.envs) || !doc.envs.length) return demoDoc();
   doc.version = 1;
+  if (doc.lineStyle !== 'geometric') delete doc.lineStyle;
   doc.envs.forEach(e => {
     e.id = e.id || uid('e'); e.name = e.name || 'Environment';
     e.nodes = Array.isArray(e.nodes) ? e.nodes : [];

@@ -89,7 +89,13 @@ function changed() {
   renderTop();
   scheduleAuto();
 }
+/* drop connections whose node or group no longer exists (e.g. after ungrouping or deleting) */
+function pruneEdges() {
+  const e = env(), ends = new Set([...e.nodes.map(n => n.id), ...e.groups.map(g => g.id)]);
+  e.edges = e.edges.filter(x => ends.has(x.from) && ends.has(x.to));
+}
 function structureChanged() {
+  pruneEdges();
   syncNodes();
   drawEdges(); drawGroups();
   renderLayers(); renderInspector(); renderEnvs(); renderEmptyHint(); queueMinimap();
@@ -597,7 +603,59 @@ function toggleHidden(ids) {
 function renameGroup(gid) {
   const g = env().groups.find(x => x.id === gid);
   if (!g || !S.canEdit) return;
+  /* rename right in the Layers list when the group's row is visible, otherwise in a small pop-up */
+  const row = $(`#layers .layer[data-g="${gid}"]`);
+  if (row) {
+    const span = row.querySelector('.nm'), inp = document.createElement('input');
+    inp.className = 'rename'; inp.value = g.name; inp.setAttribute('aria-label', 'Group name');
+    span.replaceWith(inp); inp.focus(); inp.select();
+    let done = false;
+    const finish = ok => {
+      if (done) return;
+      done = true;
+      const v = inp.value.trim();
+      if (ok && v && v !== g.name) { checkpoint(); g.name = v; changed(); }
+      drawGroups(); renderLayers(); renderInspector();
+    };
+    inp.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Enter') finish(true); if (ev.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true));
+    ['pointerdown', 'click', 'dblclick'].forEach(t => inp.addEventListener(t, ev => ev.stopPropagation()));
+    return;
+  }
   promptModal('Rename group', g.name, v => { checkpoint(); g.name = v; drawGroups(); renderLayers(); renderInspector(); changed(); });
+}
+function setGroupLook(gid, look) {
+  const g = groupById(gid);
+  if (!g || (g.look || 'clear') === look) return;
+  checkpoint();
+  if (look === 'clear') delete g.look; else g.look = look;
+  drawGroups(); drawEdges(); renderInspector(); changed();
+}
+function setGroupColor(gid, color) {
+  const g = groupById(gid);
+  if (!g || !COLORS[color]) return;
+  checkpoint(); g.color = color;
+  drawGroups(); renderLayers(); renderInspector(); changed();
+}
+/* the group that is exactly the current selection, if any */
+function selectedGroup() {
+  const ids = [...S.sel], g = ids.length > 1 && groupOf(ids[0]);
+  return g && g.members.length === ids.length && ids.every(id => g.members.includes(id)) ? g : null;
+}
+function groupMenu(g) {
+  return [
+    { head: g.name },
+    { label: 'Rename', icon: 'edit', fn: () => renameGroup(g.id) },
+    { head: 'Look' },
+    ...GROUP_LOOKS.map(([k, name]) => ({ label: name, icon: 'group', check: (g.look || 'clear') === k, fn: () => setGroupLook(g.id, k) })),
+    { head: 'Frame colour' },
+    { swatches: true, value: g.color || 'slate', fn: c => setGroupColor(g.id, c) },
+    '-',
+    { label: 'Tidy up', icon: 'tidy', fn: () => { selectNodes(g.members); tidySel(); } },
+    { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: () => { selectNodes(g.members); ungroupSel(); } },
+    '-',
+    { label: 'Delete group and its nodes', icon: 'trash', danger: true, fn: () => { selectNodes(g.members); deleteSel(); } },
+  ];
 }
 
 /* layout helpers */
@@ -960,6 +1018,8 @@ function onDown(e) {
   const ae = document.activeElement;
   if (ae && ae !== document.body && !t.closest('input, .src-form') && ae.blur) ae.blur();
   const ne = t.closest('.node');
+  const gport = S.canEdit && t.closest('.gport');
+  if (gport) { e.preventDefault(); startConnect(e, gport.dataset.g, gport.dataset.side); return; }
   if (S.canEdit && ne) {
     const port = t.closest('.port');
     if (port) { e.preventDefault(); startConnect(e, ne.dataset.id, port.dataset.side); return; }
@@ -1186,7 +1246,8 @@ function startConnect(e, id, side) {
   CONN = { from: id, side, target: null, key: '' };
   capture(e);
   document.body.classList.add('connecting');
-  if (!S.sel.has(id)) selectNodes([id]);
+  const g = groupById(id);
+  if (g) selectNodes(g.members); else if (!S.sel.has(id)) selectNodes([id]);
   moveConnect(e);
 }
 /* Grab an existing connection and pull: the end nearer the cursor comes loose and follows it.
@@ -1196,11 +1257,10 @@ function moveEdgeGrab(e) {
   const ed = env().edges.find(x => x.id === EG.id);
   EG = null;
   if (!ed) return;
-  const a = nodeById(ed.from), b = nodeById(ed.to);
-  if (!a || !b) return;
+  if (!endRect(ed.from) || !endRect(ed.to)) return;
   const drawn = EDGE_EL.get(ed.id) || {};
   const s1 = drawn.s1 || ed.fs, s2 = drawn.s2 || ed.ts;
-  const w = toWorld(e.clientX, e.clientY), pa = drawn.p1 || portPos(a, s1), pb = drawn.p2 || portPos(b, s2);
+  const w = toWorld(e.clientX, e.clientY), pa = drawn.p1 || endPort(ed.from, s1), pb = drawn.p2 || endPort(ed.to, s2);
   const loseFrom = Math.hypot(pa.x - w.x, pa.y - w.y) < Math.hypot(pb.x - w.x, pb.y - w.y);
   checkpoint();
   env().edges = env().edges.filter(x => x !== ed);
@@ -1240,29 +1300,32 @@ function resetBend(id) {
   checkpoint(); delete ed.bend;
   drawEdges(); renderInspector(); changed();
 }
-function clearConnHL() { $$('.port.magnet').forEach(p => p.classList.remove('magnet')); $$('.node.conn-target').forEach(x => x.classList.remove('conn-target')); }
+function clearConnHL() { $$('.port.magnet').forEach(p => p.classList.remove('magnet')); $$('.conn-target').forEach(x => x.classList.remove('conn-target')); }
+/* the board element that represents a connection end (a node, or a group's frame) */
+function endEl(id) { return NODE_EL.get(id) || GROUP_EL.get(id); }
 function moveConnect(e) {
-  const w = toWorld(e.clientX, e.clientY), src = nodeById(CONN.from);
-  if (!src) return;
-  const p0 = portPos(src, CONN.side);
+  const w = toWorld(e.clientX, e.clientY), p0 = endPort(CONN.from, CONN.side);
+  if (!p0) return;
+  /* everything that can be connected to: visible nodes and groups */
+  const ends = env().nodes.filter(n => !n.hidden).map(n => n.id).concat(env().groups.map(g => g.id)).filter(id => id !== CONN.from);
   let best = null, bd = 48 / V.z;
-  for (const n of env().nodes) {
-    if (n.id === CONN.from || n.hidden) continue;
-    for (const s of SIDES) { const p = portPos(n, s), d = Math.hypot(p.x - w.x, p.y - w.y); if (d < bd) { bd = d; best = { id: n.id, side: s, p }; } }
+  for (const id of ends) {
+    for (const s of SIDES) { const p = endPort(id, s); if (!p) continue; const d = Math.hypot(p.x - w.x, p.y - w.y); if (d < bd) { bd = d; best = { id, side: s, p }; } }
   }
   if (!best) {
-    const hit = document.elementFromPoint(e.clientX, e.clientY), ne = hit && hit.closest && hit.closest('.node');
-    if (ne && ne.dataset.id !== CONN.from) {
-      const n = nodeById(ne.dataset.id);
+    const hit = document.elementFromPoint(e.clientX, e.clientY), ne = hit && hit.closest && (hit.closest('.node') || hit.closest('.gframe'));
+    const id = ne && (ne.dataset.id || ne.dataset.gid);
+    if (id && id !== CONN.from) {
       let dd = Infinity;
-      for (const s of SIDES) { const p = portPos(n, s), d = Math.hypot(p.x - w.x, p.y - w.y); if (d < dd) { dd = d; best = { id: n.id, side: s, p }; } }
+      for (const s of SIDES) { const p = endPort(id, s); if (!p) continue; const d = Math.hypot(p.x - w.x, p.y - w.y); if (d < dd) { dd = d; best = { id, side: s, p }; } }
     }
   }
   const from = p0, fromSide = CONN.side, to = best ? best.p : w, toSide = best ? best.side : facingSide(p0, w);
   const key = best ? best.id + best.side : '';
   if (CONN.key !== key) {
     clearConnHL();
-    if (best) { const el = NODE_EL.get(best.id); el.classList.add('conn-target'); const p = el.querySelector('.p-' + best.side); if (p) p.classList.add('magnet'); }
+    const el = best && endEl(best.id);
+    if (el) { el.classList.add('conn-target'); const p = el.querySelector(':scope > .ports > .p-' + best.side + ', :scope > .p-' + best.side); if (p) p.classList.add('magnet'); }
     CONN.key = key;
   }
   CONN.target = best;
@@ -1557,7 +1620,7 @@ vp.addEventListener('contextmenu', e => {
     const g = env().groups.find(q => q.id === gl.dataset.g);
     if (!g) return;
     selectNodes(g.members);
-    openMenu(x, y, [{ label: 'Rename group', icon: 'edit', fn: () => renameGroup(g.id) }, { label: 'Tidy up', icon: 'tidy', fn: tidySel }, { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: ungroupSel }, '-', { label: 'Delete group and nodes', icon: 'trash', danger: true, fn: deleteSel }]);
+    openMenu(x, y, groupMenu(g));
     return;
   }
   const ne = t.closest('.node');
@@ -2048,11 +2111,61 @@ layersEl.addEventListener('dblclick', e => {
   zoomToNodes([row.dataset.id]);
 });
 layersEl.addEventListener('contextmenu', e => {
+  const grow = e.target.closest('.layer[data-g]');
+  if (grow && S.canEdit) {
+    e.preventDefault();
+    const g = groupById(grow.dataset.g);
+    if (g) { selectNodes(g.members); openMenu(e.clientX, e.clientY, groupMenu(g)); }
+    return;
+  }
   const row = e.target.closest('.layer[data-id]');
   if (!row || !S.canEdit) return;
   e.preventDefault();
   if (!S.sel.has(row.dataset.id)) selectNodes([row.dataset.id]);
   openMenu(e.clientX, e.clientY, nodeMenu(e.clientX, e.clientY));
+});
+/* Layers: drag on empty space to box-select rows; click empty space to deselect everything */
+let LMQ = null;
+layersEl.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || e.target.closest('.layer, button, input')) return;
+  e.preventDefault();
+  LMQ = { sx: e.clientX, sy: e.clientY, add: e.shiftKey || e.ctrlKey || e.metaKey, base: new Set(S.sel), moved: false, id: e.pointerId };
+});
+window.addEventListener('pointermove', e => {
+  const m = LMQ;
+  if (!m || e.pointerId !== m.id) return;
+  if (!m.moved) {
+    if (Math.hypot(e.clientX - m.sx, e.clientY - m.sy) < 4) return;
+    m.moved = true;
+    m.box = document.createElement('div');
+    m.box.className = 'lmarquee';
+    document.body.appendChild(m.box);
+  }
+  const lr = layersEl.getBoundingClientRect();
+  const x1 = clamp(Math.min(m.sx, e.clientX), lr.left, lr.right), x2 = clamp(Math.max(m.sx, e.clientX), lr.left, lr.right);
+  const y1 = clamp(Math.min(m.sy, e.clientY), lr.top, lr.bottom), y2 = clamp(Math.max(m.sy, e.clientY), lr.top, lr.bottom);
+  Object.assign(m.box.style, { left: x1 + 'px', top: y1 + 'px', width: x2 - x1 + 'px', height: y2 - y1 + 'px' });
+  /* rows the box touches; a group row brings all its nodes */
+  const sel = new Set(m.add ? m.base : []);
+  $$('.layer', layersEl).forEach(row => {
+    const r = row.getBoundingClientRect(), hit = r.bottom > y1 && r.top < y2;
+    row.classList.toggle('boxed', hit);
+    if (!hit) return;
+    if (row.dataset.id) sel.add(row.dataset.id);
+    else { const g = groupById(row.dataset.g); if (g) g.members.forEach(id => sel.add(id)); }
+  });
+  /* auto-scroll the list when the box reaches its top or bottom edge */
+  if (e.clientY > lr.bottom - 12) layersEl.scrollTop += 12; else if (e.clientY < lr.top + 12) layersEl.scrollTop -= 12;
+  S.sel = sel; S.edgeSel = null;
+  refreshSel(true);
+});
+window.addEventListener('pointerup', e => {
+  const m = LMQ;
+  if (!m || e.pointerId !== m.id) return;
+  LMQ = null;
+  if (m.box) m.box.remove();
+  if (!m.moved) { if (!m.add) clearSel(); return; }
+  refreshSel();
 });
 layersEl.addEventListener('mouseover', e => {
   const row = e.target.closest('.layer[data-id]');
@@ -2071,12 +2184,16 @@ $('#layer-filter').addEventListener('keydown', e => {
 $('#inspector').addEventListener('click', e => {
   const et = e.target.closest('[data-etype]');
   if (et) { setEdgeType(S.edgeSel, et.dataset.etype); return; }
+  const gc = e.target.closest('[data-gc]'), sg = selectedGroup();
+  if (gc) { if (sg) setGroupColor(sg.id, gc.dataset.gc); return; }
   const sw = e.target.closest('[data-sw]');
   if (sw) { setColor(sw.dataset.sw); return; }
   const b = e.target.closest('[data-ia]');
   if (!b) return;
   const id = S.edgeSel, ed = id && env().edges.find(x => x.id === id);
   switch (b.dataset.ia) {
+    case 'glook': if (sg) setGroupLook(sg.id, b.dataset.v); break;
+    case 'grename': if (sg) renameGroup(sg.id); break;
     case 'type': setType(b.dataset.v); break;
     case 'arrow': if (ed) edgeSet(id, { arrow: !ed.arrow }); break;
     case 'dashed': if (ed) edgeSet(id, { dashed: !ed.dashed }); break;

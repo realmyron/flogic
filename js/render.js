@@ -3,7 +3,7 @@
 
 const vp = $('#viewport'), world = $('#world'), nodesWrap = $('#nodes'), edgeG = $('#edge-g');
 const labelsWrap = $('#edge-labels'), groupsWrap = $('#groups'), guideG = $('#guide-g'), connPreview = $('#conn-preview');
-const NODE_EL = new Map(), SIZE = new Map(), DISP = new Map(), EDGE_EL = new Map(), GROUP_EL = new Map();
+const NODE_EL = new Map(), SIZE = new Map(), DISP = new Map(), EDGE_EL = new Map(), PANEL_EL = new Map(), GROUP_EL = new Map();
 const V = { x: 0, y: 0, z: 1 };
 let VR = { left: 0, top: 0, width: 800, height: 600 };
 const DIR = { t: { x: 0, y: -1 }, b: { x: 0, y: 1 }, l: { x: -1, y: 0 }, r: { x: 1, y: 0 } };
@@ -334,6 +334,7 @@ function applyNode(el, n, i) {
   if (!el.classList.contains('lifted')) el.style.zIndex = i + 1;
   el.classList.toggle('sel', S.sel.has(n.id));
   el.classList.toggle('is-hidden', !!n.hidden);
+  el.classList.toggle('is-folded', foldMap().has(n.id));
   if (!DISP.has(n.id)) el.style.transform = `translate3d(${n.x}px,${n.y}px,0)`;
 }
 function renderNode(n) {
@@ -374,14 +375,16 @@ function syncZ() { env().nodes.forEach((n, i) => { const el = NODE_EL.get(n.id);
 
 /* ---------- edges ---------- */
 function drawEdges() {
-  const e = env(), seen = new Set(), rects = new Map(), nodeRects = new Map(), list = [];
-  for (const n of e.nodes) if (!n.hidden) { const r = rectOf(n); rects.set(n.id, r); nodeRects.set(n.id, r); }
-  for (const g of e.groups) { const r = groupRect(g); if (r) rects.set(g.id, r); }       /* groups can be connected too */
-  /* 1. each line uses the sides it was connected to */
+  const e = env(), seen = new Set(), rects = new Map(), nodeRects = new Map(), list = [], F = foldMap();
+  for (const n of e.nodes) if (!n.hidden && !F.has(n.id)) { const r = rectOf(n); rects.set(n.id, r); nodeRects.set(n.id, r); }
+  for (const p of e.panels) { const r = panelRect(p); if (r) rects.set(p.id, r); }       /* panels can be connected too */
+  /* 1. each line uses the sides it was connected to; a line to a node inside a folded panel goes to the panel */
   for (const ed of e.edges) {
-    const ra = rects.get(ed.from), rb = rects.get(ed.to);
+    const a = F.get(ed.from) || ed.from, b = F.get(ed.to) || ed.to;
+    if (a === b) continue;
+    const ra = rects.get(a), rb = rects.get(b);
     if (!ra || !rb) continue;
-    list.push({ ed, ra, rb, s1: ed.fs, s2: ed.ts, o1: 0, o2: 0 });
+    list.push({ ed, a, b, ra, rb, s1: ed.fs, s2: ed.ts, o1: 0, o2: 0 });
   }
   /* 2. several lines on one face fan out instead of sharing a single point */
   const faces = new Map();
@@ -390,7 +393,7 @@ function drawEdges() {
     if (!faces.has(k)) faces.set(k, []);
     faces.get(k).push({ it, end, key: side === 't' || side === 'b' ? other.x + other.w / 2 : other.y + other.h / 2 });
   };
-  list.forEach(it => { addFace(it.ed.from, it.s1, it, 'o1', it.rb); addFace(it.ed.to, it.s2, it, 'o2', it.ra); });
+  list.forEach(it => { addFace(it.a, it.s1, it, 'o1', it.rb); addFace(it.b, it.s2, it, 'o2', it.ra); });
   for (const [k, arr] of faces) {
     if (arr.length < 2) continue;
     const side = k.slice(-1), r = rects.get(k.slice(0, -1));
@@ -404,10 +407,10 @@ function drawEdges() {
     if (!ed.bend) straighten(p1, it.s1, it.ra, p2, it.s2, it.rb);
     let avoid = null;
     if (style === 'geometric') {
-      /* steer around other nodes, but not around the members of a connected group */
-      const inside = new Set([ed.from, ed.to].flatMap(id => (groupById(id) || { members: [] }).members));
+      /* steer around other nodes, but not around the nodes inside a connected panel */
+      const inside = new Set([it.a, it.b].flatMap(id => (panelById(id) || { members: [] }).members));
       avoid = [];
-      for (const [id, rc] of nodeRects) if (id !== ed.from && id !== ed.to && !inside.has(id)) avoid.push(rc);
+      for (const [id, rc] of nodeRects) if (id !== it.a && id !== it.b && !inside.has(id)) avoid.push(rc);
     }
     const g = bez(p1, it.s1, p2, it.s2, style, avoid, bendPoint(ed, p1, p2));
     seen.add(ed.id);
@@ -495,49 +498,105 @@ function animateEdgesIn(baseDelay = 160) {
   drawEdges();
 }
 
-/* ---------- groups ----------
-   Looks: clear (default: just a name tag), dotted, hatched (45° lines inside), panel (a big card the
-   nodes sit on). Groups have side dots too, so a group can be connected like a node. */
-const GROUP_LOOKS = [['clear', 'Clear'], ['dotted', 'Dotted'], ['hatched', 'Hatched'], ['panel', 'Panel']];
-const GROUP_PAD = 30, PANEL_HEAD = 34;
+/* ---------- panels & groups ----------
+   A panel is a framed area around its nodes. Looks: dotted (default), outline, tinted, hatched, grid,
+   card (a raised card with a header). Panels have side dots, so they can be connected like a node, a
+   thick grabbable edge all the way round, and a fold button that tucks the nodes away into a small box.
+   Groups only bundle nodes; on the board they show as a light dashed outline while selected. */
+const PANEL_LOOKS = [['dotted', 'Dotted'], ['outline', 'Outline'], ['tinted', 'Tinted'], ['hatched', 'Hatched'], ['grid', 'Grid'], ['card', 'Card']];
+const PANEL_PAD = 30, PANEL_HEAD = 34, FOLD_H = 50, GROUP_PAD = 12;
+const PANEL_FREE = new Set();   // nodes being dragged out of their panel: the frame ignores them until dropped
+let PANEL_DROP = null;          // the panel nodes would be dropped into right now
+function panelById(id) { return env().panels.find(p => p.id === id); }
 function groupById(id) { return env().groups.find(g => g.id === id); }
-function groupRect(g) {
-  const ns = g.members.map(nodeById).filter(n => n && !n.hidden);
-  if (!ns.length) return null;
-  const bb = bboxOf(ns), head = g.look === 'panel' ? PANEL_HEAD : 0;
-  return { x: bb.x - GROUP_PAD, y: bb.y - GROUP_PAD - head, w: bb.w + GROUP_PAD * 2, h: bb.h + GROUP_PAD * 2 + head };
+/* node id -> id of the folded panel it is tucked into */
+let FOLD = { k: null, m: new Map() };
+function foldMap() {
+  const e = env();
+  let k = e.id;
+  for (const p of e.panels) if (p.folded) k += '|' + p.id + ':' + p.members.join(',');
+  if (k !== FOLD.k) { FOLD = { k, m: new Map() }; for (const p of e.panels) if (p.folded) p.members.forEach(id => FOLD.m.set(id, p.id)); }
+  return FOLD.m;
 }
-/* a connection end can be a node or a group */
+const isShown = n => n && !n.hidden && !foldMap().has(n.id);
+function panelRect(p) {
+  let ns = p.members.map(nodeById).filter(n => n && !n.hidden);
+  if (!ns.length) return null;
+  const kept = ns.filter(n => !PANEL_FREE.has(n.id));
+  if (kept.length) ns = kept;
+  const bb = bboxOf(ns), head = p.look === 'card' ? PANEL_HEAD : 0;
+  const x = bb.x - PANEL_PAD, y = bb.y - PANEL_PAD - head, w = bb.w + PANEL_PAD * 2;
+  if (p.folded) return { x, y, w: Math.min(w, clamp(p.name.length * 7.4 + 120, 190, 440)), h: FOLD_H };
+  return { x, y, w, h: bb.h + PANEL_PAD * 2 + head };
+}
+/* the panel that is the current selection (picked by its frame, its name or its Layers row) */
+function selectedPanel() {
+  const p = S.panelSel && !S.edgeSel && panelById(S.panelSel);
+  if (!p) return null;
+  const ms = p.members.filter(id => { const n = nodeById(id); return n && !n.hidden; });
+  return ms.length && ms.length === S.sel.size && ms.every(id => S.sel.has(id)) ? p : null;
+}
+/* a connection end can be a node or a panel */
 function endRect(id) {
   const n = nodeById(id);
-  if (n) return n.hidden ? null : rectOf(n);
-  const g = groupById(id);
-  return g ? groupRect(g) : null;
+  if (n) return isShown(n) ? rectOf(n) : null;
+  const p = panelById(id);
+  return p ? panelRect(p) : null;
 }
 function endPort(id, side) { const r = endRect(id); return r ? sidePoint(r, side, 0) : null; }
-function drawGroups() {
-  const e = env(), seen = new Set();
-  for (const g of e.groups) {
-    const r = groupRect(g);
+function drawFrames() { drawPanels(); drawGroupOutlines(); }
+function drawPanels() {
+  const e = env(), seen = new Set(), sp = selectedPanel();
+  for (const p of e.panels) {
+    const r = panelRect(p);
     if (!r) continue;
-    let el = GROUP_EL.get(g.id);
+    let el = PANEL_EL.get(p.id);
     if (!el) {
       el = document.createElement('div');
-      el.className = 'gframe';
-      el.dataset.gid = g.id;
-      el.innerHTML = `<div class="glabel" data-g="${g.id}">${ic('group', 13)}<span></span></div>` +
-        (S.canEdit ? SIDES.map(s => `<i class="port gport p-${s}" data-side="${s}" data-g="${g.id}"></i>`).join('') : '');
+      el.className = 'pframe';
+      el.dataset.pid = p.id;
+      el.innerHTML = ['t', 'r', 'b', 'l'].map(s => `<i class="pedge e-${s}" data-p="${p.id}"></i>`).join('') +
+        `<div class="plabel" data-p="${p.id}"><button class="pfold" data-pfold="${p.id}" aria-label="Fold">${ic('chevr', 12)}</button>${ic('panel', 13)}<span class="pname"></span><span class="pcnt"></span></div>` +
+        (S.canEdit ? SIDES.map(s => `<i class="port pport p-${s}" data-side="${s}" data-p="${p.id}"></i>`).join('') : '');
       groupsWrap.appendChild(el);
-      GROUP_EL.set(g.id, el);
+      PANEL_EL.set(p.id, el);
     }
-    el.dataset.look = g.look || 'clear';
-    el.style.setProperty('--gc', COLORS[g.color] || COLORS.slate);
+    if (el.dataset.look !== p.look) el.dataset.look = p.look;
+    el.style.setProperty('--gc', COLORS[p.color] || COLORS.slate);
     el.style.transform = `translate(${r.x}px,${r.y}px)`;
     el.style.width = r.w + 'px';
     el.style.height = r.h + 'px';
-    const sp = el.querySelector('span');
-    if (sp.textContent !== g.name) sp.textContent = g.name;
-    el.classList.toggle('sel', g.members.every(id => S.sel.has(id)));
+    const nm = el.querySelector('.pname'), cnt = el.querySelector('.pcnt'), fb = el.querySelector('.pfold');
+    if (nm.textContent !== p.name) nm.textContent = p.name;
+    const c = p.folded ? String(p.members.length) : '';
+    if (cnt.textContent !== c) cnt.textContent = c;
+    el.classList.toggle('folded', !!p.folded);
+    fb.title = p.folded ? 'Unfold' : 'Fold';
+    el.classList.toggle('sel', sp === p);
+    el.classList.toggle('drop', PANEL_DROP === p.id);
+    seen.add(p.id);
+  }
+  for (const [id, el] of PANEL_EL) if (!seen.has(id)) { el.remove(); PANEL_EL.delete(id); }
+}
+function drawGroupOutlines() {
+  const e = env(), seen = new Set();
+  for (const g of e.groups) {
+    const ns = g.members.map(nodeById).filter(isShown);
+    if (ns.length < 2 || !g.members.every(id => S.sel.has(id) || !isShown(nodeById(id)))) continue;
+    const bb = bboxOf(ns);
+    let el = GROUP_EL.get(g.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'gout';
+      el.innerHTML = `<span>${ic('group', 11)}<b></b></span>`;
+      groupsWrap.appendChild(el);
+      GROUP_EL.set(g.id, el);
+    }
+    el.style.transform = `translate(${bb.x - GROUP_PAD}px,${bb.y - GROUP_PAD}px)`;
+    el.style.width = bb.w + GROUP_PAD * 2 + 'px';
+    el.style.height = bb.h + GROUP_PAD * 2 + 'px';
+    const b = el.querySelector('b');
+    if (b.textContent !== g.name) b.textContent = g.name;
     seen.add(g.id);
   }
   for (const [id, el] of GROUP_EL) if (!seen.has(id)) { el.remove(); GROUP_EL.delete(id); }
@@ -552,7 +611,7 @@ function drawGuides(gs) {
 let FQ = 0;
 function queueFrame() {
   if (FQ) return;
-  FQ = requestAnimationFrame(() => { FQ = 0; drawEdges(); drawGroups(); drawMinimap(); });
+  FQ = requestAnimationFrame(() => { FQ = 0; drawEdges(); drawFrames(); drawMinimap(); });
 }
 let MQF = 0;
 function queueMinimap() { if (!MQF) MQF = requestAnimationFrame(() => { MQF = 0; drawMinimap(); }); }
@@ -577,7 +636,18 @@ function drawMinimap() {
   const ox = pad + ((W - pad * 2) - (x2 - x1) * s) / 2 - x1 * s, oy = pad + ((Hh - pad * 2) - (y2 - y1) * s) / 2 - y1 * s;
   MM = { s, ox, oy };
   const cs = getComputedStyle(document.documentElement);
-  ns.forEach(n => {
+  /* panels as soft outlines; a folded panel stands in for the nodes tucked inside it */
+  ctx.lineWidth = 1;
+  env().panels.forEach(p => {
+    const r = panelRect(p);
+    if (!r) return;
+    ctx.strokeStyle = ctx.fillStyle = COLORS[p.color] || COLORS.slate;
+    ctx.globalAlpha = p.folded ? 0.5 : 0.35;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(ox + r.x * s, oy + r.y * s, r.w * s, r.h * s, 3); else ctx.rect(ox + r.x * s, oy + r.y * s, r.w * s, r.h * s);
+    if (p.folded) ctx.fill(); else ctx.stroke();
+  });
+  ns.filter(n => !foldMap().has(n.id)).forEach(n => {
     const r = rectOf(n);
     ctx.globalAlpha = S.sel.has(n.id) ? 1 : 0.55;
     ctx.fillStyle = COLORS[n.color] || COLORS.default;
@@ -612,9 +682,10 @@ function renderEnvs() {
   }
   $('#env-list').innerHTML = h;
 }
-function layerRow(n, child, snip) {
+/* depth: 0 top level, 1 inside a group or panel, 2 inside a group inside a panel */
+function layerRow(n, depth, snip) {
   const icn = n.type === 'title' ? 'title' : n.type === 'note' ? 'note' : 'sub';
-  return `<div class="layer${child ? ' child' : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"><span class="lic" style="color:${COLORS[n.color] || COLORS.default}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
+  return `<div class="layer${depth ? ' child d' + depth : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"${S.canEdit ? ' draggable="true"' : ''}><span class="lic" style="color:${COLORS[n.color] || COLORS.default}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
 }
 function eyeBtn(hidden) {
   if (!S.canEdit) return '';
@@ -633,20 +704,46 @@ function renderLayers() {
   } else if (!e.nodes.length) {
     h = `<div class="list-empty">No nodes yet.${S.canEdit ? '<br>Right-click the board to add one.' : ''}</div>`;
   } else {
-    const inGroup = new Map();
+    /* panels hold groups and nodes, groups hold nodes; each sits where its top-most node is */
+    const inGroup = new Map(), inPanel = new Map(), sp = selectedPanel();
     e.groups.forEach(g => g.members.forEach(id => inGroup.set(id, g)));
+    e.panels.forEach(p => p.members.forEach(id => inPanel.set(id, p)));
+    const seenOk = n => S.canEdit || !n.hidden;   // visitors never see hidden nodes
+    const top = e.nodes.slice().reverse().filter(seenOk);
     const done = new Set();
-    for (let i = e.nodes.length - 1; i >= 0; i--) {
-      const n = e.nodes[i], g = inGroup.get(n.id);
-      if (!S.canEdit && n.hidden) continue;          // visitors never see hidden nodes
-      if (!g) { h += layerRow(n, false); continue; }
-      if (done.has(g.id)) continue;
-      done.add(g.id);
-      const members = e.nodes.filter(m => g.members.includes(m.id) && (S.canEdit || !m.hidden)).reverse();
-      const open = !UI.collapsed[g.id], all = g.members.every(id => S.sel.has(id));
-      const allHidden = members.every(m => m.hidden);
-      h += `<div class="layer grp${all ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}" data-g="${g.id}"><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic" style="color:${COLORS[g.color] || COLORS.slate}">${ic('group', 14)}</span><span class="nm">${esc(g.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
-      if (open) members.forEach(m => { h += layerRow(m, true); });
+    const groupRows = (g, depth, list) => {
+      const members = list.filter(m => g.members.includes(m.id));
+      const open = !UI.collapsed[g.id], all = members.every(m => S.sel.has(m.id)), allHidden = members.every(m => m.hidden);
+      let s = `<div class="layer grp${depth ? ' child d' + depth : ''}${all ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}" data-g="${g.id}"${S.canEdit ? ' draggable="true"' : ''}><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic">${ic('group', 14)}</span><span class="nm">${esc(g.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
+      if (open) members.forEach(m => { s += layerRow(m, depth + 1); });
+      return s;
+    };
+    for (const n of top) {
+      const p = inPanel.get(n.id), g = inGroup.get(n.id);
+      if (p) {
+        if (done.has(p.id)) continue;
+        done.add(p.id);
+        const members = top.filter(m => p.members.includes(m.id));
+        const open = !UI.collapsed[p.id], allHidden = members.every(m => m.hidden);
+        h += `<div class="layer pnl${sp === p ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}${p.folded ? ' folded' : ''}" data-p="${p.id}"><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic" style="color:${COLORS[p.color] || COLORS.slate}">${ic('panel', 14)}</span><span class="nm">${esc(p.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
+        if (!open) continue;
+        const inner = new Set();
+        for (const m of members) {
+          const mg = inGroup.get(m.id);
+          if (!mg) { h += layerRow(m, 1); continue; }
+          if (inner.has(mg.id)) continue;
+          inner.add(mg.id);
+          h += groupRows(mg, 1, members);
+        }
+        continue;
+      }
+      if (g) {
+        if (done.has(g.id)) continue;
+        done.add(g.id);
+        h += groupRows(g, 0, top);
+        continue;
+      }
+      h += layerRow(n, 0);
     }
   }
   $('#layers').innerHTML = h;
@@ -677,23 +774,32 @@ function renderInspector() {
       <button class="ibtn" data-ia="reverse">${ic('swap', 14)} Reverse direction</button>
       ${ed.bend ? `<button class="ibtn" data-ia="unbend">${ic('refresh', 14)} Reset curve</button>` : ''}
       <button class="ibtn danger" data-ia="del">${ic('trash', 14)} Delete <kbd>Del</kbd></button></div>`;
+  } else if (selectedPanel()) {
+    const p = selectedPanel();
+    h = `<div class="sec-head"><span>${esc(p.name)}</span><span class="cnt">Panel</span></div><div class="insp">
+      <div class="ihead">Look</div>
+      <div class="glooks">${PANEL_LOOKS.map(([k, name]) => `<button class="glook${p.look === k ? ' on' : ''}" data-ia="plook" data-v="${k}" title="${name}"><span class="gl-prev gl-${k}"></span>${name}</button>`).join('')}</div>
+      <div class="ihead">Frame colour</div><div class="swrow">${Object.entries(COLORS).map(([k, v]) => `<button class="sw${(p.color || 'slate') === k ? ' on' : ''}" data-pc="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('')}</div>
+      <div class="row2"><button class="ibtn" style="flex:1" data-ia="pfold">${ic('chevr', 14)} ${p.folded ? 'Unfold' : 'Fold'}</button><button class="ibtn" style="flex:1" data-ia="prename">${ic('edit', 14)} Rename</button></div>
+      ${p.folded ? '' : `<div class="row4"><button class="ib" data-ia="align" data-v="l" title="Align left">${ic('alignl', 15)}</button><button class="ib" data-ia="align" data-v="c" title="Align centres">${ic('alignc', 15)}</button><button class="ib" data-ia="align" data-v="t" title="Align top">${ic('alignt', 15)}</button><button class="ib" data-ia="tidy" title="Tidy up">${ic('tidy', 15)}</button></div>`}
+      <button class="ibtn" data-ia="unpanel">${ic('panel', 14)} Remove panel (keep nodes)</button>
+      <button class="ibtn danger" data-ia="del">${ic('trash', 14)} Delete panel and nodes</button></div>`;
   } else if (S.sel.size === 1) {
-    const n = nodeById([...S.sel][0]);
+    const n = nodeById([...S.sel][0]), p = n && panelOf(n.id);
     if (n) h = `<div class="sec-head"><span>${NODE_LABEL[n.type]}</span></div><div class="insp">
       <div class="seg3">${['title', 'note', 'sub'].map(t => `<button class="seg${n.type === t ? ' on' : ''}" data-ia="type" data-v="${t}">${NODE_LABEL[t]}</button>`).join('')}</div>
       <div class="swrow">${swatches(n.color)}</div>
       <div class="row2"><button class="ibtn" style="flex:1" data-ia="dup">${ic('copy', 14)} Duplicate</button><button class="ibtn danger" data-ia="del" aria-label="Delete">${ic('trash', 14)}</button></div>
+      ${p ? `<button class="ibtn" data-ia="outpanel">${ic('panel', 14)} Take out of “${esc(p.name)}”</button>` : `<button class="ibtn" data-ia="panel">${ic('panel', 14)} Put in a panel <kbd>P</kbd></button>`}
       <div class="meta">X ${Math.round(n.x)} · Y ${Math.round(n.y)} · W ${n.w}</div></div>`;
   } else if (S.sel.size > 1) {
-    const ids = [...S.sel], g = groupOf(ids[0]);
-    const isGroup = g && g.members.length === ids.length && ids.every(id => g.members.includes(id));
-    h = `<div class="sec-head"><span>${isGroup ? esc(g.name) : S.sel.size + ' selected'}</span></div><div class="insp">
+    const g = selectedGroup(), inPanel = [...S.sel].some(id => panelOf(id));
+    h = `<div class="sec-head"><span>${g ? esc(g.name) : S.sel.size + ' selected'}</span>${g ? '<span class="cnt">Group</span>' : ''}</div><div class="insp">
       <div class="row4"><button class="ib" data-ia="align" data-v="l" title="Align left">${ic('alignl', 15)}</button><button class="ib" data-ia="align" data-v="c" title="Align centres">${ic('alignc', 15)}</button><button class="ib" data-ia="align" data-v="t" title="Align top">${ic('alignt', 15)}</button><button class="ib" data-ia="tidy" title="Tidy up">${ic('tidy', 15)}</button></div>
-      <div class="ihead">${isGroup ? 'Node colour' : 'Colour'}</div><div class="swrow">${swatches(null)}</div>
-      ${isGroup ? `<div class="ihead">Group look</div>
-      <div class="glooks">${GROUP_LOOKS.map(([k, name]) => `<button class="glook${(g.look || 'clear') === k ? ' on' : ''}" data-ia="glook" data-v="${k}" title="${name}"><span class="gl-prev gl-${k}"></span>${name}</button>`).join('')}</div>
-      <div class="ihead">Frame colour</div><div class="swrow">${Object.entries(COLORS).map(([k, v]) => `<button class="sw${(g.color || 'slate') === k ? ' on' : ''}" data-gc="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('')}</div>
-      <div class="row2"><button class="ibtn" style="flex:1" data-ia="grename">${ic('edit', 14)} Rename</button><button class="ibtn" style="flex:1" data-ia="ungroup">${ic('group', 14)} Ungroup</button></div>` : `<button class="ibtn" data-ia="group">${ic('group', 14)} Group <kbd>${MOD} G</kbd></button>`}
+      <div class="ihead">${g ? 'Node colour' : 'Colour'}</div><div class="swrow">${swatches(null)}</div>
+      ${g ? `<div class="row2"><button class="ibtn" style="flex:1" data-ia="grename">${ic('edit', 14)} Rename</button><button class="ibtn" style="flex:1" data-ia="ungroup">${ic('group', 14)} Ungroup</button></div>` : `<button class="ibtn" data-ia="group">${ic('group', 14)} Group <kbd>${MOD} G</kbd></button>`}
+      <button class="ibtn" data-ia="panel">${ic('panel', 14)} Put in a new panel <kbd>P</kbd></button>
+      ${inPanel ? `<button class="ibtn" data-ia="outpanel">${ic('panel', 14)} Take out of panel</button>` : ''}
       <button class="ibtn danger" data-ia="del">${ic('trash', 14)} Delete <kbd>Del</kbd></button></div>`;
   }
   box.innerHTML = h;
@@ -728,5 +834,5 @@ function renderEmptyHint() {
 function renderAll(force) {
   syncNodes(force);
   renderEnvs(); renderLayers(); renderInspector(); renderTop(true); renderEmptyHint();
-  drawEdges(); drawGroups(); drawMinimap(); drawBubbles(); renderSugPanel();
+  drawEdges(); drawFrames(); drawMinimap(); drawBubbles(); renderSugPanel();
 }

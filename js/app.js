@@ -225,19 +225,34 @@ function editSelection() {
   const start = pre.toString().length;
   return { start, end: Math.min(len, start + r.toString().length) };
 }
+/* character offset -> [text node, offset]; the field can hold several text nodes while typing */
+function textPos(el, off) {
+  const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let n, last = null;
+  while ((n = w.nextNode())) { if (off <= n.length) return [n, Math.max(0, off)]; off -= n.length; last = n; }
+  return last ? [last, last.length] : [el, 0];
+}
 function setEditSelection(a, b) {
   const el = S.editing && S.editing.el;
   if (!el) return;
-  el.normalize();
-  if (!el.firstChild || el.childNodes.length > 1 || el.firstChild.nodeType !== 3) el.textContent = el.textContent;
-  if (!el.firstChild) el.appendChild(document.createTextNode(''));
-  const tn = el.firstChild, r = document.createRange();
-  r.setStart(tn, clamp(a, 0, tn.length)); r.setEnd(tn, clamp(b, 0, tn.length));
+  const [sn, so] = textPos(el, a), [en, eo] = textPos(el, b), r = document.createRange();
+  r.setStart(sn, so); r.setEnd(en, eo);
   const s = getSelection(); s.removeAllRanges(); s.addRange(r);
 }
+/* Replace the field's text through the browser's own editing command, so Ctrl+Z / Ctrl+Y
+   undo and redo formatting just like typing. Only the part that changed is replaced. */
 function commitEditText(text, a, b) {
-  const ed = S.editing;
-  ed.el.textContent = text;
+  const ed = S.editing, el = ed.el, old = el.textContent;
+  if (text !== old) {
+    let p = 0, s = 0;
+    while (p < old.length && p < text.length && old[p] === text[p]) p++;
+    while (s < old.length - p && s < text.length - p && old[old.length - 1 - s] === text[text.length - 1 - s]) s++;
+    setEditSelection(p, old.length - s);
+    const ins = text.slice(p, text.length - s);
+    let ok = false;
+    try { ok = ins ? document.execCommand('insertText', false, ins) : document.execCommand('delete', false); } catch (_) {}
+    if (!ok || el.textContent !== text) el.textContent = text;
+  }
   setEditSelection(a, b);
   setPath(nodeById(ed.id), ed.f, text);
   changed();
@@ -632,7 +647,9 @@ function nudge(dx, dy) {
 function addEdge(from, fs, to, ts) {
   const e = env();
   if (from === to) return false;
-  if (e.edges.some(x => (x.from === from && x.to === to) || (x.from === to && x.to === from))) { toast('Those nodes are already connected'); return false; }
+  /* two nodes can be linked several times through different sides; only an identical line is refused */
+  const same = x => (x.from === from && x.fs === fs && x.to === to && x.ts === ts) || (x.from === to && x.fs === ts && x.to === from && x.ts === fs);
+  if (e.edges.some(same)) { toast('Those sides are already connected'); return false; }
   e.edges.push({ id: uid('l'), from, fs, to, ts, label: '', arrow: true, dashed: false });
   return true;
 }
@@ -778,6 +795,7 @@ nodesWrap.addEventListener('click', e => {
   }
 });
 nodesWrap.addEventListener('dblclick', e => {
+  e.stopPropagation();
   const img = e.target.closest('.b-img img');
   if (img) { openLightbox(img.src, img.alt); return; }
   if (!S.canEdit) return;
@@ -986,7 +1004,7 @@ function onUp(e) {
 function abortGestures() {
   EG = null;
   if (CONN) cancelConnect();
-  if (DRAG) endDrag();
+  if (DRAG) endDrag(true);
   if (BD) { BD.target = null; endBlockDrag({}); }
   if (MQ) endMarquee();
   if (RZ) endResize();
@@ -1025,6 +1043,7 @@ function startDrag(e, lead, narrow) {
   if (!ids.length) return;
   DRAG = {
     lead, ids, set: new Set(ids), sx: e.clientX, sy: e.clientY, moved: false, narrow,
+    field: e.target && e.target.closest ? e.target.closest('[data-f]') : null,
     orig: new Map(ids.map(id => { const n = nodeById(id); return [id, { x: n.x, y: n.y }]; })),
     bb: bboxOf(ids.map(nodeById), true),
   };
@@ -1050,10 +1069,16 @@ function moveDrag(e) {
   drawGuides(guides);
   kick();
 }
-function endDrag() {
+function endDrag(aborted) {
   const d = DRAG;
   DRAG = null;
-  if (!d.moved) { if (d.narrow && S.sel.size > 1) selectNodes([d.lead]); return; }
+  if (!d.moved) {
+    if (aborted) return;
+    if (d.narrow && S.sel.size > 1) selectNodes([d.lead]);
+    /* clicking the text of a node that was already selected starts editing right there */
+    else if (d.narrow && d.field && d.field.isConnected) startEdit(d.field, d.sx, d.sy);
+    return;
+  }
   document.body.classList.remove('dragging-nodes');
   drawGuides([]);
   d.ids.forEach(id => { const el = NODE_EL.get(id); if (el) el.style.filter = ''; });
@@ -1167,14 +1192,7 @@ function moveConnect(e) {
       for (const s of SIDES) { const p = portPos(n, s), d = Math.hypot(p.x - w.x, p.y - w.y); if (d < dd) { dd = d; best = { id: n.id, side: s, p }; } }
     }
   }
-  /* once over a node, preview exactly how the finished line will be routed */
-  let from = p0, fromSide = CONN.side, to = w, toSide = facingSide(p0, w);
-  if (best) {
-    const ra = rectOf(src), rb = rectOf(nodeById(best.id));
-    [fromSide, toSide] = autoSides(ra, rb, CONN.side, best.side);
-    best.side = toSide;
-    from = sidePoint(ra, fromSide, 0); to = sidePoint(rb, toSide, 0);
-  }
+  const from = p0, fromSide = CONN.side, to = best ? best.p : w, toSide = best ? best.side : facingSide(p0, w);
   const key = best ? best.id + best.side : '';
   if (CONN.key !== key) {
     clearConnHL();
@@ -1216,32 +1234,8 @@ function endConnect(e) {
     toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
     return;
   }
-  const src = nodeById(c.from), hit = document.elementFromPoint(e.clientX, e.clientY);
-  const w = toWorld(e.clientX, e.clientY), p0 = src && portPos(src, c.side);
-  if (!src || !hit || !vp.contains(hit) || Math.hypot(w.x - p0.x, w.y - p0.y) * V.z < 30) { connPreview.setAttribute('d', ''); return; }
-  openMenu(e.clientX, e.clientY, [
-    { head: 'Connect to a new…' },
-    { label: 'Note', icon: 'note', kbd: 'N', fn: () => createConnected('note', c, w) },
-    { label: 'Sub-note', icon: 'sub', kbd: 'S', fn: () => createConnected('sub', c, w) },
-    { label: 'Title node', icon: 'title', kbd: 'T', fn: () => createConnected('title', c, w) },
-  ], { onClose: () => connPreview.setAttribute('d', ''), keys: { n: 1, s: 2, t: 3 } });
-}
-function createConnected(type, c, w) {
-  if (!roomFor(1)) return;
-  endEdit(); checkpoint();
-  const src = nodeById(c.from), p0 = portPos(src, c.side), side = facingSide(p0, w);
-  const W = NODE_W[type], Hh = type === 'sub' ? 84 : type === 'title' ? 130 : 120;
-  let x, y;
-  if (side === 'l') { x = w.x; y = w.y - Hh / 2; }
-  else if (side === 'r') { x = w.x - W; y = w.y - Hh / 2; }
-  else if (side === 't') { x = w.x - W / 2; y = w.y; }
-  else { x = w.x - W / 2; y = w.y - Hh; }
-  const n = addNodeRaw(type, snapV(x), snapV(y));
-  if (src.color !== 'default') n.color = src.color;
-  addEdge(c.from, c.side, n.id, side);
-  S.sel = new Set([n.id]); S.edgeSel = null;
-  structureChanged(); refreshSel(); popIn([n.id]);
-  editField(n.id, 'title');
+  /* let go over nothing: no connection */
+  connPreview.setAttribute('d', '');
 }
 
 /* drag a block (within a node, into another node, or out onto the board) */
@@ -1873,10 +1867,7 @@ vp.addEventListener('dblclick', e => {
   const eg = t.closest('[data-e]');
   if (eg) { editEdgeLabel(eg.dataset.e); return; }
   const gl = t.closest('.glabel');
-  if (gl) { renameGroup(gl.dataset.g); return; }
-  if (t.closest('.node') || !S.canEdit) return;
-  const w = toWorld(e.clientX, e.clientY);
-  createNode('note', w.x, w.y);
+  if (gl) renameGroup(gl.dataset.g);
 });
 
 /* ===================== theme, help, share, preview ===================== */
@@ -1898,13 +1889,14 @@ function openHelp() {
   const K = [
     ['Pan', 'Middle-drag · Space-drag'], ['Zoom', 'Scroll · Ctrl+scroll · pinch'],
     ['Select', 'Click · drag on empty space'], ['Add to selection', 'Shift+click'],
-    ['Add a node', 'Right-click · double-click · T N S'], ['Edit text', 'Double-click'],
+    ['Add a node', 'Right-click empty space · T N S'], ['Edit text', 'Double-click, or click a selected node’s text'],
+    ['Connect', 'Drag from a side dot to a side dot'], ['Disconnect', 'Drag a line away'],
     ['Place freely (no snapping)', 'Hold Ctrl while dragging'], ['Connect nodes', 'Drag from a side dot'],
     ['Move a block', 'Drag its ⋮⋮ handle'], ['Nudge', 'Arrows (Shift ×4, Ctrl 1px)'],
     ['Duplicate', 'Ctrl+D'], ['Copy · paste', 'Ctrl+C · Ctrl+V'],
     ['Copy text as Markdown', 'Ctrl+Alt+C'],
     ['Group · ungroup', 'Ctrl+G · Ctrl+Shift+G'], ['Hide · show', 'Ctrl+Shift+H or the eye in Layers'],
-    ['Disconnect', 'Drag a connection away'], ['Undo · redo', 'Ctrl+Z · Ctrl+Shift+Z'],
+    ['Undo · redo', 'Ctrl+Z · Ctrl+Shift+Z'],
     ['Delete', 'Delete'], ['Fit all · selection', 'Shift+1 · Shift+2'],
     ['Zoom to 100%', 'Ctrl+0'], ['Publish', 'Ctrl+S'],
   ].map(([a, b]) => `<div><span>${a}</span><kbd>${esc(b.replace(/Ctrl/g, MOD))}</kbd></div>`).join('');

@@ -24,6 +24,7 @@ const EDGE_TYPES = {
   partof:      { label: 'Part of',        icon: 'partof', color: '#8f9bb3', group: 'Time & structure' },
   example:     { label: 'Example of',     icon: 'bulb',   color: '#8f9bb3', group: 'Time & structure' },
 };
+const GROUP_LOOK_IDS = ['clear', 'dotted', 'hatched', 'panel'];
 const BLOCKS = [
   ['text', 'Text', 'Plain paragraph'],
   ['highlight', 'Highlight', 'Emphasised box'],
@@ -118,13 +119,20 @@ function migrate(doc) {
       });
     });
     const ids = new Set(e.nodes.map(n => n.id));
-    e.edges = e.edges.filter(x => ids.has(x.from) && ids.has(x.to));
+    e.groups.forEach(g => {
+      g.id = g.id || uid('g'); g.name = String(g.name || 'Group');
+      g.members = (g.members || []).filter(id => ids.has(id));
+      if (!GROUP_LOOK_IDS.includes(g.look) || g.look === 'clear') delete g.look;
+      if (!COLORS[g.color]) delete g.color;
+    });
+    e.groups = e.groups.filter(g => g.members.length > 1);
+    /* a connection may join nodes and/or groups */
+    const ends = new Set([...ids, ...e.groups.map(g => g.id)]);
+    e.edges = e.edges.filter(x => ends.has(x.from) && ends.has(x.to) && x.from !== x.to);
     e.edges.forEach(x => {
       if (!x.bend || !isFinite(x.bend.dx) || !isFinite(x.bend.dy)) delete x.bend;
       if (!EDGE_TYPES[x.type]) delete x.type;
     });
-    e.groups.forEach(g => { g.members = (g.members || []).filter(id => ids.has(id)); });
-    e.groups = e.groups.filter(g => g.members.length > 1);
   });
   return doc;
 }

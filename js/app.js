@@ -483,7 +483,10 @@ function nodesMarkdown(ns) {
     });
     const out = es.filter(x => x.from === n.id);
     if (out.length) {
-      L.push('', '→ ' + out.map(x => { const t = nodeById(x.to); return `[${nodeName(t)}](#${mdSlug(nodeName(t))})${x.label ? ` *(${x.label})*` : ''}`; }).join(' · '));
+      L.push('', '→ ' + out.map(x => {
+        const t = nodeById(x.to), T = EDGE_TYPES[x.type];
+        return `${T ? `**${T.label}** ` : ''}[${nodeName(t)}](#${mdSlug(nodeName(t))})${x.label ? ` *(${x.label})*` : ''}`;
+      }).join(' · '));
     }
     return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   });
@@ -675,11 +678,12 @@ function editEdgeLabel(id) {
   const r = EDGE_EL.get(id);
   if (!r) return;
   checkpoint();
-  const lab = r.lab;
+  const lab = r.labTx;            /* only the text part; the type badge beside it stays as it is */
   lab.setAttribute('contenteditable', PLAIN);
-  lab.style.display = '';
-  lab.classList.remove('empty');
+  r.lab.style.display = '';
+  r.lab.classList.remove('empty', 'notext');
   lab.textContent = ed.label;
+  drawEdges();
   lab.focus();
   const rg = document.createRange(); rg.selectNodeContents(lab);
   const s = getSelection(); s.removeAllRanges(); s.addRange(rg);
@@ -974,7 +978,7 @@ function onDown(e) {
     selectEdge(eg.dataset.e);
     if (!S.canEdit) return;
     /* the middle dot (or a line's label) bends the line; anywhere else on the line pulls it off to disconnect */
-    if (t.closest('.bend, .bend-hit') || (eg.classList.contains('elabel') && !eg.hasAttribute('contenteditable'))) BEND = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY, moved: false };
+    if (t.closest('.bend, .bend-hit') || (eg.classList.contains('elabel') && !eg.querySelector('[contenteditable]'))) BEND = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY, moved: false };
     else EG = { id: eg.dataset.e, sx: e.clientX, sy: e.clientY };
     return;
   }
@@ -1547,7 +1551,7 @@ vp.addEventListener('contextmenu', e => {
   }
   endEdit();
   const eg = t.closest('[data-e]');
-  if (eg) { selectEdge(eg.dataset.e); openMenu(x, y, edgeMenu(eg.dataset.e)); return; }
+  if (eg) { selectEdge(eg.dataset.e); openMenu(x, y, edgeMenu(eg.dataset.e), edgeMenuOpts(eg.dataset.e)); return; }
   const gl = t.closest('.glabel');
   if (gl) {
     const g = env().groups.find(q => q.id === gl.dataset.g);
@@ -1622,6 +1626,18 @@ function blockMenu(n, i, x, y) {
     { label: 'Delete block', icon: 'trash', danger: true, fn: () => { endEdit(); checkpoint(); n.blocks.splice(i, 1); renderNode(n); changed(); } },
   ];
 }
+function setEdgeType(id, type) {
+  const ed = env().edges.find(x => x.id === id);
+  if (!ed || (ed.type || '') === (type || '')) return;
+  checkpoint();
+  if (EDGE_TYPES[type]) ed.type = type; else delete ed.type;
+  drawEdges(); renderInspector(); changed();
+}
+/* clicks on the type grid inside the line's menu */
+const edgeMenuOpts = id => ({
+  cls: 'emenu',
+  onClick: e => { const b = e.target.closest('[data-etype]'); if (b) { closeMenu(); setEdgeType(id, b.dataset.etype); } return false; },
+});
 function edgeMenu(id) {
   const ed = env().edges.find(x => x.id === id);
   const st = lineStyle(ed);
@@ -1632,6 +1648,9 @@ function edgeMenu(id) {
     '-',
     { label: 'Arrow', icon: 'arrowr', check: ed.arrow, fn: () => edgeSet(id, { arrow: !ed.arrow }) },
     { label: 'Dashed', icon: 'dash', check: ed.dashed, fn: () => edgeSet(id, { dashed: !ed.dashed }) },
+    { head: 'Connection type' },
+    { html: typeGridHTML(ed.type) },
+    '-',
     { label: ed.label ? 'Edit label' : 'Add label', icon: 'edit', fn: () => editEdgeLabel(id) },
     { label: 'Reverse direction', icon: 'swap', fn: () => reverseEdge(id) },
     ed.bend && { label: 'Reset curve', icon: 'refresh', fn: () => resetBend(id) },
@@ -2050,6 +2069,8 @@ $('#layer-filter').addEventListener('keydown', e => {
 
 /* inspector */
 $('#inspector').addEventListener('click', e => {
+  const et = e.target.closest('[data-etype]');
+  if (et) { setEdgeType(S.edgeSel, et.dataset.etype); return; }
   const sw = e.target.closest('[data-sw]');
   if (sw) { setColor(sw.dataset.sw); return; }
   const b = e.target.closest('[data-ia]');

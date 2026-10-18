@@ -8,6 +8,18 @@ const V = { x: 0, y: 0, z: 1 };
 let VR = { left: 0, top: 0, width: 800, height: 600 };
 const DIR = { t: { x: 0, y: -1 }, b: { x: 0, y: 1 }, l: { x: -1, y: 0 }, r: { x: 1, y: 0 } };
 
+/* one coloured arrowhead per connection type, shaped like the default one */
+(() => {
+  const defs = $('#edges defs'), base = $('#arrow');
+  for (const [k, t] of Object.entries(EDGE_TYPES)) {
+    const m = base.cloneNode(true);
+    m.id = 'arrow-t-' + k;
+    m.querySelector('path').setAttribute('class', '');
+    m.querySelector('path').setAttribute('fill', t.color);
+    defs.appendChild(m);
+  }
+})();
+
 /* ---------- geometry ---------- */
 function pos(id) { return DISP.get(id) || nodeById(id); }
 function sizeOf(n) { return SIZE.get(n.id) || { w: n.w, h: n.type === 'sub' ? 96 : n.type === 'title' ? 140 : 160 }; }
@@ -144,6 +156,18 @@ function roundedPath(raw, r) {
     half -= lens[i - 1];
   }
   return { d, mid };
+}
+/* Two side-dots that are almost level (or almost in line) get the same height (or x), so the line is
+   perfectly straight. This also keeps lines straight when a node is a little taller in edit mode
+   (because of its "+ Item" style buttons) than it is for visitors. */
+const STRAIGHTEN = 40;
+function straighten(p1, s1, ra, p2, s2, rb) {
+  const h1 = s1 === 'l' || s1 === 'r', h2 = s2 === 'l' || s2 === 'r';
+  if (h1 !== h2) return;
+  const k = h1 ? 'y' : 'x', pos = h1 ? 'y' : 'x', size = h1 ? 'h' : 'w';
+  const lo = Math.max(ra[pos], rb[pos]) + 12, hi = Math.min(ra[pos] + ra[size], rb[pos] + rb[size]) - 12;
+  if (lo > hi || Math.abs(p1[k] - p2[k]) > STRAIGHTEN) return;
+  p1[k] = p2[k] = clamp((p1[k] + p2[k]) / 2, lo, hi);
 }
 function sidePoint(r, side, off) {
   if (side === 't') return { x: r.x + r.w / 2 + off, y: r.y };
@@ -373,6 +397,7 @@ function drawEdges() {
   for (const it of list) {
     const ed = it.ed, style = lineStyle(ed);
     const p1 = sidePoint(it.ra, it.s1, it.o1), p2 = sidePoint(it.rb, it.s2, it.o2);
+    if (!ed.bend) straighten(p1, it.s1, it.ra, p2, it.s2, it.rb);
     let avoid = null;
     if (style === 'geometric') { avoid = []; for (const [id, rc] of rects) if (id !== ed.from && id !== ed.to) avoid.push(rc); }
     const g = bez(p1, it.s1, p2, it.s2, style, avoid, bendPoint(ed, p1, p2));
@@ -386,27 +411,42 @@ function drawEdges() {
       const knobHit = document.createElementNS(SVGNS, 'circle'); knobHit.setAttribute('class', 'bend-hit'); knobHit.setAttribute('r', '14');
       const knob = document.createElementNS(SVGNS, 'circle'); knob.setAttribute('class', 'bend'); knob.setAttribute('r', '5.5');
       gEl.append(hit, vis, knobHit, knob); edgeG.appendChild(gEl);
+      /* the label pill: a type badge (icon) and the label text */
       const lab = document.createElement('div'); lab.className = 'elabel'; lab.dataset.e = ed.id;
+      const labIc = document.createElement('span'); labIc.className = 'et-ic';
+      const labTx = document.createElement('span'); labTx.className = 'et-tx';
+      lab.append(labIc, labTx);
       labelsWrap.appendChild(lab);
-      r = { g: gEl, hit, vis, knob, knobHit, lab, cls: '' };
+      r = { g: gEl, hit, vis, knob, knobHit, lab, labIc, labTx, cls: '', type: '' };
       EDGE_EL.set(ed.id, r);
     }
     r.hit.setAttribute('d', g.d); r.vis.setAttribute('d', g.d);
     if (r.maskPath) r.maskPath.setAttribute('d', g.d);
     for (const c of [r.knob, r.knobHit]) { c.setAttribute('cx', f1(g.mid.x)); c.setAttribute('cy', f1(g.mid.y)); }
     Object.assign(r, { p1, p2, s1: it.s1, s2: it.s2, mid: g.mid });
-    const sel = S.edgeSel === ed.id, rel = !sel && !r.drawing && (S.sel.has(ed.from) || S.sel.has(ed.to));
-    const cls = 'edge' + (sel ? ' sel' : '') + (rel ? ' rel' : '') + (ed.dashed ? ' dashed' : '') + (ed.label ? ' haslabel' : '') + (ed.bend ? ' bent' : '') + (r.drawing ? ' draw' : '');
+    const T = EDGE_TYPES[ed.type], sel = S.edgeSel === ed.id, rel = !sel && !r.drawing && (S.sel.has(ed.from) || S.sel.has(ed.to));
+    const cls = 'edge' + (sel ? ' sel' : '') + (rel ? ' rel' : '') + (ed.dashed ? ' dashed' : '') + (ed.label || T ? ' haslabel' : '') + (ed.bend ? ' bent' : '') + (T ? ' typed' : '') + (r.drawing ? ' draw' : '');
     if (r.cls !== cls) { r.g.setAttribute('class', cls); r.cls = cls; }
-    if (ed.arrow) r.vis.setAttribute('marker-end', sel || rel ? 'url(#arrow-hi)' : 'url(#arrow)');
+    if (r.type !== (ed.type || '')) {
+      r.type = ed.type || '';
+      for (const el of [r.g, r.lab]) { if (T) el.style.setProperty('--ec', T.color); else el.style.removeProperty('--ec'); }
+      r.labIc.innerHTML = T ? ic(T.icon, 12) : '';
+      r.lab.title = T ? T.label : '';
+    }
+    if (ed.arrow) r.vis.setAttribute('marker-end', T ? `url(#arrow-t-${ed.type})` : sel || rel ? 'url(#arrow-hi)' : 'url(#arrow)');
     else r.vis.removeAttribute('marker-end');
-    const editingLabel = r.lab.hasAttribute('contenteditable');
-    if (ed.label || editingLabel || (sel && S.canEdit)) {
+    const editingLabel = r.labTx.hasAttribute('contenteditable');
+    const showText = !!ed.label || editingLabel || (sel && S.canEdit);
+    if (showText || T) {
       r.lab.style.display = '';
-      if (!editingLabel && r.lab.textContent !== ed.label) r.lab.textContent = ed.label;
-      r.lab.classList.toggle('empty', !ed.label);
-      /* an empty label hint sits just below the middle dot instead of covering it */
-      r.lab.style.transform = `translate(${g.mid.x}px,${g.mid.y}px) translate(-50%,${ed.label || editingLabel ? '-50%' : '12px'})`;
+      if (!editingLabel && r.labTx.textContent !== ed.label) r.labTx.textContent = ed.label;
+      r.lab.classList.toggle('typed', !!T);
+      r.lab.classList.toggle('empty', !ed.label && !editingLabel);
+      r.lab.classList.toggle('notext', !showText);
+      /* a type badge or label sits on the line's middle (and works as its bend handle);
+         an empty "add a label" hint sits just below the middle dot instead of covering it */
+      const centred = ed.label || editingLabel || T;
+      r.lab.style.transform = `translate(${g.mid.x}px,${g.mid.y}px) translate(-50%,${centred ? '-50%' : '12px'})`;
     } else r.lab.style.display = 'none';
   }
   for (const [id, r] of EDGE_EL) if (!seen.has(id)) { r.g.remove(); r.lab.remove(); if (r.mask) r.mask.remove(); EDGE_EL.delete(id); }
@@ -580,6 +620,13 @@ function renderLayers() {
   }
   $('#layers').innerHTML = h;
 }
+/* grid of connection types (used in the line's right-click menu and in the inspector) */
+function typeGridHTML(cur) {
+  const groups = {};
+  Object.entries(EDGE_TYPES).forEach(([k, t]) => { (groups[t.group] = groups[t.group] || []).push([k, t]); });
+  const btn = (k, t) => `<button class="tt${(cur || '') === k ? ' on' : ''}" data-etype="${k}" style="--ec:${t ? t.color : 'var(--line)'}" title="${t ? t.label : 'Default'}"><span class="tt-ic">${t ? ic(t.icon, 12) : ''}</span><span class="tt-nm">${t ? t.label : 'Default'}</span></button>`;
+  return `<div class="tgrid">${btn('', null)}${Object.entries(groups).map(([g, list]) => `<div class="tgroup">${esc(g)}</div>${list.map(([k, t]) => btn(k, t)).join('')}`).join('')}</div>`;
+}
 function swatches(cur) {
   return Object.entries(COLORS).map(([k, v]) => `<button class="sw${cur === k ? ' on' : ''}" data-sw="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('');
 }
@@ -594,6 +641,7 @@ function renderInspector() {
     if (ed) h = `<div class="sec-head"><span>Connection</span></div><div class="insp">
       <div class="seg3"><button class="seg${st === 'fluid' ? ' on' : ''}" data-ia="estyle" data-v="fluid">${ic('fluid', 14)} Fluid</button><button class="seg${st === 'geometric' ? ' on' : ''}" data-ia="estyle" data-v="geometric">${ic('geo', 14)} Geometric</button></div>
       <div class="row2"><button class="seg${ed.arrow ? ' on' : ''}" data-ia="arrow">${ic('arrowr', 14)} Arrow</button><button class="seg${ed.dashed ? ' on' : ''}" data-ia="dashed">${ic('dash', 14)} Dashed</button></div>
+      <div class="ihead">Connection type</div>${typeGridHTML(ed.type)}
       <button class="ibtn" data-ia="elabel">${ic('edit', 14)} ${ed.label ? 'Edit label' : 'Add label'}</button>
       <button class="ibtn" data-ia="reverse">${ic('swap', 14)} Reverse direction</button>
       ${ed.bend ? `<button class="ibtn" data-ia="unbend">${ic('refresh', 14)} Reset curve</button>` : ''}

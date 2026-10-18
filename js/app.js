@@ -2162,6 +2162,9 @@ function openSettings() {
     <label class="tog"><input type="checkbox" id="s-snap"${CFG.snap !== false ? ' checked' : ''}><span></span>Snap to the grid and to other nodes (hold Ctrl to bypass)</label>
     <div class="field"><span>Connection lines<br><small class="hint">Default for every line. Right-click a line to change just that one.</small></span><div class="segs" id="s-lines"><button data-v="fluid" class="${(DOC.lineStyle || 'fluid') === 'fluid' ? 'on' : ''}">Fluid</button><button data-v="geometric" class="${DOC.lineStyle === 'geometric' ? 'on' : ''}">Geometric</button></div></div>
     <label class="tog"><input type="checkbox" id="s-nolimit"${CFG.noLimit ? ' checked' : ''}><span></span>Remove the ${NODE_LIMIT.toLocaleString()}-node limit per environment (very large boards can get slow)</label></section>
+    <section><h4>${ic('bubble', 15)} Visitor suggestions</h4><p class="hint">Without a relay, visitors need a GitHub account to send suggestions. With a relay (a free Cloudflare Worker, see the README), anyone can send one without signing in. Paste the relay's address here, then publish.</p>
+    <div class="grid2" style="grid-template-columns:1fr"><label>Relay address<input id="s-relay" value="${esc(DOC.relay || '')}" placeholder="https://flogic-relay.your-name.workers.dev" spellcheck="false" autocomplete="off"></label></div>
+    <div class="mrow"><span class="sstat" id="s-relay-st">${DOC.relay ? 'Visitors can send suggestions without signing in' : 'Not set: visitors use GitHub to send suggestions'}</span><span class="grow"></span><button class="btn" id="s-relay-test">Test</button><button class="btn primary" id="s-relay-save">Save</button></div></section>
     <section><h4>${ic('download', 15)} Backup</h4><p class="hint">Your work autosaves in this browser. Export a copy now and then, or import one to replace this board.</p>
     <div class="mrow" style="margin-top:0"><button class="btn" id="s-exp">${ic('download', 14)} Export JSON</button><button class="btn" id="s-imp">${ic('upload', 14)} Import JSON</button>${S.connected ? `<button class="btn" id="s-pull">${ic('refresh', 14)} Reload from GitHub</button>` : ''}</div></section>` : '';
   const m = openModal(`<div class="mhead"><h3>${S.canEdit ? 'Settings' : 'Sign in to edit'}</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div><div class="mbody">${conn}${prefs}</div>`);
@@ -2191,6 +2194,31 @@ function openSettings() {
   });
   const auto = q('#s-auto');
   if (auto) auto.addEventListener('change', () => { CFG.autoPublish = auto.checked; saveCfg(); scheduleAuto(); });
+  const relayIn = q('#s-relay'), relaySt = q('#s-relay-st');
+  const relayVal = () => relayIn.value.trim().replace(/\/+$/, '');
+  if (relayIn) {
+    q('#s-relay-save').addEventListener('click', () => {
+      const v = relayVal();
+      if (v && !/^https:\/\/[^\s<>"']+$/i.test(v)) { relaySt.className = 'sstat err'; relaySt.textContent = 'The address must start with https://'; return; }
+      if ((DOC.relay || '') === v) { relaySt.className = 'sstat ok'; relaySt.textContent = 'Saved'; return; }
+      checkpoint();
+      if (v) DOC.relay = v; else delete DOC.relay;
+      changed();
+      relaySt.className = 'sstat ok';
+      relaySt.textContent = v ? 'Saved. Publish so visitors get it.' : 'Removed. Publish so visitors get it.';
+    });
+    q('#s-relay-test').addEventListener('click', async () => {
+      const v = relayVal();
+      if (!/^https:\/\//i.test(v)) { relaySt.className = 'sstat err'; relaySt.textContent = 'Enter the relay address first'; return; }
+      relaySt.className = 'sstat'; relaySt.textContent = 'Checking…';
+      try {
+        const r = await fetch(v, { cache: 'no-store' }), j = await r.json();
+        if (!j || j.service !== 'flogic-relay') throw new Error('that address is not a Flogic relay');
+        if (!j.configured) throw new Error('the relay is running but GITHUB_TOKEN, REPO or ALLOWED_ORIGIN is missing');
+        relaySt.className = 'sstat ok'; relaySt.textContent = 'Relay is working ✓';
+      } catch (err) { relaySt.className = 'sstat err'; relaySt.textContent = 'Not reachable: ' + err.message; }
+    });
+  }
   const lines = q('#s-lines');
   if (lines) lines.addEventListener('click', e => {
     const b = e.target.closest('[data-v]');

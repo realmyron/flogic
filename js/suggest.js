@@ -27,9 +27,11 @@ function copyPlain(text) {
   try { navigator.clipboard.writeText(text).then(ok, () => document.execCommand('copy') && ok()); } catch (_) { if (document.execCommand('copy')) ok(); }
 }
 /* target: { node, f, q } for text or a node, or { x, y } for a spot on the board */
+const SUG_AUTHOR_MAX = 60;
+function relayUrl() { return /^https:\/\/[^\s]+$/i.test(DOC.relay || '') ? DOC.relay : ''; }
 function openSuggestForm(target) {
-  const ri = repoInfo();
-  if (!ri) return toast('Suggestions can be sent from the published site');
+  const ri = repoInfo(), relay = relayUrl();
+  if (!relay && !ri) return toast('Suggestions can be sent from the published site');
   const n = target.node && nodeById(target.node);
   const about = target.q ? `<div class="sug-quote">“${esc(target.q)}”</div><p class="hint" style="margin:6px 0 0">in <b>${esc(n ? nodeName(n) : 'a node')}</b></p>`
     : n ? `<p class="hint" style="margin:0">About the node <b>${esc(nodeName(n))}</b></p>`
@@ -38,28 +40,50 @@ function openSuggestForm(target) {
     <div class="mbody">${about}
       <label class="fld">Title<input id="sg-t" maxlength="${SUG_TITLE_MAX}" placeholder="${n ? 'What should change?' : 'What should be added?'}" autocomplete="off"></label>
       <label class="fld">Details<textarea id="sg-b" maxlength="${SUG_TEXT_MAX}" rows="6" placeholder="${n ? 'Explain the error or how it could be better…' : 'Describe what you would write here…'}"></textarea><span class="sg-count" id="sg-c">0 / ${SUG_TEXT_MAX}</span></label>
-      <p class="hint" style="margin:12px 0 0">Suggestions are posted on this board's GitHub page, so you need a free GitHub account. The next page is already filled in: just press <b>Submit new issue</b>.</p>
-      <div class="mrow"><span class="sstat err" id="sg-e"></span><span class="grow"></span><button class="btn" data-close>Cancel</button><button class="btn primary" id="sg-go">${ic('github', 14)} Continue on GitHub</button></div>
+      <label class="fld"><span>Your name <span class="opt">(optional)</span></span><input id="sg-a" maxlength="${SUG_AUTHOR_MAX}" placeholder="Leave empty to stay anonymous" autocomplete="nickname"></label>
+      <input class="hp" id="sg-w" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <p class="hint" style="margin:12px 0 0">${relay ? 'No sign-in needed. Your suggestion goes straight to the owner of this board.' : 'Suggestions are posted on this board’s GitHub page, so you need a free GitHub account. The next page is already filled in: just press <b>Submit new issue</b>.'}</p>
+      <div class="mrow"><span class="sstat err" id="sg-e"></span><span class="grow"></span><button class="btn" data-close>Cancel</button><button class="btn primary" id="sg-go">${relay ? ic('upload', 14) + ' Send suggestion' : ic('github', 14) + ' Continue on GitHub'}</button></div>
     </div>`);
-  const t = $('#sg-t', m.el), b = $('#sg-b', m.el), c = $('#sg-c', m.el), er = $('#sg-e', m.el);
+  const t = $('#sg-t', m.el), b = $('#sg-b', m.el), a = $('#sg-a', m.el), hp = $('#sg-w', m.el), c = $('#sg-c', m.el), er = $('#sg-e', m.el), go = $('#sg-go', m.el);
   t.focus();
   b.addEventListener('input', () => { c.textContent = `${b.value.length} / ${SUG_TEXT_MAX}`; c.classList.toggle('over', b.value.length >= SUG_TEXT_MAX); });
-  $('#sg-go', m.el).addEventListener('click', () => {
-    const title = t.value.trim().slice(0, SUG_TITLE_MAX), text = b.value.trim().slice(0, SUG_TEXT_MAX);
-    if (!title) { er.textContent = 'Give it a short title'; t.focus(); return; }
+  const collect = () => {
+    const title = t.value.trim().slice(0, SUG_TITLE_MAX), text = b.value.trim().slice(0, SUG_TEXT_MAX), author = a.value.trim().replace(/\s+/g, ' ').slice(0, SUG_AUTHOR_MAX);
     const meta = target.node
       ? { v: 1, kind: 'text', env: S.envId, node: target.node, f: target.f || '', q: target.q || '' }
       : { v: 1, kind: 'bubble', env: S.envId, x: Math.round(target.x), y: Math.round(target.y) };
+    if (author) meta.author = author;
+    return { title, text, author, meta, where: n ? `“${nodeName(n)}” in ${env().name}` : `a spot in ${env().name}`, page: `${location.origin + location.pathname}#e=${S.envId}` };
+  };
+  const viaGitHub = d => {
+    if (!ri) { er.textContent = 'Could not reach GitHub for this board'; return; }
     /* keep the hidden marker from ever closing its HTML comment early */
     const lt = String.fromCharCode(92) + 'u003c', gt = String.fromCharCode(92) + 'u003e';
-    const json = JSON.stringify(meta).replace(/</g, lt).replace(/>/g, gt);
-    const where = n ? `“${nodeName(n)}” in ${env().name}` : `a spot in ${env().name}`;
-    const body = (target.q ? target.q.split('\n').map(l => '> ' + l).join('\n') + '\n\n' : '') + (text || '_(no details)_') +
-      `\n\n---\n*Suggested from Flogic, about ${where}* · [open the board](${location.origin + location.pathname}#e=${S.envId})\n<!-- flogic:${json} -->`;
-    const url = `https://github.com/${encodeURIComponent(ri.owner)}/${encodeURIComponent(ri.repo)}/issues/new?title=${encodeURIComponent('[Suggestion] ' + title)}&body=${encodeURIComponent(body)}`;
-    window.open(url, '_blank', 'noopener');
+    const json = JSON.stringify(d.meta).replace(/</g, lt).replace(/>/g, gt);
+    const body = (d.meta.q ? d.meta.q.split('\n').map(l => '> ' + l).join('\n') + '\n\n' : '') + (d.text || '_(no details)_') +
+      `\n\n---\n*Suggested from Flogic${d.author ? ' by **' + d.author.replace(/[*_`\[\]<>]/g, '') + '**' : ''}, about ${d.where}* · [open the board](${d.page})\n<!-- flogic:${json} -->`;
+    window.open(`https://github.com/${encodeURIComponent(ri.owner)}/${encodeURIComponent(ri.repo)}/issues/new?title=${encodeURIComponent('[Suggestion] ' + d.title)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener');
     m.close();
     toast('Almost done: press “Submit new issue” on the GitHub tab', { ms: 8000 });
+  };
+  go.addEventListener('click', async () => {
+    const d = collect();
+    if (!d.title) { er.textContent = 'Give it a short title'; t.focus(); return; }
+    if (!relay) return viaGitHub(d);
+    go.disabled = true; er.className = 'sstat'; er.textContent = 'Sending…';
+    try {
+      const r = await fetch(relay, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...d, website: hp.value }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || 'HTTP ' + r.status);
+      m.close();
+      toast('Thank you! Your suggestion was sent.', { ms: 5000 });
+    } catch (err) {
+      go.disabled = false; er.className = 'sstat err';
+      er.innerHTML = `Couldn’t send: ${esc(err.message)}${ri ? ' · <a href="#" id="sg-gh">send it through GitHub instead</a>' : ''}`;
+      const alt = $('#sg-gh', m.el);
+      if (alt) alt.addEventListener('click', ev => { ev.preventDefault(); viaGitHub(collect()); });
+    }
   });
 }
 
@@ -77,7 +101,9 @@ function parseIssue(i) {
     n: i.number, url: i.html_url, created: i.created_at,
     title: String(i.title || '').replace(/^\[suggestion\]\s*/i, '').trim() || 'Suggestion',
     text: lines.join('\n').trim().replace(/^_\(no details\)_$/, ''),
-    user: i.user ? i.user.login : '', avatar: i.user ? i.user.avatar_url : '',
+    /* the visitor's own name if they gave one; relay posts otherwise come from your account, so show "anonymous" */
+    user: String(meta.author || '').slice(0, 60) || (meta.via === 'relay' ? '' : (i.user ? i.user.login : '')),
+    avatar: meta.via === 'relay' || meta.author ? '' : (i.user ? i.user.avatar_url : ''),
     meta: { kind, env: String(meta.env || ''), node: String(meta.node || ''), f: String(meta.f || ''), q: String(meta.q || '').slice(0, 300), x: +meta.x, y: +meta.y },
   };
 }
@@ -207,7 +233,7 @@ function sugWhere(s) {
   return n ? `on “${nodeName(n)}” · ${e.name}` : 'on a node that no longer exists';
 }
 function sugDetailHTML(s) {
-  return `<div class="sug-meta">${s.avatar ? `<img src="${esc(s.avatar + (s.avatar.includes('?') ? '&' : '?') + 's=32')}" alt="">` : ''}<span>@${esc(s.user || 'someone')}</span><span>·</span><span>${ago(s.created)}</span><span>·</span><span>${esc(sugWhere(s))}</span></div>` +
+  return `<div class="sug-meta">${s.avatar ? `<img src="${esc(s.avatar + (s.avatar.includes('?') ? '&' : '?') + 's=32')}" alt="">` : ''}<span>${s.user ? esc(s.user) : 'anonymous'}</span><span>·</span><span>${ago(s.created)}</span><span>·</span><span>${esc(sugWhere(s))}</span></div>` +
     (s.meta.q ? `<div class="sug-quote">“${esc(s.meta.q)}”</div>` : '') +
     (s.text ? `<div class="sug-text">${esc(s.text)}</div>` : '<div class="sug-text muted">No details given.</div>');
 }
@@ -305,7 +331,11 @@ function renderSugPanel() {
   else if (SUGP.loading && !SUGS.length) body = '<div class="list-empty">Loading…</div>';
   else if (!SUGS.length) body = '<div class="list-empty">No open suggestions.<br>Visitors can right-click text, a node or empty space to send one.</div>';
   else body = SUGS.map(sugItemHTML).join('');
-  box.innerHTML = `<div class="sec-head sug-head" data-sa="fold"><span><span class="lchev${folded ? '' : ' open'}">${ic('chevr', 12)}</span>Suggestions</span><span class="cnt sug-count${SUGS.length ? ' has' : ''}">${SUGS.length || ''}</span>${S.connected ? `<button class="icon-btn${SUGP.loading ? ' spin' : ''}" data-sa="refresh" title="Check for new suggestions" aria-label="Refresh">${ic('refresh', 14)}</button>` : ''}</div>` +
+  const top = !!UI.sugTop;
+  $('#right').classList.toggle('sug-top', top);
+  box.innerHTML = `<div class="sec-head sug-head" data-sa="fold"><span><span class="lchev${folded ? '' : ' open'}">${ic('chevr', 12)}</span>Suggestions</span><span class="cnt sug-count${SUGS.length ? ' has' : ''}">${SUGS.length || ''}</span>` +
+    `<button class="icon-btn" data-sa="move" title="${top ? 'Move below Layers' : 'Move above Layers'}" aria-label="${top ? 'Move below Layers' : 'Move above Layers'}">${ic(top ? 'arrowdown' : 'arrowup', 14)}</button>` +
+    `${S.connected ? `<button class="icon-btn${SUGP.loading ? ' spin' : ''}" data-sa="refresh" title="Check for new suggestions" aria-label="Refresh">${ic('refresh', 14)}</button>` : ''}</div>` +
     (folded ? '' : `<div class="sug-list">${body}</div>`);
 }
 function highlightSugItem(n) {
@@ -316,12 +346,30 @@ function highlightSugItem(n) {
   if (it) { it.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); it.classList.add('flash'); setTimeout(() => it.classList.remove('flash'), 1300); }
   document.body.classList.add('show-right');
 }
+/* the Suggestions section can sit above or below Layers */
+function moveSugPanel(top) {
+  UI.sugTop = top; saveUI(); renderSugPanel();
+  const box = $('#sug-panel');
+  box.classList.remove('moved'); void box.offsetWidth; box.classList.add('moved');
+}
+$('#sug-panel').addEventListener('contextmenu', e => {
+  if (!e.target.closest('.sug-head')) return;
+  e.preventDefault();
+  openMenu(e.clientX, e.clientY, [
+    { label: 'Move above Layers', icon: 'arrowup', disabled: !!UI.sugTop, fn: () => moveSugPanel(true) },
+    { label: 'Move below Layers', icon: 'arrowdown', disabled: !UI.sugTop, fn: () => moveSugPanel(false) },
+    '-',
+    { label: UI.sugFolded ? 'Expand' : 'Collapse', icon: 'chev', fn: () => { UI.sugFolded = !UI.sugFolded; saveUI(); renderSugPanel(); } },
+    S.connected && { label: 'Check for new suggestions', icon: 'refresh', fn: fetchSuggestions },
+  ]);
+});
 $('#sug-panel').addEventListener('click', e => {
   const b = e.target.closest('[data-sa]');
   if (!b) return;
   const it = b.closest('.sug-it'), n = it ? +it.dataset.sug : null, s = n && SUGS.find(x => x.n === n);
   switch (b.dataset.sa) {
-    case 'fold': if (e.target.closest('[data-sa="refresh"]')) return; UI.sugFolded = !UI.sugFolded; saveUI(); renderSugPanel(); break;
+    case 'fold': UI.sugFolded = !UI.sugFolded; saveUI(); renderSugPanel(); break;
+    case 'move': moveSugPanel(!UI.sugTop); break;
     case 'refresh': e.stopPropagation(); fetchSuggestions(); break;
     case 'toggle': SUGP.open = SUGP.open === n ? null : n; renderSugPanel(); if (SUGP.open) flashMarks(n); break;
     case 'solve': solveSuggestion(n); break;

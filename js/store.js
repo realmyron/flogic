@@ -77,6 +77,7 @@ function migrate(doc) {
   if (!doc || !Array.isArray(doc.envs) || !doc.envs.length) return demoDoc();
   doc.version = 1;
   if (doc.lineStyle !== 'geometric') delete doc.lineStyle;
+  if (typeof doc.relay !== 'string' || !/^https:\/\/[^\s<>"']+$/i.test(doc.relay)) delete doc.relay;
   doc.folders = Array.isArray(doc.folders) ? doc.folders.filter(f => f && f.id) : [];
   doc.folders.forEach(f => { f.name = String(f.name || 'Category'); });
   const folderIds = new Set(doc.folders.map(f => f.id));

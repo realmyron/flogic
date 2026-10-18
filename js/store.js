@@ -77,6 +77,10 @@ function migrate(doc) {
   if (!doc || !Array.isArray(doc.envs) || !doc.envs.length) return demoDoc();
   doc.version = 1;
   if (doc.lineStyle !== 'geometric') delete doc.lineStyle;
+  doc.folders = Array.isArray(doc.folders) ? doc.folders.filter(f => f && f.id) : [];
+  doc.folders.forEach(f => { f.name = String(f.name || 'Category'); });
+  const folderIds = new Set(doc.folders.map(f => f.id));
+  doc.envs.forEach(e => { if (e.folder && !folderIds.has(e.folder)) delete e.folder; });
   doc.envs.forEach(e => {
     e.id = e.id || uid('e'); e.name = e.name || 'Environment';
     e.nodes = Array.isArray(e.nodes) ? e.nodes : [];

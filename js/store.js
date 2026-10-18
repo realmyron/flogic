@@ -61,7 +61,7 @@ function nodeText(n) {
   const out = [n.tag, n.title, n.subtitle];
   n.blocks.forEach(b => {
     out.push(b.label, b.text, b.caption);
-    (b.items || []).forEach(it => { out.push(it.title, it.text, it.t, it.u); (it.steps || []).forEach(s => out.push(s.label, s.text)); });
+    (b.items || []).forEach(it => { out.push(it.title, it.text, it.t, it.u, it.note); (it.steps || []).forEach(s => out.push(s.label, s.text)); });
   });
   return out.filter(Boolean).join(' \n ');
 }
@@ -92,11 +92,14 @@ function migrate(doc) {
       n.blocks.forEach(b => {
         b.id = b.id || uid('b');
         if (['scenarios', 'checklist', 'sources'].includes(b.kind) && !Array.isArray(b.items)) b.items = [];
+        if (b.kind === 'sources') b.items.forEach(s => { s.id = s.id || uid('r'); if (typeof s.note !== 'string') s.note = ''; });
+        if (b.kind === 'category' && b.closed !== true) delete b.closed;
         if (b.kind === 'scenarios') b.items.forEach(s => { s.id = s.id || uid('s'); s.steps = Array.isArray(s.steps) ? s.steps : []; });
       });
     });
     const ids = new Set(e.nodes.map(n => n.id));
     e.edges = e.edges.filter(x => ids.has(x.from) && ids.has(x.to));
+    e.edges.forEach(x => { if (!x.bend || !isFinite(x.bend.dx) || !isFinite(x.bend.dy)) delete x.bend; });
     e.groups.forEach(g => { g.members = (g.members || []).filter(id => ids.has(id)); });
     e.groups = e.groups.filter(g => g.members.length > 1);
   });

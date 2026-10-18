@@ -44,6 +44,7 @@
         </svg>
         <div id="edge-labels"></div>
         <div id="nodes"></div>
+        <div id="bubbles"></div>
         <svg id="overlay" aria-hidden="true"><path id="conn-preview" d=""/><g id="guide-g"></g></svg>
       </div>
       <div id="marquee"></div>
@@ -77,6 +78,7 @@
     <div class="sec-head"><span>Layers</span><span id="layer-count" class="cnt"></span><button class="icon-btn mobile-only" data-cmd="close-panels" aria-label="Close panel"></button></div>
     <div class="search"><span class="search-ic"></span><input id="layer-filter" type="search" placeholder="Search nodes…" autocomplete="off"></div>
     <div id="layers" class="list"></div>
+    <div id="sug-panel" hidden></div>
     <div id="inspector"></div>
   </aside>
 </div>
@@ -90,6 +92,7 @@
 <script src="js/util.js"></script>
 <script src="js/store.js"></script>
 <script src="js/render.js"></script>
+<script src="js/suggest.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

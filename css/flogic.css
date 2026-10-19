@@ -940,13 +940,16 @@ body.moving .nsh,body.dragging-nodes .nsh,body.panning .nsh{filter:none !importa
 
 /* comfort: background trails (a canvas under the board) and the reading glow (above the text) */
 #bg-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#read-glow{--glow:rgba(255,208,92,.24);position:absolute;left:0;top:0;z-index:4;pointer-events:none;border-radius:50%;opacity:0;
-  background:radial-gradient(closest-side,var(--glow),color-mix(in srgb,var(--glow) 45%,transparent) 55%,transparent);mix-blend-mode:multiply;
-  transition:opacity .35s ease,width .2s,height .2s;will-change:transform}
-#read-glow.on{opacity:1}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #read-glow{--glow:rgba(150,170,255,.11);mix-blend-mode:screen}}
-:root[data-theme="dark"] #read-glow{--glow:rgba(150,170,255,.11);mix-blend-mode:screen}
-body.dragging-nodes #read-glow,body.panning #read-glow,body.connecting #read-glow{opacity:0}
+/* reading glow: lives inside the hovered node, under its text, with a soft edge you can't see */
+.rg-clip{position:absolute;inset:0;z-index:-1;border-radius:inherit;overflow:hidden;pointer-events:none}
+.read-glow{--rg:rgba(255,200,90,.15);position:absolute;left:0;top:0;border-radius:50%;opacity:0;pointer-events:none;will-change:transform;
+  background:radial-gradient(closest-side,var(--rg),color-mix(in srgb,var(--rg) 78%,transparent) 22%,color-mix(in srgb,var(--rg) 48%,transparent) 46%,color-mix(in srgb,var(--rg) 20%,transparent) 70%,color-mix(in srgb,var(--rg) 6%,transparent) 88%,transparent);
+  transition:opacity .7s ease,width .4s ease,height .4s ease}
+.read-glow.on{opacity:1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .read-glow{--rg:rgba(150,170,255,.075)}}
+:root[data-theme="dark"] .read-glow{--rg:rgba(150,170,255,.075)}
+body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
+.snap .rg-clip{display:none}
 .fm-lab{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px;font-size:12px;font-weight:600;color:var(--text2)}
 .fm-lab:first-child{margin-top:2px}
 .fm .fm-range{width:100%}

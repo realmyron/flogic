@@ -1,0 +1,17 @@
+# Deploy settings for the Flogic relay (used by "npx wrangler deploy" in this folder).
+# The name must match your worker's name in Cloudflare.
+name = "flogic-relay"
+main = "flogic-relay.js"
+compatibility_date = "2025-06-01"
+
+# keep REPO and ALLOWED_ORIGIN that you set in the Cloudflare dashboard (GITHUB_TOKEN, a secret, is always kept)
+keep_vars = true
+
+# the live viewer count: one small Durable Object that keeps who is online in memory
+[[durable_objects.bindings]]
+name = "PRESENCE"
+class_name = "Presence"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Presence"]

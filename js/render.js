@@ -795,6 +795,7 @@ function animateEdgesIn(baseDelay = 160) {
    Groups only bundle nodes; on the board they show as a light dashed outline while selected. */
 const PANEL_LOOKS = [['dotted', 'Dotted'], ['outline', 'Outline'], ['tinted', 'Tinted'], ['hatched', 'Hatched'], ['grid', 'Grid'], ['card', 'Card']];
 const PANEL_PAD = 30, PANEL_HEAD = 34, FOLD_H = 50, GROUP_PAD = 12;
+const PANEL_BORN = new Set();   // panels just made: they build themselves in (app.js fxPanelIn)
 const PANEL_FREE = new Set();   // nodes being dragged out of their panel: the frame ignores them until dropped
 let PANEL_DROP = null;          // the panel nodes would be dropped into right now
 function panelById(id) { return env().panels.find(p => p.id === id); }
@@ -864,9 +865,11 @@ function drawPanels() {
     fb.title = p.folded ? 'Unfold' : 'Fold';
     el.classList.toggle('sel', sp === p);
     el.classList.toggle('drop', PANEL_DROP === p.id);
+    if (PANEL_BORN.has(p.id)) { PANEL_BORN.delete(p.id); fxPanelIn(el, p, r); }
     seen.add(p.id);
   }
-  for (const [id, el] of PANEL_EL) if (!seen.has(id)) { el.remove(); PANEL_EL.delete(id); }
+  /* a panel that's gone breaks apart (switching environments clears them without this) */
+  for (const [id, el] of PANEL_EL) if (!seen.has(id)) { PANEL_EL.delete(id); fxPanelOut(el); }
 }
 function drawGroupOutlines() {
   const e = env(), seen = new Set();

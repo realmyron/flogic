@@ -43,6 +43,8 @@ function swatchBtn(k, on, attr) {
    rounded (default) and sharp corners ("rect"). Colour styles: where the node's colour shows. */
 const SHAPES = [['rect', 'Process'], ['round', 'Rounded'], ['pill', 'Start / end'], ['ellipse', 'Ellipse'], ['circle', 'Circle'],
   ['diamond', 'Decision'], ['para', 'Input / output'], ['hex', 'Preparation'], ['doc', 'Document'], ['cyl', 'Database']];
+/* the blocks a shape node can hold */
+const SHAPE_KINDS = ['icon', 'image', 'text'];
 const SHAPE_RATIO = { rect: 0.42, round: 0.42, pill: 0.3, ellipse: 0.56, circle: 1, diamond: 0.62, para: 0.4, hex: 0.4, doc: 0.5, cyl: 0.6 };
 const ACCENTS = [['tint', 'Tinted fill'], ['top', 'Top line'], ['full', 'Full outline'], ['bottom', 'Bottom line'], ['left', 'Left side'], ['none', 'No outline']];
 /* What a connection means. "Default" (no type) is a plain line. Each type colours the line and its
@@ -71,6 +73,7 @@ const BLOCKS = [
   ['scenarios', 'Scenarios', 'Chains of events'],
   ['checklist', 'Checklist', 'Things to tick off'],
   ['image', 'Image', 'Upload, paste, link'],
+  ['icon', 'Icon', 'From your icon set'],
   ['sources', 'Sources', 'Links & references'],
 ];
 
@@ -87,6 +90,7 @@ function makeBlock(kind) {
     case 'scenarios': b.label = 'Scenarios'; b.items = [makeScenario()]; break;
     case 'checklist': b.label = ''; b.items = [{ id: uid('c'), text: '', done: false }]; break;
     case 'image': b.src = ''; b.caption = ''; break;
+    case 'icon': b.icon = ''; b.size = 'm'; break;
     case 'sources': b.label = 'Sources'; b.items = []; break;
   }
   return b;
@@ -134,6 +138,9 @@ function migrate(doc) {
   if (doc.lineStyle !== 'geometric') delete doc.lineStyle;
   if (typeof doc.relay !== 'string' || !/^https:\/\/[^\s<>"']+$/i.test(doc.relay)) delete doc.relay;
   doc.folders = Array.isArray(doc.folders) ? doc.folders.filter(f => f && f.id) : [];
+  /* the owner's own icons, shared by every environment: { id, name, src } */
+  doc.icons = Array.isArray(doc.icons) ? doc.icons.filter(x => x && typeof x.src === 'string' && /^(data:image\/|data\/assets\/|https:\/\/)/.test(x.src)) : [];
+  doc.icons.forEach(x => { x.id = String(x.id || uid('ic')); x.name = String(x.name || 'Icon'); });
   doc.folders.forEach(f => { f.name = String(f.name || 'Category'); });
   const folderIds = new Set(doc.folders.map(f => f.id));
   doc.envs.forEach(e => { if (e.folder && !folderIds.has(e.folder)) delete e.folder; });
@@ -147,7 +154,12 @@ function migrate(doc) {
       n.w = +n.w || NODE_W[n.type]; n.x = +n.x || 0; n.y = +n.y || 0;
       n.color = COLORS[n.color] || GRADIENTS[n.color] || isHex(n.color) ? n.color : 'default';
       /* shape nodes keep their shape; other nodes only have sharp corners or the default rounded ones */
-      if (n.type === 'shape') { if (!SHAPE_RATIO[n.shape]) n.shape = 'rect'; }
+      if (n.type === 'shape') {
+        if (!SHAPE_RATIO[n.shape]) n.shape = 'rect';
+        /* shape nodes used to have a details line: it is now a text block under the label */
+        if (n.subtitle && n.subtitle.trim()) n.blocks.unshift({ id: uid('b'), kind: 'text', text: n.subtitle });
+        n.subtitle = '';
+      }
       else if (n.shape !== 'rect') delete n.shape;
       if (!ACCENTS.some(s => s[0] === n.accent)) delete n.accent;
       if (n.hidden !== true) delete n.hidden;
@@ -158,6 +170,8 @@ function migrate(doc) {
         if (['scenarios', 'checklist', 'sources'].includes(b.kind) && !Array.isArray(b.items)) b.items = [];
         if (b.kind === 'sources') b.items.forEach(s => { s.id = s.id || uid('r'); if (typeof s.note !== 'string') s.note = ''; });
         if (b.kind === 'category' && b.closed !== true) delete b.closed;
+        if (b.kind === 'icon') { if (typeof b.icon !== 'string') b.icon = ''; if (!['s', 'm', 'l'].includes(b.size)) b.size = 'm'; }
+        if (b.above !== true) delete b.above;
         if (b.kind === 'scenarios') b.items.forEach(s => { s.id = s.id || uid('s'); s.steps = Array.isArray(s.steps) ? s.steps : []; });
       });
     });
@@ -400,7 +414,7 @@ const GH = {
 
 /* Images added in the editor live as data URLs until publish, then become files in data/assets/. */
 async function uploadAssets() {
-  const blocks = [];
+  const blocks = (DOC.icons || []).filter(x => x.src.startsWith('data:'));
   DOC.envs.forEach(e => e.nodes.forEach(n => n.blocks.forEach(b => { if (b.kind === 'image' && b.src && b.src.startsWith('data:')) blocks.push(b); })));
   if (!blocks.length) return;
   const extOf = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/avif': 'avif' };

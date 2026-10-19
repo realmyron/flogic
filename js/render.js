@@ -402,7 +402,16 @@ function bboxOf(nodes, model) {
 function toWorld(cx, cy) { return { x: (cx - VR.left - V.x) / V.z, y: (cy - VR.top - V.y) / V.z }; }
 
 /* ---------- view ---------- */
+/* While the view pans or zooms, soft shadows on lines and shapes are switched off (they are costly to
+   redraw every frame) and come back a moment after it stops. */
+let MOVING_T = 0;
+function markMoving() {
+  document.body.classList.add('moving');
+  clearTimeout(MOVING_T);
+  MOVING_T = setTimeout(() => document.body.classList.remove('moving'), 180);
+}
 function applyView() {
+  markMoving();
   const cx = (VR.width / 2 - V.x) / V.z, cy = (VR.height / 2 - V.y) / V.z;
   if (cx < -WORLD) V.x = VR.width / 2 + WORLD * V.z;
   if (cx > WORLD) V.x = VR.width / 2 - WORLD * V.z;
@@ -508,7 +517,7 @@ function blockHTML(n, b, i) {
       else inner = `<div class="img-drop eo"${eoAttr()}><div class="idr" data-act="pick-img">${ic('image', 22)}<div><b>Add an image</b><small>Click to upload, drop a file, or paste</small></div></div><input class="img-url" placeholder="…or paste an image link and press Enter"></div>`;
       break;
     case 'quote':
-      inner = `<blockquote class="b-quote"><span class="q-mark" aria-hidden="true">“</span>${fld(n, P + '.text', 'div', 'b-text q-text', { ph: 'Quote…' })}` +
+      inner = `<blockquote class="b-quote"><svg class="q-mark" viewBox="0 0 22 18" aria-hidden="true"><path d="M1 1.5h8v7.5L5.6 16.5H1.8l2.9-7.5H1zM13 1.5h8v7.5l-3.4 7.5h-3.8l2.9-7.5H13z"/></svg>${fld(n, P + '.text', 'div', 'b-text q-text', { ph: 'Quote…' })}` +
         `<footer class="q-by">${fld(n, P + '.author', 'span', 'q-author', { ph: 'Author', single: 1 })}${fld(n, P + '.cite', 'span', 'q-cite', { ph: 'Source, year', single: 1 })}</footer></blockquote>`;
       break;
     case 'math': case 'chem': {
@@ -948,9 +957,21 @@ function drawMinimap() {
 
 /* ---------- side panels ---------- */
 /* sidebar: environments without a category first, then each category with its environments */
-function envRow(e, child) {
-  return `<div class="env${e.id === S.envId ? ' active' : ''}${child ? ' child' : ''}" data-env="${e.id}"${S.canEdit ? ' draggable="true" title="Double-click to rename · drag to move"' : ''}>${ic('board', 15)}<span class="nm">${esc(e.name)}</span><span class="cnt">${e.nodes.length || ''}</span></div>`;
+/* An environment's or category's icon: 'b:<name>' a built-in icon, 'u:<id>' one of your uploaded icons,
+   't:<text>' an emoji or symbol typed in; otherwise the default icon. */
+function navIcon(ref, fallback, size = 15) {
+  if (typeof ref === 'string') {
+    if (ref.startsWith('b:') && ICONS[ref.slice(2)]) return ic(ref.slice(2), size);
+    if (ref.startsWith('u:')) { const it = (DOC.icons || []).find(x => x.id === ref.slice(2)); if (it) return `<img class="nvi" src="${esc(imgSrc(it.src))}" alt="" draggable="false">`; }
+    if (ref.startsWith('t:') && ref.length > 2) return `<span class="emo" aria-hidden="true">${esc(ref.slice(2))}</span>`;
+  }
+  return ic(fallback, size);
 }
+const GRIP = () => S.canEdit ? `<span class="rgrip" aria-hidden="true">${ic('grip', 12)}</span>` : '';
+function envRow(e, child) {
+  return `<div class="env${e.id === S.envId ? ' active' : ''}${child ? ' child' : ''}" data-env="${e.id}"${S.canEdit ? ' draggable="true" title="Drag to move · double-click to rename · right-click for more"' : ''}>${GRIP()}<span class="eic">${navIcon(e.icon, 'board')}</span><span class="nm">${esc(e.name)}</span><span class="cnt">${e.nodes.length || ''}</span></div>`;
+}
+/* environments without a category first, then each category as a section header with its environments */
 function renderEnvs() {
   const folders = DOC.folders || [], known = new Set(folders.map(f => f.id));
   let h = DOC.envs.filter(e => !known.has(e.folder)).map(e => envRow(e, false)).join('');
@@ -958,7 +979,7 @@ function renderEnvs() {
     const items = DOC.envs.filter(e => e.folder === f.id);
     if (!S.canEdit && !items.length) continue;
     const open = !UI.collapsed['fold:' + f.id], active = items.some(e => e.id === S.envId);
-    h += `<div class="efold${active ? ' has-active' : ''}" data-fold="${f.id}"${S.canEdit ? ' title="Click to open or close · double-click to rename"' : ''}><span class="lchev${open ? ' open' : ''}">${ic('chevr', 12)}</span>${ic(open ? 'folderopen' : 'folder', 15)}<span class="nm">${esc(f.name)}</span><span class="cnt">${items.length || ''}</span></div>`;
+    h += `<div class="efold${active ? ' has-active' : ''}${open ? ' open' : ''}" data-fold="${f.id}"${S.canEdit ? ' draggable="true" title="Click to open or close · drag to move · right-click for more"' : ''}>${GRIP()}<span class="lchev${open ? ' open' : ''}">${ic('chevr', 11)}</span><span class="eic">${navIcon(f.icon, open ? 'folderopen' : 'folder', 13)}</span><span class="nm">${esc(f.name)}</span><span class="cnt">${items.length || ''}</span></div>`;
     if (open) h += `<div class="efold-items" data-fold-items="${f.id}">${items.length ? items.map(e => envRow(e, true)).join('') : (S.canEdit ? '<div class="efold-empty">Drag environments here</div>' : '')}</div>`;
   }
   $('#env-list').innerHTML = h;
@@ -966,7 +987,7 @@ function renderEnvs() {
 /* depth: 0 top level, 1 inside a group or panel, 2 inside a group inside a panel */
 function layerRow(n, depth, snip) {
   const icn = n.type;
-  return `<div class="layer${depth ? ' child d' + depth : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"${S.canEdit ? ' draggable="true"' : ''}><span class="lic" style="color:${colorOf(n.color).c1}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
+  return `<div class="layer${depth ? ' child d' + depth : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"${S.canEdit ? ' draggable="true"' : ''}>${GRIP()}<span class="lic" style="color:${colorOf(n.color).c1}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
 }
 function eyeBtn(hidden) {
   if (!S.canEdit) return '';
@@ -995,7 +1016,7 @@ function renderLayers() {
     const groupRows = (g, depth, list) => {
       const members = list.filter(m => g.members.includes(m.id));
       const open = !UI.collapsed[g.id], all = members.every(m => S.sel.has(m.id)), allHidden = members.every(m => m.hidden);
-      let s = `<div class="layer grp${depth ? ' child d' + depth : ''}${all ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}" data-g="${g.id}"${S.canEdit ? ' draggable="true"' : ''}><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic">${ic('group', 14)}</span><span class="nm">${esc(g.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
+      let s = `<div class="layer grp${depth ? ' child d' + depth : ''}${all ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}" data-g="${g.id}"${S.canEdit ? ' draggable="true"' : ''}>${GRIP()}<button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic">${ic('group', 14)}</span><span class="nm">${esc(g.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
       if (open) members.forEach(m => { s += layerRow(m, depth + 1); });
       return s;
     };
@@ -1006,7 +1027,7 @@ function renderLayers() {
         done.add(p.id);
         const members = top.filter(m => p.members.includes(m.id));
         const open = !UI.collapsed[p.id], allHidden = members.every(m => m.hidden);
-        h += `<div class="layer pnl${sp === p ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}${p.folded ? ' folded' : ''}" data-p="${p.id}"><button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic" style="color:${COLORS[p.color] || COLORS.slate}">${ic('panel', 14)}</span><span class="nm">${esc(p.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
+        h += `<div class="layer pnl${sp === p ? ' sel' : ''}${allHidden ? ' is-hidden' : ''}${p.folded ? ' folded' : ''}" data-p="${p.id}"${S.canEdit ? ' draggable="true"' : ''}>${GRIP()}<button class="lchev${open ? ' open' : ''}" data-act="lcollapse" aria-label="Collapse">${ic('chevr', 12)}</button><span class="lic" style="color:${COLORS[p.color] || COLORS.slate}">${ic('panel', 14)}</span><span class="nm">${esc(p.name)}</span><span class="cnt">${members.length}</span>${eyeBtn(allHidden)}</div>`;
         if (!open) continue;
         const inner = new Set();
         for (const m of members) {

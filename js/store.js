@@ -5,9 +5,9 @@ const DATA_PATH = 'data/flogic.json';
 const ASSET_DIR = 'data/assets';
 const LS = { doc: 'flogic.doc', meta: 'flogic.meta', cfg: 'flogic.cfg', ui: 'flogic.ui' };
 
-const NODE_W = { title: 480, note: 336, sub: 216 };
+const NODE_W = { title: 480, note: 336, sub: 216, shape: 216 };
 const NODE_LIMIT = 1000;   // per environment; Settings → "Remove the node limit" lifts it
-const NODE_LABEL = { title: 'Title', note: 'Note', sub: 'Sub-note' };
+const NODE_LABEL = { title: 'Title', note: 'Note', sub: 'Sub-note', shape: 'Shape' };
 /* Colours: the main set, a pastel set, two-tone gradients, or any custom '#rrggbb'. */
 const COLORS = {
   default: '#7b93ff', sky: '#3fb2ec', violet: '#a98bfa', pink: '#ee6eae', amber: '#e9a43a', green: '#36c08c', red: '#ef6a6a', slate: '#8f9bb3',
@@ -38,10 +38,13 @@ function swatchBtn(k, on, attr) {
   const { c1, c2 } = colorOf(k), bg = c2 ? `linear-gradient(135deg,${c1},${c2})` : c1;
   return `<button class="sw${on ? ' on' : ''}" data-${attr}="${k}" style="--sw:${bg};--swr:${c1}" title="${esc(colorName(k))}" aria-label="${esc(colorName(k))}"></button>`;
 }
-/* Node shapes. "round" (the default) and "rect" are the node's own box; the others are drawn around the
-   text with an SVG outline (see drawShape). Colour styles: where the node's colour shows. */
-const SHAPES = [['round', 'Rounded'], ['rect', 'Rectangle'], ['pill', 'Pill · start / end'], ['ellipse', 'Ellipse'], ['diamond', 'Diamond · decision'], ['para', 'Parallelogram · input / output'], ['hex', 'Hexagon · preparation'], ['doc', 'Document'], ['cyl', 'Cylinder · database']];
-const ACCENTS = [['top', 'Top line'], ['full', 'Full outline'], ['bottom', 'Bottom line'], ['left', 'Left side'], ['none', 'No outline']];
+/* Shape nodes: a short centred label inside a flowchart shape. r is the shape's height as a share of its
+   width (it grows taller if the text needs it). Title, note and sub-note nodes only choose between
+   rounded (default) and sharp corners ("rect"). Colour styles: where the node's colour shows. */
+const SHAPES = [['rect', 'Process'], ['round', 'Rounded'], ['pill', 'Start / end'], ['ellipse', 'Ellipse'], ['circle', 'Circle'],
+  ['diamond', 'Decision'], ['para', 'Input / output'], ['hex', 'Preparation'], ['doc', 'Document'], ['cyl', 'Database']];
+const SHAPE_RATIO = { rect: 0.42, round: 0.42, pill: 0.3, ellipse: 0.56, circle: 1, diamond: 0.62, para: 0.4, hex: 0.4, doc: 0.5, cyl: 0.6 };
+const ACCENTS = [['tint', 'Tinted fill'], ['top', 'Top line'], ['full', 'Full outline'], ['bottom', 'Bottom line'], ['left', 'Left side'], ['none', 'No outline']];
 /* What a connection means. "Default" (no type) is a plain line. Each type colours the line and its
    arrow and shows a small icon badge in the middle of the line. */
 const EDGE_TYPES = {
@@ -93,7 +96,8 @@ function makeNode(type) {
     id: uid('n'), type, x: 0, y: 0, w: NODE_W[type], color: 'default',
     tag: type === 'title' ? 'Title' : type === 'note' ? 'Note' : '',
     title: '', subtitle: '',
-    blocks: type === 'title' ? [] : [makeBlock('text')],
+    blocks: type === 'title' || type === 'shape' ? [] : [makeBlock('text')],
+    ...(type === 'shape' ? { shape: 'rect' } : {}),
   };
 }
 function makeEnv(name) { return { id: uid('e'), name, nodes: [], edges: [], groups: [], panels: [] }; }
@@ -142,7 +146,9 @@ function migrate(doc) {
       if (!NODE_W[n.type]) n.type = 'note';
       n.w = +n.w || NODE_W[n.type]; n.x = +n.x || 0; n.y = +n.y || 0;
       n.color = COLORS[n.color] || GRADIENTS[n.color] || isHex(n.color) ? n.color : 'default';
-      if (!SHAPES.some(s => s[0] === n.shape) || n.shape === 'round') delete n.shape;
+      /* shape nodes keep their shape; other nodes only have sharp corners or the default rounded ones */
+      if (n.type === 'shape') { if (!SHAPE_RATIO[n.shape]) n.shape = 'rect'; }
+      else if (n.shape !== 'rect') delete n.shape;
       if (!ACCENTS.some(s => s[0] === n.accent)) delete n.accent;
       if (n.hidden !== true) delete n.hidden;
       n.blocks = Array.isArray(n.blocks) ? n.blocks : [];

@@ -411,7 +411,7 @@ function deleteSel() {
   }
   if (!S.sel.size) return;
   checkpoint();
-  const ids = new Set(S.sel);
+  const ids = new Set(S.sel), e0 = new Map(e.nodes.map(n => [n.id, n]));
   e.nodes = e.nodes.filter(n => !ids.has(n.id));
   e.edges = e.edges.filter(x => !ids.has(x.from) && !ids.has(x.to));
   e.groups.forEach(g => { g.members = g.members.filter(id => !ids.has(id)); });
@@ -420,8 +420,10 @@ function deleteSel() {
     const el = NODE_EL.get(id);
     if (!el) continue;
     NODE_EL.delete(id); RO.unobserve(el); SIZE.delete(id); DISP.delete(id);
+    const n0 = e0.get(id);
+    if (n0 && ids.size <= 24) dyingPulse(n0, el);
     el.classList.add('leaving'); el.style.pointerEvents = 'none';
-    setTimeout(() => el.remove(), 200);
+    setTimeout(() => el.remove(), 360);
   }
   S.sel.clear();
   structureChanged();
@@ -786,6 +788,7 @@ function panelFromSel() {
   endEdit(); checkpoint();
   const p = { id: uid('p'), name: newPanelName(), members: [], look: 'dotted' };
   env().panels.push(p);
+  PANEL_BORN.add(p.id);
   setPanel(ids, p.id, false);
   structureChanged(); selectPanel(p.id);
 }
@@ -1348,7 +1351,8 @@ function onDown(e) {
     else startDrag(e, id, true);
     return;
   }
-  if (!S.canEdit || e.pointerType === 'touch') { if (!e.shiftKey) clearSel(); startPan(e); return; }
+  /* empty board: drag to box-select (visitors too); on touch screens, drag to pan */
+  if (e.pointerType === 'touch') { if (!e.shiftKey) clearSel(); startPan(e); return; }
   startMarquee(e);
 }
 function onMove(e) {
@@ -1678,7 +1682,7 @@ function endConnect(e) {
     const ok = d && d.reverse ? addEdge(c.target.id, c.target.side, c.from, c.side) : addEdge(c.from, c.side, c.target.id, c.target.side);
     if (ok && d) { const es = env().edges, ne = es[es.length - 1]; Object.assign(ne, { label: d.label, arrow: d.arrow, dashed: d.dashed }); if (d.style) ne.style = d.style; if (d.bend) ne.bend = d.bend; }
     if (ok || d) { drawEdges(); renderInspector(); changed(); }
-    if (ok) bgPulse(c.target.p.x, c.target.p.y, null, 0.6);
+    if (ok) { const es = env().edges; chargeEdge(es[es.length - 1].id); }
     if (!ok && d) toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
     return;
   }
@@ -2228,7 +2232,7 @@ function toggleFocus() {
      - adding, connecting, dropping or pasting nodes sends a soft wave of light through the dots
      - a node being dragged lights the dots underneath it in its own colour
    Grid: all of it. Pulses: just the waves. Off: a still grid. */
-const FX_MODES = [['off', 'Off'], ['grid', 'Grid'], ['pulse', 'Pulses only']];
+const FX_MODES = [['off', 'Off'], ['grid', 'All'], ['pulse', 'Pulses only']];
 if ((CFG.comfortV || 0) < 4) { CFG.bgFx = 'grid'; CFG.comfortV = 4; saveCfg(); }
 if (!FX_MODES.some(m => m[0] === CFG.bgFx)) CFG.bgFx = 'grid';
 const amb = document.createElement('div');
@@ -2267,9 +2271,9 @@ window.addEventListener('resize', gridSize);
 function gridKick() { if (!GF.raf && fxMode() !== 'off') { GF.last = performance.now(); GF.raf = requestAnimationFrame(gridFrame); } }
 /* a wave of light through the dots, from a point on the board (world coordinates) */
 /* size: how far it spreads (1 = about 350px); strength: how bright (1 = full) */
-function bgPulse(wx, wy, color, size = 1, strength = 1) {
+function bgPulse(wx, wy, color, size = 1, strength = 1, implode = false) {
   if (fxMode() === 'off') return;
-  GF.waves.push({ wx, wy, c: toRgb(color || '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('')), t: 0, life: 0.7 + 0.3 * size, R: 120 + 230 * size, k: (0.55 + 0.45 * Math.min(1, size)) * strength });
+  GF.waves.push({ wx, wy, c: toRgb(color || '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('')), t: 0, life: 0.7 + 0.3 * size, R: 120 + 230 * size, k: (0.55 + 0.45 * Math.min(1, size)) * strength, implode });
   if (GF.waves.length > 12) GF.waves.shift();
   gridKick();
 }
@@ -2335,7 +2339,9 @@ function gridFrame(now) {
   for (const w of GF.waves) {
     w.t += dt / w.life;
     const t = Math.min(1, w.t), e = 1 - Math.pow(1 - t, 3), cx = V.x + w.wx * V.z, cy = V.y + w.wy * V.z;
-    const rad = 10 + w.R * e, band = 34 + 26 * e, fade = w.k * Math.pow(1 - t, 1.5);
+    /* an implosion (a dying pulse) draws in toward its centre instead of spreading out */
+    const rad = w.implode ? 6 + w.R * (1 - e) : 10 + w.R * e, band = w.implode ? 30 + 20 * (1 - e) : 34 + 26 * e;
+    const fade = w.implode ? w.k * Math.sin(Math.PI * t) : w.k * Math.pow(1 - t, 1.5);
     const box = rad + band;
     if (cx + box < 0 || cy + box < 0 || cx - box > W || cy - box > H) continue;
     gridDots(cx - box, cy - box, cx + box, cy + box, w.c, (x, y) => { const d = (Math.hypot(x - cx, y - cy) - rad) / band; return fade * Math.exp(-d * d * 2.2); });
@@ -2360,6 +2366,139 @@ window.addEventListener('pointermove', e => {
 }, { passive: true });
 function setBgFx(m) { CFG.bgFx = m; saveCfg(); GF.waves = []; GF.trail = []; gridKick(); applyFocusLevel(); }
 function fxApply() { gridSize(); }
+
+/* ---- action effects, in the same soft "energy" style as the grid (and off whenever the grid is):
+     connecting: a charge runs along the new line, and a pulse runs round each node's outline from
+       where the line meets it
+     deleting: the node flickers out while the dots around it draw in, like a dying pulse
+     a new panel: dots fly in from around it and settle into its outline
+     a panel going away: holes open up in it and it breaks apart into dots */
+const OVL = $('#overlay');
+const fxOn = () => fxMode() !== 'off';
+function svgNew(tag, attrs) { const el = document.createElementNS(SVGNS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
+const selHex = () => '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('');
+/* a soft glowing segment that travels along a path (world coordinates) and is removed after */
+function runPulse(d, color, { dur = 450, len = 0.22, width = 3, delay = 0, fade = 0.85 } = {}) {
+  const p = svgNew('path', { d, class: 'fx-pulse', pathLength: '1' });
+  p.style.stroke = color; p.style.color = color; p.style.strokeWidth = width; p.style.strokeDasharray = `${len} ${2 + len}`;
+  OVL.appendChild(p);
+  const a = p.animate([{ strokeDashoffset: len, opacity: 1 }, { strokeDashoffset: -1, opacity: fade }], { duration: dur, delay, easing: 'cubic-bezier(.45,.05,.3,1)', fill: 'both' });
+  const done = () => p.remove();
+  a.onfinish = done; setTimeout(done, dur + delay + 400);
+}
+/* a node's (or panel's) outline, split at a point into two halves that run away from it in opposite directions */
+function outlineHalves(id, at) {
+  const n = nodeById(id), p = !n && panelById(id);
+  let d;
+  if (n) {
+    const r = rectOf(n), el = NODE_EL.get(id), fill = el && el.querySelector(':scope > .nsh .sh-fill');
+    if (fill) d = fill.getAttribute('d');
+    else {
+      const rad = Math.min(parseFloat(el ? getComputedStyle(el).borderTopLeftRadius : 16) || 16, r.w / 2, r.h / 2);
+      d = roundedRectD(0.5, 0.5, r.w - 1, r.h - 1, rad);
+    }
+    return halves(d, r.x, r.y, at);
+  }
+  if (p) { const r = panelRect(p); if (!r) return null; return halves(roundedRectD(0, 0, r.w, r.h, p.folded ? 16 : 28), r.x, r.y, at); }
+  return null;
+}
+function roundedRectD(x, y, w, h, r) {
+  return `M${x + r},${y}H${x + w - r}A${r},${r} 0 0 1 ${x + w},${y + r}V${y + h - r}A${r},${r} 0 0 1 ${x + w - r},${y + h}H${x + r}A${r},${r} 0 0 1 ${x},${y + h - r}V${y + r}A${r},${r} 0 0 1 ${x + r},${y}Z`;
+}
+/* sample the outline, start at the point nearest `at`, and go half way round each way */
+function halves(d, ox, oy, at) {
+  const tmp = svgNew('path', { d });
+  OVL.appendChild(tmp);
+  let L = 0;
+  try { L = tmp.getTotalLength(); } catch (_) {}
+  if (!L) { tmp.remove(); return null; }
+  const N = 140, pts = [];
+  for (let i = 0; i < N; i++) { const q = tmp.getPointAtLength(L * i / N); pts.push([q.x + ox, q.y + oy]); }
+  tmp.remove();
+  let k = 0, best = Infinity;
+  pts.forEach((q, i) => { const dd = (q[0] - at.x) ** 2 + (q[1] - at.y) ** 2; if (dd < best) { best = dd; k = i; } });
+  const walk = dir => { let s = ''; for (let j = 0; j <= N / 2; j++) { const q = pts[((k + dir * j) % N + N) % N]; s += (j ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1); } return s; };
+  return [walk(1), walk(-1)];
+}
+function outlinePulse(id, at, color, delay = 0) {
+  const h = outlineHalves(id, at);
+  if (!h) return;
+  h.forEach(d => runPulse(d, color, { dur: 640, len: 0.3, width: 2.4, delay, fade: 0 }));
+}
+/* a new connection: a pulse round the start node, a charge along the line, then a pulse round the end node */
+function chargeEdge(edgeId) {
+  if (!fxOn()) return;
+  const ed = env().edges.find(x => x.id === edgeId), r = EDGE_EL.get(edgeId);
+  if (!ed || !r || !r.p1) return;
+  const T = EDGE_TYPES[ed.type], color = T ? T.color : selHex();
+  outlinePulse(ed.from, r.p1, color, 0);
+  runPulse(r.vis.getAttribute('d'), color, { dur: 460, len: 0.24, width: 3.2, delay: 60 });
+  outlinePulse(ed.to, r.p2, color, 400);
+}
+/* deleting a node: the dots around it draw in and fade, while the node flickers out (CSS .leaving) */
+function dyingPulse(n, el) {
+  if (!fxOn()) return;
+  const r = { x: n.x, y: n.y, w: el ? el.offsetWidth : n.w, h: el ? el.offsetHeight : 160 };
+  bgPulse(r.x + r.w / 2, r.y + r.h / 2, colorOf(n.color).c1, Math.min(1, 0.25 + Math.max(r.w, r.h) / 900), 0.55, true);
+}
+/* points spaced along a rectangle's outline (world coordinates) */
+function rectOutlinePoints(r, n) {
+  const per = 2 * (r.w + r.h), out = [];
+  for (let i = 0; i < n; i++) {
+    let s = (i + Math.random() * 0.6) / n * per;
+    if (s < r.w) out.push([r.x + s, r.y]);
+    else if ((s -= r.w) < r.h) out.push([r.x + r.w, r.y + s]);
+    else if ((s -= r.h) < r.w) out.push([r.x + r.w - s, r.y + r.h]);
+    else out.push([r.x, r.y + r.h - (s - r.w)]);
+  }
+  return out;
+}
+/* dots that travel between scattered spots and an outline (inward: they gather; otherwise they scatter) */
+function flyDots(pts, color, inward) {
+  pts.forEach(([x, y]) => {
+    const ang = Math.random() * Math.PI * 2, dist = 70 + Math.random() * 170, sx = x + Math.cos(ang) * dist, sy = y + Math.sin(ang) * dist;
+    const c = svgNew('circle', { cx: 0, cy: 0, r: (1.6 + Math.random() * 1.2).toFixed(1), class: 'fx-dot' });
+    c.style.fill = color; c.style.color = color;
+    OVL.appendChild(c);
+    const a = [`translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`, `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`];
+    const delay = Math.random() * (inward ? 180 : 140), dur = 520 + Math.random() * 220;
+    const kf = inward
+      ? [{ transform: a[0], opacity: 0 }, { opacity: 1, offset: 0.35 }, { transform: a[1], opacity: 0.9, offset: 0.88 }, { transform: a[1], opacity: 0 }]
+      : [{ transform: a[1], opacity: 0.9 }, { opacity: 0.8, offset: 0.3 }, { transform: a[0], opacity: 0 }];
+    const an = c.animate(kf, { duration: dur, delay, easing: inward ? 'cubic-bezier(.2,.8,.25,1)' : 'cubic-bezier(.4,0,.8,.6)', fill: 'both' });
+    const done = () => c.remove();
+    an.onfinish = done; setTimeout(done, dur + delay + 400);
+  });
+}
+/* a new panel builds itself out of dots, then its frame fades in */
+function fxPanelIn(el, p, r) {
+  if (!fxOn()) return;
+  flyDots(rectOutlinePoints(r, Math.round(clamp((r.w + r.h) / 22, 26, 70))), COLORS[p.color] || selHex(), true);
+  el.classList.remove('pf-born'); void el.offsetWidth; el.classList.add('pf-born');
+  setTimeout(() => el.classList.remove('pf-born'), 1300);
+}
+/* a panel going away: holes open up in it and it breaks apart into dots */
+function fxPanelOut(el) {
+  const m = (el.style.transform || '').match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/), w = el.offsetWidth, h = el.offsetHeight;
+  if (!fxOn() || !m || !w) { el.remove(); return; }
+  const x = +m[1], y = +m[2], color = getComputedStyle(el).getPropertyValue('--gc').trim() || selHex();
+  el.classList.add('dying');
+  const holes = rectOutlinePoints({ x: 0, y: 0, w, h }, 11).map(([hx, hy]) => ({ x: hx, y: hy }))
+    .concat(Array.from({ length: 5 }, () => ({ x: Math.random() * w, y: Math.random() * h })))
+    .map(o => Object.assign(o, { R: (0.16 + Math.random() * 0.22) * Math.max(w, h), at: Math.random() * 260 }));
+  flyDots(rectOutlinePoints({ x, y, w, h }, Math.round(clamp((w + h) / 26, 20, 56))), color, false);
+  const t0 = performance.now(), dur = 520;
+  el.style.webkitMaskComposite = 'source-in'; el.style.maskComposite = 'intersect';
+  const step = now => {
+    if (!el.isConnected) return;
+    const t = now - t0;
+    const layers = holes.map(o => { const k = clamp((t - o.at) / dur, 0, 1), r = o.R * (1 - Math.pow(1 - k, 2)); return `radial-gradient(circle at ${o.x.toFixed(0)}px ${o.y.toFixed(0)}px,transparent ${r.toFixed(1)}px,#000 ${(r + 1.5).toFixed(1)}px)`; });
+    el.style.maskImage = el.style.webkitMaskImage = layers.join(',');
+    if (t < dur + 300) requestAnimationFrame(step); else el.remove();
+  };
+  requestAnimationFrame(step);
+  setTimeout(() => el.remove(), 1400);
+}
 
 /* ---- reading glow: over a node's text, a soft, round light follows the pointer beneath the words, like
    the faintest highlighter. It lives inside the node (so it never spills past its edges), sits under the
@@ -2415,9 +2554,9 @@ function comfortHTML() {
     <div class="fm-lab"><span>Focus vignette</span><b class="fm-val">${v ? v + '%' : 'Off'}</b></div>
     <input type="range" class="fm-range" min="0" max="100" step="1" value="${v}" aria-label="Focus vignette strength">
     <p class="fm-hint">Softens the edges of the board so your eyes settle on the middle. A few percent is enough. F switches it on or off.</p>
-    <div class="fm-lab"><span>Reactive grid</span></div>
+    <div class="fm-lab"><span>Board effects</span></div>
     <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'grid') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
-    <p class="fm-hint">The dot grid lights up around the pointer as you move, and a soft wave runs through it when you add, connect, drop or paste nodes.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
+    <p class="fm-hint">The dot grid lights up behind the pointer and pulses as you add, drop or paste nodes; new connections send a charge along the line; panels build up and break apart. Pulses only leaves out the pointer trail.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
     <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
   </div>`;
 }

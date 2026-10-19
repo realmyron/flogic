@@ -83,21 +83,13 @@ kbd{font-family:var(--font);font-size:11px;color:var(--faint)}
 #left{border-right:1px solid var(--panel-b)}
 #right{border-left:1px solid var(--panel-b)}
 #stage{position:relative;min-width:0;overflow:hidden;background:var(--bg)}
-/* the board's soft background light: two faint glows in opposite corners (they can gently move, see
-   "living background" in app.js); the third one only shows in Follow mode */
+/* the board's soft background light: two faint glows in opposite corners */
 #amb{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 #amb i{position:absolute;border-radius:50%;will-change:transform}
 #amb .ab1{width:1300px;height:936px;left:calc(10% - 650px);top:calc(6% - 468px);background:radial-gradient(closest-side,var(--amb1),transparent)}
 #amb .ab2{width:1170px;height:858px;left:calc(92% - 585px);top:calc(94% - 429px);background:radial-gradient(closest-side,var(--amb2),transparent)}
-#amb .ab3{--amb3:rgba(16,118,128,.07);width:1100px;height:1100px;left:-550px;top:-550px;opacity:0;transition:opacity 1.6s ease;
-  background:radial-gradient(closest-side,var(--amb3),color-mix(in srgb,var(--amb3) 55%,transparent) 40%,color-mix(in srgb,var(--amb3) 15%,transparent) 75%,transparent)}
-#amb.follow .ab3.on{opacity:1}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #amb .ab3{--amb3:rgba(140,130,255,.05)}}
-:root[data-theme="dark"] #amb .ab3{--amb3:rgba(140,130,255,.05)}
-#amb.breathe .ab1{animation:abA 64s ease-in-out infinite alternate}
-#amb.breathe .ab2{animation:abB 52s ease-in-out infinite alternate}
-@keyframes abA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(5vw,4vh) scale(1.06)}100%{transform:translate(1vw,8vh) scale(.97)}}
-@keyframes abB{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-4vw,-5vh) scale(1.05)}100%{transform:translate(-7vw,-1vh) scale(.98)}}
+/* the reactive dot grid: lit dots drawn over the grid, under the nodes */
+#grid-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
 .brand{display:flex;align-items:center;gap:10px;padding:16px 16px 14px;font-weight:650;font-size:15px;letter-spacing:-.01em}
 .brand span{flex:1}

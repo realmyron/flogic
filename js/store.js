@@ -62,6 +62,9 @@ const EDGE_TYPES = {
   partof:      { label: 'Part of',        icon: 'partof', color: '#8f9bb3', group: 'Time & structure' },
   example:     { label: 'Example of',     icon: 'bulb',   color: '#8f9bb3', group: 'Time & structure' },
 };
+/* Connection line looks: fluid S-curves (default), geometric right angles, straight, or a rope that
+   hangs between its ends (simulated, so it swings when nodes move). */
+const LINE_STYLES = [['fluid', 'Fluid'], ['geometric', 'Geometric'], ['straight', 'Straight'], ['catenary', 'Rope']];
 /* Groups just bundle nodes (for sorting and selecting together). Panels are the framed areas on the
    board: they have a look, a frame colour, can be folded and can be connected like a node. */
 const PANEL_LOOK_IDS = ['dotted', 'outline', 'tinted', 'hatched', 'grid', 'card'];
@@ -74,6 +77,9 @@ const BLOCKS = [
   ['checklist', 'Checklist', 'Things to tick off'],
   ['image', 'Image', 'Upload, paste, link'],
   ['icon', 'Icon', 'From your icon set'],
+  ['quote', 'Quote', 'Words from an author'],
+  ['math', 'Formula', 'Algebra & maths'],
+  ['chem', 'Chemistry', 'Chemical formulas'],
   ['sources', 'Sources', 'Links & references'],
 ];
 
@@ -91,6 +97,8 @@ function makeBlock(kind) {
     case 'checklist': b.label = ''; b.items = [{ id: uid('c'), text: '', done: false }]; break;
     case 'image': b.src = ''; b.caption = ''; break;
     case 'icon': b.icon = ''; b.size = 'm'; break;
+    case 'quote': b.text = ''; b.author = ''; b.cite = ''; break;
+    case 'math': case 'chem': b.tex = ''; break;
     case 'sources': b.label = 'Sources'; b.items = []; break;
   }
   return b;
@@ -119,7 +127,7 @@ function reIdNode(n) {
 function nodeText(n) {
   const out = [n.tag, n.title, n.subtitle];
   n.blocks.forEach(b => {
-    out.push(b.label, b.text, b.caption);
+    out.push(b.label, b.text, b.caption, b.author, b.cite, b.tex);
     (b.items || []).forEach(it => { out.push(it.title, it.text, it.t, it.u, it.note); (it.steps || []).forEach(s => out.push(s.label, s.text)); });
   });
   return out.filter(Boolean).join(' \n ');
@@ -135,7 +143,7 @@ function nodeName(n) {
 function migrate(doc) {
   if (!doc || !Array.isArray(doc.envs) || !doc.envs.length) return demoDoc();
   doc.version = 1;
-  if (doc.lineStyle !== 'geometric') delete doc.lineStyle;
+  if (!LINE_STYLES.some(s => s[0] === doc.lineStyle) || doc.lineStyle === 'fluid') delete doc.lineStyle;
   if (typeof doc.relay !== 'string' || !/^https:\/\/[^\s<>"']+$/i.test(doc.relay)) delete doc.relay;
   doc.folders = Array.isArray(doc.folders) ? doc.folders.filter(f => f && f.id) : [];
   /* the owner's own icons, shared by every environment: { id, name, src } */
@@ -170,6 +178,8 @@ function migrate(doc) {
         if (['scenarios', 'checklist', 'sources'].includes(b.kind) && !Array.isArray(b.items)) b.items = [];
         if (b.kind === 'sources') b.items.forEach(s => { s.id = s.id || uid('r'); if (typeof s.note !== 'string') s.note = ''; });
         if (b.kind === 'category' && b.closed !== true) delete b.closed;
+        if (b.kind === 'quote') ['text', 'author', 'cite'].forEach(k => { if (typeof b[k] !== 'string') b[k] = ''; });
+        if ((b.kind === 'math' || b.kind === 'chem') && typeof b.tex !== 'string') b.tex = '';
         if (b.kind === 'icon') { if (typeof b.icon !== 'string') b.icon = ''; if (!['s', 'm', 'l'].includes(b.size)) b.size = 'm'; }
         if (b.above !== true) delete b.above;
         if (b.kind === 'scenarios') b.items.forEach(s => { s.id = s.id || uid('s'); s.steps = Array.isArray(s.steps) ? s.steps : []; });
@@ -195,6 +205,7 @@ function migrate(doc) {
     e.edges.forEach(x => {
       if (!x.bend || !isFinite(x.bend.dx) || !isFinite(x.bend.dy)) delete x.bend;
       if (!EDGE_TYPES[x.type]) delete x.type;
+      if (x.style && !LINE_STYLES.some(s => s[0] === x.style)) delete x.style;
     });
   });
   return doc;
@@ -270,7 +281,7 @@ function demoDoc() {
 
 /* ---------- state ---------- */
 let DOC = null;
-const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', autoPublish: false, wheel: 'zoom', theme: 'system', snap: true, noLimit: false }, readLS(LS.cfg) || {});
+const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', autoPublish: false, wheel: 'zoom', theme: 'system', snap: true, noLimit: false, focus: 10, focusLast: 10 }, readLS(LS.cfg) || {});
 const META = Object.assign({ dirty: false, baseSha: null, baseHash: null, publishedAt: 0 }, readLS(LS.meta) || {});
 const UI = Object.assign({ envId: null, views: {}, collapsed: {} }, readLS(LS.ui) || {});
 const S = {

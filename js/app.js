@@ -311,7 +311,7 @@ function openNodeLinkPicker(x, y, sel) {
   const ns = env().nodes.filter(n => n.id !== here && !n.hidden).sort((a, b) => nodeName(a).localeCompare(nodeName(b)));
   if (!ns.length) return toast('There are no other nodes to link to yet');
   openMenu(x, y, [{ head: 'Link to node' }, ...ns.slice(0, 80).map(n => ({
-    label: nodeName(n), icon: n.type === 'title' ? 'title' : n.type === 'note' ? 'note' : 'sub',
+    label: nodeName(n), icon: n.type,
     fn: () => linkSel(nodeName(n), sel),
   }))], { cls: 'scroll' });
 }
@@ -455,7 +455,7 @@ function nodesMarkdown(ns) {
   const visit = n => { if (seen.has(n.id)) return; seen.add(n.id); order.push(n); kids.get(n.id).forEach(visit); };
   ns.filter(n => !hasIn.has(n.id)).sort(byPos).forEach(visit);
   ns.slice().sort(byPos).forEach(visit);
-  const H = { title: '#', note: '##', sub: '###' };
+  const H = { title: '#', note: '##', sub: '###', shape: '###' };
   const quote = s => s.split('\n').map(l => '> ' + l).join('\n');
   const sections = order.map(n => {
     const L = [];
@@ -547,12 +547,18 @@ function setType(type) {
   endEdit(); checkpoint();
   ns.forEach(n => {
     if (n.type === type) return;
-    if (n.w === NODE_W[n.type]) n.w = NODE_W[type];
-    if (!n.tag || n.tag === NODE_LABEL[n.type]) n.tag = type === 'sub' ? '' : NODE_LABEL[type];
+    if (n.w === NODE_W[n.type] || (type === 'shape' && n.w > 360)) n.w = NODE_W[type];
+    if (!n.tag || n.tag === NODE_LABEL[n.type]) n.tag = type === 'sub' || type === 'shape' ? '' : NODE_LABEL[type];
+    /* a shape node shows only a label: use the first bit of text if there is no title (blocks are kept) */
+    if (type === 'shape') {
+      if (!SHAPE_RATIO[n.shape]) n.shape = 'rect';
+      if (!n.title.trim()) { const b = n.blocks.find(x => x.text && x.text.trim()); if (b) n.title = mdPlain(b.text).trim().slice(0, 60); }
+    } else if (n.type === 'shape' || n.shape !== 'rect') delete n.shape;
+    if (n.accent === defaultAccent(type)) delete n.accent;
     n.type = type;
     renderNode(n);
   });
-  renderLayers(); renderInspector(); queueMinimap(); changed();
+  drawEdges(); drawFrames(); renderLayers(); renderInspector(); queueMinimap(); changed();
 }
 function setColor(c) {
   const ns = selNodes();
@@ -561,14 +567,24 @@ function setColor(c) {
   ns.forEach(n => { n.color = c; const el = NODE_EL.get(n.id); if (el) paintNode(el, n); });
   renderLayers(); renderInspector(); queueMinimap(); changed();
 }
-/* shape ('round' is the default) and colour style ('top' for notes and titles, 'left' for sub-notes) */
+/* a shape node's shape, another node's corners ('round' default or sharp 'rect'), or the colour style */
 function setNodeLook(key, v) {
   const ns = selNodes();
   if (!ns.length) return;
   endEdit(); checkpoint();
   ns.forEach(n => {
-    if (key === 'shape') { if (v === 'round') delete n.shape; else n.shape = v; }
-    else if (v === (n.type === 'sub' ? 'left' : 'top')) delete n.accent; else n.accent = v;
+    if (key === 'shape') {
+      if (isShapeNode(n)) {
+        if (!SHAPE_RATIO[v]) return;
+        /* a circle is as tall as it is wide, so it starts smaller */
+        if (v === 'circle' && n.shape !== 'circle' && n.w === NODE_W.shape) n.w = 144;
+        else if (n.shape === 'circle' && v !== 'circle' && n.w === 144) n.w = NODE_W.shape;
+        n.shape = v;
+        const el = NODE_EL.get(n.id);
+        if (el) el.style.width = n.w + 'px';
+      }
+      else if (v === 'rect') n.shape = 'rect'; else if (v === 'round') delete n.shape;
+    } else if (v === defaultAccent(n.type)) delete n.accent; else n.accent = v;
     const el = NODE_EL.get(n.id);
     if (el) paintNode(el, n);
   });
@@ -1630,8 +1646,10 @@ function moveResize(e) {
   if (!RZ.moved) { RZ.moved = true; capture(e); checkpoint(); document.body.style.cursor = 'ew-resize'; }
   let w = RZ.w0 + (e.clientX - RZ.sx) / V.z;
   if (!(e.ctrlKey || e.metaKey)) w = snapV(w);
-  n.w = clamp(Math.round(w), 168, 1200);
-  NODE_EL.get(n.id).style.width = n.w + 'px';
+  n.w = clamp(Math.round(w), n.type === 'shape' ? 96 : 168, 1200);
+  const el = NODE_EL.get(n.id);
+  el.style.width = n.w + 'px';
+  if (n.type === 'shape') paintNode(el, n);
 }
 function endResize() { const r = RZ; RZ = null; document.body.style.cursor = ''; if (r.moved) { changed(); renderInspector(); } }
 
@@ -1649,7 +1667,7 @@ function moveTB(e) {
     g.className = 'tb-ghost';
     g.textContent = NODE_LABEL[TB.type];
     g.style.width = NODE_W[TB.type] + 'px';
-    g.style.height = (TB.type === 'sub' ? 84 : TB.type === 'title' ? 130 : 120) + 'px';
+    g.style.height = (TB.type === 'sub' ? 84 : TB.type === 'title' ? 130 : TB.type === 'shape' ? 90 : 120) + 'px';
     document.body.appendChild(g);
     TB.ghost = g;
   }
@@ -1813,30 +1831,32 @@ vp.addEventListener('contextmenu', e => {
     { label: 'Title node', icon: 'title', kbd: 'T', fn: () => createNode('title', w.x, w.y) },
     { label: 'Note', icon: 'note', kbd: 'N', fn: () => createNode('note', w.x, w.y) },
     { label: 'Sub-note', icon: 'sub', kbd: 'S', fn: () => createNode('sub', w.x, w.y) },
+    { label: 'Shape', icon: 'shape', kbd: 'D', fn: () => createNode('shape', w.x, w.y) },
     '-',
     { label: 'Paste', icon: 'copy', kbd: MOD + 'V', disabled: !CLIP, fn: () => pasteData(CLIP, w) },
     { label: 'Select all', icon: 'cursor', kbd: MOD + 'A', disabled: !env().nodes.length, fn: () => selectNodes(env().nodes.filter(isShown).map(n => n.id)) },
     { label: 'Tidy up everything', icon: 'tidy', disabled: env().nodes.length < 2, fn: () => { S.sel.clear(); tidySel(); } },
     { label: 'Fit to screen', icon: 'fit', kbd: '⇧1', fn: () => fitAll() },
-  ], { keys: { t: 2, n: 3, s: 4 } });
+  ], { keys: { t: 2, n: 3, s: 4, d: 5 } });
 });
 function nodeMenu(x, y) {
   const ns = selNodes(), multi = ns.length > 1, n = ns[0];
   const inGroup = ns.some(m => groupOf(m.id));
   const cur = ns.every(m => m.type === n.type) ? n.type : null;
   return [
-    !multi && { label: 'Add block…', icon: 'plus', fn: () => openBlockMenu({ x, y }, n) },
-    !multi && { label: 'Edit title', icon: 'edit', kbd: '↵', fn: () => editField(n.id, 'title', true) },
+    !multi && !isShapeNode(n) && { label: 'Add block…', icon: 'plus', fn: () => openBlockMenu({ x, y }, n) },
+    !multi && { label: isShapeNode(n) ? 'Edit label' : 'Edit title', icon: 'edit', kbd: '↵', fn: () => editField(n.id, 'title', true) },
+    !multi && isShapeNode(n) && { label: 'Edit details', icon: 'text2', fn: () => editField(n.id, 'subtitle') },
     { label: 'Duplicate', icon: 'copy', kbd: MOD + 'D', fn: duplicateSel },
     { label: 'Copy', icon: 'copy', kbd: MOD + 'C', fn: () => copySel() },
     { label: multi ? `Copy text of ${ns.length} nodes` : 'Copy text', icon: 'text2', kbd: MOD + '⌥C', fn: copyText },
     '-',
     { head: 'Turn into' },
-    ...['title', 'note', 'sub'].map(t => ({ label: NODE_LABEL[t], icon: t, check: cur === t, fn: () => setType(t) })),
+    ...['title', 'note', 'sub', 'shape'].map(t => ({ label: NODE_LABEL[t], icon: t, check: cur === t, fn: () => setType(t) })),
     { head: 'Colour' },
     { swatches: true, value: multi ? null : n.color, keys: [...SOLID_KEYS, ...PASTEL_KEYS, ...Object.keys(GRADIENTS)], fn: setColor },
-    { head: 'Shape' },
-    { shapes: true, value: multi ? null : n.shape || 'round', fn: v => setNodeLook('shape', v) },
+    ns.every(isShapeNode) && { head: 'Shape' },
+    ns.every(isShapeNode) ? { shapes: true, value: sameOr(ns, shapeOf), fn: v => setNodeLook('shape', v) } : { label: 'Sharp corners', icon: 'note', check: ns.every(m => m.shape === 'rect'), fn: () => setNodeLook('shape', ns.every(m => m.shape === 'rect') ? 'round' : 'rect') },
     '-',
     multi && { label: 'Group', icon: 'group', kbd: MOD + 'G', fn: groupSel },
     inGroup && { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: ungroupSel },
@@ -1961,6 +1981,7 @@ window.addEventListener('keydown', e => {
   else if (k === 't') createAt('title', 'pointer');
   else if (k === 'n') createAt('note', 'pointer');
   else if (k === 's') createAt('sub', 'pointer');
+  else if (k === 'd') createAt('shape', 'pointer');
 });
 window.addEventListener('keyup', e => { if (e.key === ' ') { S.space = false; document.body.classList.remove('space'); } });
 window.addEventListener('blur', () => { S.space = false; document.body.classList.remove('space'); });
@@ -2488,7 +2509,7 @@ function openHelp() {
   const K = [
     ['Pan', 'Middle-drag · Space-drag'], ['Zoom', 'Scroll · Ctrl+scroll · pinch'],
     ['Select', 'Click · drag on empty space'], ['Add to selection', 'Shift+click'],
-    ['Add a node', 'Right-click empty space · T N S'], ['Edit text', 'Double-click, or click a selected node’s text'],
+    ['Add a node', 'Right-click empty space · T N S'], ['Add a shape (flowcharts)', 'D'], ['Edit text', 'Double-click, or click a selected node’s text'],
     ['Connect', 'Drag from a side dot to a side dot'], ['Disconnect', 'Drag a line away'],
     ['Place freely (no snapping)', 'Hold Ctrl while dragging'], ['Connect nodes', 'Drag from a side dot'],
     ['Move a block', 'Drag its ⋮⋮ handle'], ['Nudge', 'Arrows (Shift ×4, Ctrl 1px)'],
@@ -2702,7 +2723,7 @@ function scheduleAuto() { if (CFG.autoPublish && S.connected) autoPub(); }
 function fillIcons() {
   const put = (sel, name, size = 17) => $$(sel).forEach(b => b.insertAdjacentHTML('afterbegin', ic(name, size)));
   put('[data-tool="select"]', 'cursor'); put('[data-tool="hand"]', 'hand');
-  put('[data-new="title"]', 'title'); put('[data-new="note"]', 'note'); put('[data-new="sub"]', 'sub');
+  put('[data-new="title"]', 'title'); put('[data-new="note"]', 'note'); put('[data-new="sub"]', 'sub'); put('[data-new="shape"]', 'shape');
   put('[data-cmd="undo"]', 'undo'); put('[data-cmd="redo"]', 'redo');
   put('[data-cmd="zoomout"]', 'minus', 16); put('[data-cmd="zoomin"]', 'plus', 16); put('[data-cmd="fit"]', 'fit', 16);
   put('#env-add', 'plus', 15); put('#cat-add', 'folderplus', 15); put('[data-cmd="help"]', 'help', 16);

@@ -18,7 +18,7 @@
   --node-b:rgba(20,30,60,.12); --node-b2:rgba(20,30,60,.19); --node-hi:rgba(255,255,255,.55);
   --inset:rgba(20,30,60,.045);
   --sel:#4d6bf5; --sel-soft:rgba(77,107,245,.15); --on-sel:#fff;
-  --line:rgba(60,72,100,.45); --guide:#ff3d7f; --edge-sh:rgba(20,30,60,.28); --shape-sh:rgba(20,30,60,.13); --shape-sh2:rgba(20,30,60,.24);
+  --line:rgba(60,72,100,.45); --guide:#ff3d7f; --edge-sh:rgba(20,30,60,.28); --shape-f:drop-shadow(0 1px 1px rgba(20,30,60,.05)) drop-shadow(0 6px 11px rgba(20,30,60,.08)); --shape-sh2:rgba(20,30,60,.24);
   --sh-1:0 1px 2px rgba(20,30,60,.05),0 6px 22px rgba(20,30,60,.07);
   --sh-2:0 22px 56px rgba(20,30,60,.2),0 6px 14px rgba(20,30,60,.08);
   --sh-menu:0 14px 44px rgba(20,30,60,.2),0 2px 6px rgba(20,30,60,.08);
@@ -36,7 +36,7 @@
     --node-b:rgba(255,255,255,.08); --node-b2:rgba(255,255,255,.14); --node-hi:rgba(255,255,255,.05);
     --inset:rgba(255,255,255,.035);
     --sel:#7b93ff; --sel-soft:rgba(123,147,255,.18); --on-sel:#0c0e13;
-    --line:rgba(165,177,205,.42); --edge-sh:rgba(0,0,0,.7); --shape-sh:rgba(0,0,0,.42); --shape-sh2:rgba(0,0,0,.6);
+    --line:rgba(165,177,205,.42); --edge-sh:rgba(0,0,0,.7); --shape-f:drop-shadow(0 2px 3px rgba(0,0,0,.25)) drop-shadow(0 8px 14px rgba(0,0,0,.35)); --shape-sh2:rgba(0,0,0,.6);
     --sh-1:0 1px 0 rgba(255,255,255,.03) inset,0 8px 28px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.25);
     --sh-2:0 28px 70px rgba(0,0,0,.55),0 8px 18px rgba(0,0,0,.3);
     --sh-menu:0 16px 50px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
@@ -53,7 +53,7 @@
   --node-b:rgba(255,255,255,.08); --node-b2:rgba(255,255,255,.14); --node-hi:rgba(255,255,255,.05);
   --inset:rgba(255,255,255,.035);
   --sel:#7b93ff; --sel-soft:rgba(123,147,255,.18); --on-sel:#0c0e13;
-  --line:rgba(165,177,205,.42); --edge-sh:rgba(0,0,0,.7); --shape-sh:rgba(0,0,0,.42); --shape-sh2:rgba(0,0,0,.6);
+  --line:rgba(165,177,205,.42); --edge-sh:rgba(0,0,0,.7); --shape-f:drop-shadow(0 2px 3px rgba(0,0,0,.25)) drop-shadow(0 8px 14px rgba(0,0,0,.35)); --shape-sh2:rgba(0,0,0,.6);
   --sh-1:0 1px 0 rgba(255,255,255,.03) inset,0 8px 28px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.25);
   --sh-2:0 28px 70px rgba(0,0,0,.55),0 8px 18px rgba(0,0,0,.3);
   --sh-menu:0 16px 50px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
@@ -382,17 +382,18 @@ body.editor .node:hover{border-color:var(--node-b2)}
 .node[data-shape="rect"]{border-radius:4px}
 .node.svgs{background:none !important;border-color:transparent !important;box-shadow:none !important}
 .node.svgs::before,.node.svgs::after{display:none}
-.nsh{position:absolute;z-index:-1;overflow:visible;pointer-events:none;filter:drop-shadow(0 5px 12px var(--shape-sh))}
-.nsh .sh-fill{fill:var(--node);stroke:var(--node-b);stroke-width:1;pointer-events:visiblePainted;transition:stroke .15s}
+.nsh{position:absolute;z-index:-1;overflow:visible;pointer-events:none;filter:var(--shape-f)}
+/* same outline, shading and colour styles as the other nodes (the fill is a top-to-bottom gradient set in drawShape) */
+.nsh .sh-fill{stroke:var(--node-b);stroke-width:1;pointer-events:visiblePainted;transition:stroke .15s}
 .node[data-type="sub"] .nsh .sh-fill{fill:var(--node-sub)}
 .nsh .sh-line{fill:none;stroke:var(--node-b2);stroke-width:1}
-.nsh .sh-acc{fill:none;stroke:var(--c);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .2s}
+.nsh .sh-acc{fill:none;stroke:var(--c);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .2s}
 .node.acc-on .nsh .sh-acc{opacity:.9}
-.node.acc-on[data-acc="full"] .nsh .sh-fill{stroke:var(--c);stroke-width:2}
-.node.acc-on[data-acc="tint"] .nsh .sh-fill{fill:color-mix(in srgb,var(--c) 14%,var(--node));stroke:color-mix(in srgb,var(--c) 55%,transparent);stroke-width:1.5}
+.node.acc-on[data-acc="full"] .nsh .sh-fill{stroke:color-mix(in srgb,var(--c) 90%,transparent);stroke-width:1.5}
+.node.acc-on[data-acc="tint"] .nsh .sh-fill{fill:color-mix(in srgb,var(--c) 13%,var(--node));stroke:color-mix(in srgb,var(--c) 32%,var(--node-b));stroke-width:1}
 body.editor .node.svgs:not(.acc-on):hover .sh-fill,body.editor .node.svgs[data-acc="none"]:hover .sh-fill{stroke:var(--node-b2)}
-.node.svgs.sel .sh-fill,.node.svgs.lifted .sh-fill{stroke:var(--sel) !important;stroke-width:2}
-.node.svgs.conn-target .sh-fill,.node.svgs.drop-target .sh-fill,.node.svgs.hl .sh-fill{stroke:var(--sel) !important;stroke-width:2.5}
+.node.svgs.sel .sh-fill,.node.svgs.lifted .sh-fill{stroke:var(--sel) !important;stroke-width:2 !important}
+.node.svgs.conn-target .sh-fill,.node.svgs.drop-target .sh-fill,.node.svgs.hl .sh-fill{stroke:var(--sel) !important;stroke-width:2 !important}
 .node.svgs.lifted .nsh{filter:drop-shadow(0 16px 28px var(--shape-sh2))}
 .node[data-type="sub"] .lab{font-size:9px}
 .node[data-type="sub"] .scn-t{font-size:11.5px}
@@ -811,9 +812,44 @@ body.sec-dragging,body.sec-dragging *{cursor:grabbing !important;user-select:non
 .node[data-type="shape"][data-shape="para"],.node[data-type="shape"][data-shape="hex"]{padding:10px calc(var(--s) + 12px)}
 .node[data-type="shape"][data-shape="doc"]{padding:12px 18px 24px}
 .node[data-type="shape"][data-shape="cyl"]{padding:26px 18px 14px}
-.sn-body{position:relative;min-width:0}
+.node[data-type="shape"] .blocks.sn-body{position:relative;min-width:0;margin-top:0;gap:6px}
 .sn-title{font-size:14px;font-weight:620;line-height:1.3}
-.sn-sub{font-size:12px;line-height:1.45;color:var(--muted);margin-top:4px}
+.node[data-type="shape"] .b-text{font-size:12.5px;line-height:1.45;color:var(--muted)}
 /* empty details take no room (except on the selected node, to show where to type) */
-.node[data-type="shape"]:not(.sel) .sn-sub:empty,body.viewer .node[data-type="shape"] .sn-sub:empty{display:none}
+/* the label is optional: when empty it takes no room (except on the selected node, to show where to type) */
+.node[data-type="shape"]:not(.sel) .sn-title:empty,body.viewer .node[data-type="shape"] .sn-title:empty{display:none}
+.node[data-type="shape"] .n-add{top:6px;right:6px;width:22px;height:22px}
+.node[data-type="shape"] .grip{left:-16px}
+.node[data-type="shape"] .b-img img{border-radius:8px}
+.bm-grid.bm-few{grid-template-columns:1fr}
+/* icon blocks */
+.b-icon{--is:44px;position:relative;display:flex;justify-content:flex-start}
+.b-icon.s-s{--is:28px} .b-icon.s-l{--is:72px}
+.node[data-type="shape"] .b-icon{justify-content:center}
+.bic{width:var(--is);height:var(--is);padding:0;display:grid;place-items:center;color:var(--c);border-radius:10px}
+.bic>svg,.bic>img{width:100%;height:100%;object-fit:contain}
+.bic>svg{stroke-width:1.7}
+button.bic{cursor:pointer;transition:background .12s}
+body.editor button.bic:hover{background:var(--hover)}
+.bic.empty{border:1.5px dashed var(--node-b2);color:var(--faint)}
+.bic.empty>svg{width:38%;height:38%}
+body.viewer .bic.empty{visibility:hidden}
+.bi-size{position:absolute;top:50%;right:0;transform:translateY(-50%);display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.node[data-type="shape"] .bi-size{right:auto;left:calc(50% + var(--is) / 2 + 6px)}
+.blk:hover .bi-size{opacity:1}
+.bi-size button{width:20px;height:20px;border-radius:6px;font-size:10px;font-weight:650;color:var(--muted);background:var(--panel-solid);border:1px solid var(--panel-b)}
+.bi-size button:hover{color:var(--text)}
+.bi-size button.on{color:var(--sel);border-color:var(--sel)}
+body.dragging-block .bi-size{display:none}
+/* icon picker */
+.ipick{max-height:72vh;overflow:auto}
+.ip-head{display:flex;align-items:center;gap:8px;margin:2px 0 8px;font-size:13px}
+.ip-head small{color:var(--faint);font-size:11.5px}
+.ip-head .btn{margin-left:auto}
+.ipgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;margin-bottom:16px}
+.ipi{height:44px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--panel-b);background:var(--inset);color:var(--text2);transition:background .12s,border-color .12s}
+.ipi:hover{background:var(--hover)}
+.ipi.on{border-color:var(--sel);background:var(--sel-soft);color:var(--sel)}
+.ipi img{max-width:28px;max-height:28px;object-fit:contain}
+.ip-empty{grid-column:1/-1;font-size:12px;line-height:1.5;color:var(--muted);padding:12px;border:1px dashed var(--node-b2);border-radius:10px}
 .node[data-type="shape"] .rz{top:12px;bottom:12px}

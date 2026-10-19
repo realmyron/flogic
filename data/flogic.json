@@ -153,7 +153,7 @@
      "x": 504,
      "y": -364,
      "w": 336,
-     "color": "red",
+     "color": "default",
      "tag": "ROOT",
      "title": "Redefining the Act of Sex",
      "subtitle": "",
@@ -437,7 +437,7 @@
      "x": 432,
      "y": 660,
      "w": 480,
-     "color": "amber",
+     "color": "p-mint",
      "tag": "CONCLUSION",
      "title": "Impossibility",
      "subtitle": "",
@@ -467,6 +467,20 @@
        "text": "Homosexuality is only possible if redefined into a non reproductive, non biological, societal definition."
       }
      ]
+    },
+    {
+     "id": "nbuhwqc5mp",
+     "type": "shape",
+     "x": 216,
+     "y": 222,
+     "w": 216,
+     "color": "default",
+     "tag": "",
+     "title": "Water",
+     "subtitle": "",
+     "blocks": [],
+     "shape": "diamond",
+     "accent": "full"
     }
    ],
    "edges": [
@@ -581,42 +595,12 @@
    ],
    "groups": [],
    "folder": "f6bboigff2",
-   "panels": [
-    {
-     "id": "pqm34qgs2a",
-     "name": "Panel 1",
-     "members": [
-      "nuvef0ypz",
-      "n8d9hjd6ra"
-     ],
-     "look": "dotted"
-    }
-   ]
+   "panels": []
   },
   {
    "id": "eiw6bxmnsf",
    "name": "Environment 3",
-   "nodes": [
-    {
-     "id": "nxu11rw2j0",
-     "type": "note",
-     "x": 336,
-     "y": 120,
-     "w": 336,
-     "color": "default",
-     "tag": "Note",
-     "title": "",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "b61dn2e9rp",
-       "kind": "image",
-       "src": "data/assets/3a97cb0b16b77c113fbc7746.webp",
-       "caption": ""
-      }
-     ]
-    }
-   ],
+   "nodes": [],
    "edges": [],
    "groups": [],
    "folder": "f6bboigff2",

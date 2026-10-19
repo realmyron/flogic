@@ -149,7 +149,10 @@ function migrate(doc) {
   /* the owner's own icons, shared by every environment: { id, name, src } */
   doc.icons = Array.isArray(doc.icons) ? doc.icons.filter(x => x && typeof x.src === 'string' && /^(data:image\/|data\/assets\/|https:\/\/)/.test(x.src)) : [];
   doc.icons.forEach(x => { x.id = String(x.id || uid('ic')); x.name = String(x.name || 'Icon'); });
-  doc.folders.forEach(f => { f.name = String(f.name || 'Category'); });
+  /* icon for an environment or category: 'b:<built-in>', 'u:<your icon>' or 't:<emoji or symbol>' */
+  const okIcon = x => typeof x.icon === 'string' && /^(b:[\w-]{1,30}|u:[\w-]{1,40}|t:.{1,16})$/u.test(x.icon);
+  doc.folders.forEach(f => { f.name = String(f.name || 'Category'); if (!okIcon(f)) delete f.icon; });
+  doc.envs.forEach(e => { if (!okIcon(e)) delete e.icon; });
   const folderIds = new Set(doc.folders.map(f => f.id));
   doc.envs.forEach(e => { if (e.folder && !folderIds.has(e.folder)) delete e.folder; });
   doc.envs.forEach(e => {

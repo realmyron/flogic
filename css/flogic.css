@@ -965,3 +965,21 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
 .fm-hint{margin:6px 0 0}
 .fm-tog{margin-top:12px;font-size:12px;line-height:1.4}
 .fmenu{width:300px}
+/* long menus scroll instead of running off the screen */
+.menu{max-height:calc(100vh - 16px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+
+/* import text window */
+.modal.imp-modal{width:min(680px,calc(100vw - 32px))}
+.imp-sum{display:flex;flex-wrap:wrap;gap:6px;min-height:28px;margin-bottom:10px}
+.imp-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;color:var(--text2);background:var(--inset);border:1px solid var(--panel-b)}
+.imp-chip b{color:var(--text)}
+.imp-chip.new{border-color:color-mix(in srgb,var(--ok) 45%,transparent);background:color-mix(in srgb,var(--ok) 10%,transparent)}
+.imp-chip.del{border-color:color-mix(in srgb,var(--err) 40%,transparent);background:color-mix(in srgb,var(--err) 8%,transparent)}
+.imp-empty{font-size:12.5px;color:var(--muted);line-height:26px}
+.imp-warn{list-style:none;margin:0 0 10px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--warn) 9%,transparent);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);max-height:120px;overflow:auto}
+.imp-warn li{display:flex;gap:7px;align-items:flex-start;font-size:12px;line-height:1.45;color:var(--text2);padding:2px 0}
+.imp-warn li .ic{flex:none;margin-top:2px;color:var(--warn)}
+#imp-text{width:100%;height:min(46vh,380px);resize:vertical;padding:10px 12px;border-radius:10px;border:1px solid var(--panel-b);background:var(--inset);color:var(--text);outline:none;
+  font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:2}
+#imp-text:focus{border-color:var(--sel)}
+.imp .tog{margin-top:10px}

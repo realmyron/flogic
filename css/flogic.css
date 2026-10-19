@@ -262,7 +262,7 @@ body.bending,body.bending *{cursor:move !important}
 .mdraw{fill:none;stroke:#fff;stroke-width:16;stroke-linecap:round;stroke-dasharray:1 1;stroke-dashoffset:1;animation:drawIn .62s cubic-bezier(.5,0,.2,1) forwards}
 @keyframes drawIn{to{stroke-dashoffset:0}}
 .elabel.lab-in{animation:labIn .3s var(--spring) both;animation-delay:var(--d,0ms)}
-@keyframes labIn{from{opacity:0;scale:.7}}
+@keyframes labIn{from{opacity:0;filter:blur(2px)}}
 #conn-preview{fill:none;stroke:var(--sel);stroke-width:2.2;stroke-linecap:round;stroke-dasharray:6 7;animation:flow .5s linear infinite}
 #guide-g line{stroke:var(--guide);stroke-width:1;vector-effect:non-scaling-stroke}
 #guide-g line.gap{stroke-dasharray:3 3}
@@ -389,10 +389,10 @@ body.editor .node:hover{border-color:var(--node-b2)}
 .node.lifted{box-shadow:0 0 0 1px var(--sel),var(--sh-2);cursor:grabbing}
 .node.is-hidden{visibility:hidden;pointer-events:none}
 .node.pop{animation:pop .32s var(--spring) both}
-.node.leaving{animation:leave .34s ease-in forwards}
-@keyframes pop{from{opacity:0;scale:.9}}
-/* a deleted node flickers, then fades and shrinks away (while the dots around it draw in) */
-@keyframes leave{0%{filter:none}22%{filter:brightness(1.5) saturate(.7);scale:1.012}60%{opacity:.55;filter:brightness(.9)}100%{opacity:0;scale:.9;filter:brightness(.7) blur(1.5px)}}
+.node.leaving{animation:leave .16s ease-out forwards}
+@keyframes pop{from{opacity:0;translate:0 6px}}
+/* appearing and disappearing never use scale: on a node it would also scale its position on the board */
+@keyframes leave{to{opacity:0;translate:0 3px;filter:blur(1px)}}
 .node.conn-target{border-color:var(--sel);box-shadow:0 0 0 4px var(--sel-soft),var(--sh-1)}
 .node.drop-target{border-color:var(--sel);box-shadow:0 0 0 4px var(--sel-soft),var(--sh-2)}
 
@@ -987,8 +987,9 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
 
 /* action effects: a glowing charge along a path, flying dots, a panel building up and breaking apart */
 .fx-pulse{fill:none;stroke-linecap:round;pointer-events:none;filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 7px currentColor)}
+.fx-pulse.thin{filter:drop-shadow(0 0 2.5px currentColor)}
 .fx-dot{pointer-events:none;filter:drop-shadow(0 0 3px currentColor)}
 .pframe.pf-born{animation:pfBorn .5s ease .42s both}
-@keyframes pfBorn{from{opacity:0;scale:.985}to{opacity:1;scale:1}}
+@keyframes pfBorn{from{opacity:0}to{opacity:1}}
 .pframe.dying,.pframe.dying *{pointer-events:none !important}
 .pframe.dying{transition:opacity .5s ease .25s;opacity:0}

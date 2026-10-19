@@ -355,7 +355,9 @@ body.viewer .pedge,body.viewer .plabel{cursor:pointer}
 .node.acc-on::before{opacity:.9}
 .node[data-acc="bottom"]::before{top:auto;bottom:-1px}
 .node[data-acc="left"]::before{left:-1px;right:auto;top:16px;bottom:16px;width:3px;height:auto;border-radius:0 3px 3px 0;background:var(--cgv,var(--c))}
-.node[data-acc="full"]::before,.node[data-acc="none"]::before{display:none}
+.node[data-acc="full"]::before,.node[data-acc="none"]::before,.node[data-acc="tint"]::before{display:none}
+/* tinted fill: the node takes on a soft wash of its colour */
+.node.acc-on[data-acc="tint"]{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 13%,var(--node-top)),color-mix(in srgb,var(--c2,var(--c)) 11%,var(--node)));border-color:color-mix(in srgb,var(--c) 32%,var(--node-b))}
 .node::after{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1.5px;background:var(--cg,var(--c));pointer-events:none;opacity:0;transition:opacity .2s;
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
 .node.acc-on[data-acc="full"]::after{opacity:.9}
@@ -387,7 +389,8 @@ body.editor .node:hover{border-color:var(--node-b2)}
 .nsh .sh-acc{fill:none;stroke:var(--c);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .2s}
 .node.acc-on .nsh .sh-acc{opacity:.9}
 .node.acc-on[data-acc="full"] .nsh .sh-fill{stroke:var(--c);stroke-width:2}
-body.editor .node.svgs:not([data-acc="full"]):hover .sh-fill{stroke:var(--node-b2)}
+.node.acc-on[data-acc="tint"] .nsh .sh-fill{fill:color-mix(in srgb,var(--c) 14%,var(--node));stroke:color-mix(in srgb,var(--c) 55%,transparent);stroke-width:1.5}
+body.editor .node.svgs:not(.acc-on):hover .sh-fill,body.editor .node.svgs[data-acc="none"]:hover .sh-fill{stroke:var(--node-b2)}
 .node.svgs.sel .sh-fill,.node.svgs.lifted .sh-fill{stroke:var(--sel) !important;stroke-width:2}
 .node.svgs.conn-target .sh-fill,.node.svgs.drop-target .sh-fill,.node.svgs.hl .sh-fill{stroke:var(--sel) !important;stroke-width:2.5}
 .node.svgs.lifted .nsh{filter:drop-shadow(0 16px 28px var(--shape-sh2))}
@@ -785,8 +788,10 @@ body.sec-dragging,body.sec-dragging *{cursor:grabbing !important;user-select:non
 .sw-custom{position:relative;overflow:hidden;cursor:pointer;background:conic-gradient(#ef6a6a,#e9a43a,#9cc23c,#36c08c,#3fb2ec,#7b93ff,#a98bfa,#ee6eae,#ef6a6a)}
 .sw-custom.on{background:var(--sw)}
 .sw-custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
-.shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
-.accrow{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.shgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.accrow{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.accb .ai-acc .ai-tint{fill:color-mix(in srgb,var(--ac) 30%,transparent);stroke:color-mix(in srgb,var(--ac) 70%,transparent);stroke-width:1.2}
+.seg3.types .seg{font-size:11.5px}
 .shb,.accb{height:30px;border-radius:8px;display:grid;place-items:center;color:var(--muted);border:1px solid var(--panel-b);background:var(--inset);transition:background .12s,color .12s,border-color .12s}
 .shb:hover,.accb:hover{color:var(--text);background:var(--hover)}
 .shb.on,.accb.on{border-color:var(--sel);color:var(--sel);background:var(--sel-soft)}
@@ -795,3 +800,20 @@ body.sec-dragging,body.sec-dragging *{cursor:grabbing !important;user-select:non
 .accb .ai-acc>*{fill:none;stroke:var(--ac);stroke-width:2.6;stroke-linecap:round}
 .mshapes{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:3px 10px 7px;max-width:248px}
 .mshapes .shb{height:26px}
+
+/* shape nodes: the box is the shape; the label sits centred in the part of the shape that can hold text.
+   --w is its width, --mh its height for that width, --s the slant of a parallelogram or hexagon */
+.node[data-type="shape"]{display:flex;flex-direction:column;justify-content:center;min-height:var(--mh,90px);padding:12px 18px;text-align:center}
+.node[data-type="shape"][data-shape="pill"]{padding:10px calc(var(--mh) * .42)}
+.node[data-type="shape"][data-shape="ellipse"]{padding:calc(var(--mh) * .16) calc(var(--w) * .15)}
+.node[data-type="shape"][data-shape="circle"]{padding:calc(var(--w) * .15)}
+.node[data-type="shape"][data-shape="diamond"]{padding:calc(var(--mh) * .22) calc(var(--w) * .25)}
+.node[data-type="shape"][data-shape="para"],.node[data-type="shape"][data-shape="hex"]{padding:10px calc(var(--s) + 12px)}
+.node[data-type="shape"][data-shape="doc"]{padding:12px 18px 24px}
+.node[data-type="shape"][data-shape="cyl"]{padding:26px 18px 14px}
+.sn-body{position:relative;min-width:0}
+.sn-title{font-size:14px;font-weight:620;line-height:1.3}
+.sn-sub{font-size:12px;line-height:1.45;color:var(--muted);margin-top:4px}
+/* empty details take no room (except on the selected node, to show where to type) */
+.node[data-type="shape"]:not(.sel) .sn-sub:empty,body.viewer .node[data-type="shape"] .sn-sub:empty{display:none}
+.node[data-type="shape"] .rz{top:12px;bottom:12px}

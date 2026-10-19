@@ -23,7 +23,145 @@ const DIR = { t: { x: 0, y: -1 }, b: { x: 0, y: 1 }, l: { x: -1, y: 0 }, r: { x:
 /* ---------- geometry ---------- */
 function pos(id) { return DISP.get(id) || nodeById(id); }
 function sizeOf(n) { return SIZE.get(n.id) || { w: n.w, h: n.type === 'sub' ? 96 : n.type === 'title' ? 140 : 160 }; }
-function rectOf(n, model) { const p = model ? n : pos(n.id), s = sizeOf(n); return { x: p.x, y: p.y, w: s.w, h: s.h }; }
+/* the node's outline on the board: its box, plus whatever its shape draws around the box */
+function rectOf(n, model) {
+  const p = model ? n : pos(n.id), s = sizeOf(n);
+  if (!SVG_SHAPES.has(n.shape)) return { x: p.x, y: p.y, w: s.w, h: s.h };
+  const g = shapeExt(n.shape, s.w, s.h);
+  return { x: p.x - g.x, y: p.y - g.t, w: s.w + g.x * 2, h: s.h + g.t + g.b };
+}
+/* ---------- node shapes ----------
+   How far a drawn shape reaches beyond the node's box so the text fits inside it (x each side, t top,
+   b bottom), and how far its side points sit inside that outline (i: left/right, ib: bottom). */
+const SVG_SHAPES = new Set(['pill', 'ellipse', 'diamond', 'para', 'hex', 'doc', 'cyl']);
+function shapeExt(shape, w, h) {
+  const r = v => Math.round(v);
+  switch (shape) {
+    case 'pill': return { x: r(Math.min(h * 0.3, 60)), t: 0, b: 0, i: 0, ib: 0 };
+    case 'ellipse': return { x: r(w * 0.2), t: r(h * 0.2), b: r(h * 0.2), i: 0, ib: 0 };
+    case 'diamond': return { x: r(w * 0.45), t: r(h * 0.45), b: r(h * 0.45), i: 0, ib: 0 };
+    case 'para': { const s = r(clamp(h * 0.3, 14, 44)); return { x: s, t: 0, b: 0, i: s / 2, ib: 0, s }; }
+    case 'hex': { const s = r(clamp(h * 0.3, 14, 44)); return { x: s, t: 0, b: 0, i: 0, ib: 0, s }; }
+    case 'doc': return { x: 0, t: 0, b: 14, i: 0, ib: 6 };
+    case 'cyl': return { x: 0, t: 12, b: 12, i: 0, ib: 0 };
+  }
+  return { x: 0, t: 0, b: 0, i: 0, ib: 0 };
+}
+/* outline (d), extra line (line, e.g. a cylinder's rim) and the coloured part for each colour style */
+function shapePaths(shape, W, H, g) {
+  const P = (x, y) => `${f1(x)},${f1(y)}`;
+  switch (shape) {
+    case 'pill': {
+      const r = H / 2, k = Math.min(22, W / 4);
+      return { d: `M${P(r, 0)}H${f1(W - r)}A${f1(r)},${f1(r)} 0 0 1 ${P(W - r, H)}H${f1(r)}A${f1(r)},${f1(r)} 0 0 1 ${P(r, 0)}Z`,
+        top: `M${P(r + k, 0)}H${f1(W - r - k)}`, bottom: `M${P(r + k, H)}H${f1(W - r - k)}`, left: `M${P(r, H - 4)}A${f1(r)},${f1(r)} 0 0 1 ${P(r, 4)}` };
+    }
+    case 'ellipse': {
+      const rx = W / 2, ry = H / 2, at = a => P(rx + rx * Math.cos(a * Math.PI / 180), ry + ry * Math.sin(a * Math.PI / 180)), A = `A${f1(rx)},${f1(ry)} 0 0 1 `;
+      return { d: `M${P(0, ry)}A${f1(rx)},${f1(ry)} 0 1 1 ${P(W, ry)}A${f1(rx)},${f1(ry)} 0 1 1 ${P(0, ry)}Z`,
+        top: `M${at(235)}${A}${at(305)}`, bottom: `M${at(55)}${A}${at(125)}`, left: `M${at(140)}${A}${at(220)}` };
+    }
+    case 'diamond':
+      return { d: `M${P(W / 2, 0)}L${P(W, H / 2)}L${P(W / 2, H)}L${P(0, H / 2)}Z`,
+        top: `M${P(W * 0.22, H * 0.28)}L${P(W / 2, 0)}L${P(W * 0.78, H * 0.28)}`, bottom: `M${P(W * 0.22, H * 0.72)}L${P(W / 2, H)}L${P(W * 0.78, H * 0.72)}`,
+        left: `M${P(W * 0.28, H * 0.22)}L${P(0, H / 2)}L${P(W * 0.28, H * 0.78)}` };
+    case 'para': {
+      const s = g.s;
+      return { d: `M${P(s, 0)}H${f1(W)}L${P(W - s, H)}H0Z`, top: `M${P(s + 20, 0)}H${f1(W - 20)}`, bottom: `M${P(20, H)}H${f1(W - s - 20)}`,
+        left: `M${P(s * 0.8, H * 0.2)}L${P(s * 0.2, H * 0.8)}` };
+    }
+    case 'hex': {
+      const s = g.s;
+      return { d: `M${P(s, 0)}H${f1(W - s)}L${P(W, H / 2)}L${P(W - s, H)}H${f1(s)}L${P(0, H / 2)}Z`, top: `M${P(s + 14, 0)}H${f1(W - s - 14)}`, bottom: `M${P(s + 14, H)}H${f1(W - s - 14)}`,
+        left: `M${P(s * 0.6, H * 0.2)}L${P(0, H / 2)}L${P(s * 0.6, H * 0.8)}` };
+    }
+    case 'doc': {
+      const r = 14, a = 9, wave = `C${P(W * 0.72, H - a * 2.6)} ${P(W * 0.3, H + a * 0.5)} ${P(0, H - a * 0.6)}`;
+      return { d: `M${P(0, r)}Q0,0 ${P(r, 0)}H${f1(W - r)}Q${P(W, 0)} ${P(W, r)}V${f1(H - a)}${wave}Z`,
+        top: `M${P(22, 0)}H${f1(W - 22)}`, bottom: `M${P(W, H - a)}${wave}`, left: `M${P(0, r + 6)}V${f1(H - a - 8)}` };
+    }
+    case 'cyl': {
+      const c = 12, rx = W / 2;
+      return { d: `M${P(0, c)}A${f1(rx)},${c} 0 0 1 ${P(W, c)}V${f1(H - c)}A${f1(rx)},${c} 0 0 1 ${P(0, H - c)}Z`, line: `M${P(0, c)}A${f1(rx)},${c} 0 0 0 ${P(W, c)}`,
+        top: `M${P(0, c)}A${f1(rx)},${c} 0 0 1 ${P(W, c)}`, bottom: `M${P(0, H - c)}A${f1(rx)},${c} 0 0 0 ${P(W, H - c)}`, left: `M${P(0, c + 8)}V${f1(H - c - 8)}` };
+    }
+  }
+  return null;
+}
+/* small picture of a shape for the shape picker */
+function shapeIcon(k) {
+  const W = 28, H = 16;
+  let d;
+  if (k === 'round') d = `M5,1H23Q27,1 27,5V11Q27,15 23,15H5Q1,15 1,11V5Q1,1 5,1Z`;
+  else if (k === 'rect') d = 'M1,1H27V15H1Z';
+  else {
+    /* drawn at a typical node size, then scaled down to fit */
+    const bw = k === 'diamond' || k === 'ellipse' ? 110 : 150, bh = 56;
+    const g = shapeExt(k, bw, bh), sw = bw + g.x * 2, sh = bh + g.t + g.b, sc = Math.min((W - 2) / sw, (H - 2) / sh);
+    const p = shapePaths(k, sw, sh, g);
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><g transform="translate(${f1((W - sw * sc) / 2)},${f1((H - sh * sc) / 2)}) scale(${sc.toFixed(4)})"><path d="${p.d}" vector-effect="non-scaling-stroke"/>${p.line ? `<path d="${p.line}" vector-effect="non-scaling-stroke"/>` : ''}</g></svg>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><path d="${d}"/></svg>`;
+}
+/* the effective colour style: sub-notes default to a line on the left, other nodes to a line on top */
+const accentOf = n => n.accent || (n.type === 'sub' ? 'left' : 'top');
+/* colour, colour style and shape of a node element */
+function paintNode(el, n) {
+  const { c1, c2 } = colorOf(n.color), acc = accentOf(n);
+  el.dataset.c = n.color || 'default';
+  el.style.setProperty('--c', c1);
+  if (c2) { el.style.setProperty('--c2', c2); el.style.setProperty('--cg', `linear-gradient(90deg,${c1},${c2})`); el.style.setProperty('--cgv', `linear-gradient(180deg,${c1},${c2})`); }
+  else ['--c2', '--cg', '--cgv'].forEach(k => el.style.removeProperty(k));
+  el.classList.toggle('grad', !!c2);
+  el.dataset.acc = acc;
+  /* the colour shows when it was picked, on title and sub-notes, or when a colour style was chosen */
+  el.classList.toggle('acc-on', acc !== 'none' && (!!n.accent || n.type !== 'note' || (n.color || 'default') !== 'default'));
+  el.dataset.shape = n.shape || 'round';
+  el.classList.toggle('svgs', SVG_SHAPES.has(n.shape));
+  drawShape(el, n);
+}
+function drawShape(el, n) {
+  let svg = el.querySelector(':scope > .nsh');
+  if (!SVG_SHAPES.has(n.shape)) {
+    if (svg) svg.remove();
+    ['--px', '--py', '--pt', '--pb'].forEach(k => el.style.removeProperty(k));
+    return;
+  }
+  const s = SIZE.get(n.id) || { w: el.offsetWidth, h: el.offsetHeight };
+  if (!s.w) return;
+  const g = shapeExt(n.shape, s.w, s.h), W = s.w + g.x * 2, H = s.h + g.t + g.b;
+  if (!svg) {
+    svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('class', 'nsh');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = `<defs><linearGradient gradientUnits="userSpaceOnUse" x1="0" y1="0" y2="0"><stop offset="0" style="stop-color:var(--c)"/><stop offset="1" style="stop-color:var(--c2,var(--c))"/></linearGradient></defs><path class="sh-fill"/><path class="sh-line"/><path class="sh-acc"/>`;
+    el.prepend(svg);
+  }
+  const p = shapePaths(n.shape, W, H, g), acc = accentOf(n), [fill, line, accP] = svg.querySelectorAll('path'), lg = svg.querySelector('linearGradient');
+  const gid = 'ng-' + n.id;
+  lg.id = gid; lg.setAttribute('x2', W);
+  Object.assign(svg.style, { left: -g.x + 'px', top: -g.t + 'px', width: W + 'px', height: H + 'px' });
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  fill.setAttribute('d', p.d);
+  line.setAttribute('d', p.line || '');
+  accP.setAttribute('d', acc === 'full' || acc === 'none' ? '' : p[acc] || '');
+  const paint = colorOf(n.color).c2 ? `url(#${gid})` : '';
+  accP.style.stroke = paint;
+  fill.style.stroke = acc === 'full' && paint ? paint : '';
+  /* side dots sit on the outline */
+  el.style.setProperty('--px', g.x - g.i + 'px');
+  el.style.setProperty('--py', (g.b - g.t) / 2 + 'px');
+  el.style.setProperty('--pt', g.t + 'px');
+  el.style.setProperty('--pb', g.b - g.ib + 'px');
+}
+/* where a line meets a node's side: on the outline even where the shape is slanted or wavy */
+function shapeAdjust(id, side, p) {
+  const n = nodeById(id);
+  if (!n || !SVG_SHAPES.has(n.shape)) return p;
+  const s = sizeOf(n), g = shapeExt(n.shape, s.w, s.h);
+  if (side === 'l') p.x += g.i; else if (side === 'r') p.x -= g.i; else if (side === 'b') p.y -= g.ib;
+  return p;
+}
 function portPos(n, side) {
   const r = rectOf(n);
   if (side === 't') return { x: r.x + r.w / 2, y: r.y };
@@ -323,14 +461,18 @@ const RO = new ResizeObserver(entries => {
     const el = en.target, id = el.dataset.id;
     if (!id || NODE_EL.get(id) !== el) continue;
     const w = el.offsetWidth, h = el.offsetHeight, s = SIZE.get(id);
-    if (!s || s.w !== w || s.h !== h) { SIZE.set(id, { w, h }); ch = true; }
+    if (!s || s.w !== w || s.h !== h) {
+      SIZE.set(id, { w, h }); ch = true;
+      const n = nodeById(id);
+      if (n && SVG_SHAPES.has(n.shape)) drawShape(el, n);
+    }
   }
   if (ch) queueFrame();
 });
 function applyNode(el, n, i) {
   el.dataset.type = n.type;
-  el.dataset.c = n.color || 'default';
   el.style.width = n.w + 'px';
+  paintNode(el, n);
   if (!el.classList.contains('lifted')) el.style.zIndex = i + 1;
   el.classList.toggle('sel', S.sel.has(n.id));
   el.classList.toggle('is-hidden', !!n.hidden);
@@ -403,7 +545,7 @@ function drawEdges() {
   /* 3. draw */
   for (const it of list) {
     const ed = it.ed, style = lineStyle(ed);
-    const p1 = sidePoint(it.ra, it.s1, it.o1), p2 = sidePoint(it.rb, it.s2, it.o2);
+    const p1 = shapeAdjust(it.a, it.s1, sidePoint(it.ra, it.s1, it.o1)), p2 = shapeAdjust(it.b, it.s2, sidePoint(it.rb, it.s2, it.o2));
     if (!ed.bend) straighten(p1, it.s1, it.ra, p2, it.s2, it.rb);
     let avoid = null;
     if (style === 'geometric') {
@@ -543,7 +685,7 @@ function endRect(id) {
   const p = panelById(id);
   return p ? panelRect(p) : null;
 }
-function endPort(id, side) { const r = endRect(id); return r ? sidePoint(r, side, 0) : null; }
+function endPort(id, side) { const r = endRect(id); return r ? shapeAdjust(id, side, sidePoint(r, side, 0)) : null; }
 function drawFrames() { drawPanels(); drawGroupOutlines(); }
 function drawPanels() {
   const e = env(), seen = new Set(), sp = selectedPanel();
@@ -650,7 +792,7 @@ function drawMinimap() {
   ns.filter(n => !foldMap().has(n.id)).forEach(n => {
     const r = rectOf(n);
     ctx.globalAlpha = S.sel.has(n.id) ? 1 : 0.55;
-    ctx.fillStyle = COLORS[n.color] || COLORS.default;
+    ctx.fillStyle = colorOf(n.color).c1;
     const w = Math.max(2, r.w * s), h = Math.max(2, r.h * s);
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(ox + r.x * s, oy + r.y * s, w, h, Math.min(3, w / 3)); else ctx.rect(ox + r.x * s, oy + r.y * s, w, h);
@@ -685,7 +827,7 @@ function renderEnvs() {
 /* depth: 0 top level, 1 inside a group or panel, 2 inside a group inside a panel */
 function layerRow(n, depth, snip) {
   const icn = n.type === 'title' ? 'title' : n.type === 'note' ? 'note' : 'sub';
-  return `<div class="layer${depth ? ' child d' + depth : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"${S.canEdit ? ' draggable="true"' : ''}><span class="lic" style="color:${COLORS[n.color] || COLORS.default}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
+  return `<div class="layer${depth ? ' child d' + depth : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"${S.canEdit ? ' draggable="true"' : ''}><span class="lic" style="color:${colorOf(n.color).c1}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
 }
 function eyeBtn(hidden) {
   if (!S.canEdit) return '';
@@ -755,9 +897,25 @@ function typeGridHTML(cur) {
   const btn = (k, t) => `<button class="tt${(cur || '') === k ? ' on' : ''}" data-etype="${k}" style="--ec:${t ? t.color : 'var(--line)'}" title="${t ? t.label : 'Default'}"><span class="tt-ic">${t ? ic(t.icon, 12) : ''}</span><span class="tt-nm">${t ? t.label : 'Default'}</span></button>`;
   return `<div class="tgrid">${btn('', null)}${Object.entries(groups).map(([g, list]) => `<div class="tgroup">${esc(g)}</div>${list.map(([k, t]) => btn(k, t)).join('')}`).join('')}</div>`;
 }
-function swatches(cur) {
-  return Object.entries(COLORS).map(([k, v]) => `<button class="sw${cur === k ? ' on' : ''}" data-sw="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('');
+/* node colour picker: main colours, pastels, gradients and a custom colour */
+function colorPicker(cur) {
+  const row = keys => `<div class="swrow">${keys.map(k => swatchBtn(k, cur === k, 'sw')).join('')}</div>`;
+  const hex = isHex(cur);
+  return row(SOLID_KEYS) + '<div class="swlab">Pastel</div>' + row(PASTEL_KEYS) +
+    `<div class="swlab">Gradient · custom</div><div class="swrow">${Object.keys(GRADIENTS).map(k => swatchBtn(k, cur === k, 'sw')).join('')}` +
+    `<label class="sw sw-custom${hex ? ' on' : ''}" title="Custom colour"${hex ? ` style="--sw:${cur};--swr:${cur}"` : ''}><input type="color" data-cc value="${hex ? cur : '#7b93ff'}" aria-label="Custom colour"></label></div>`;
 }
+/* shape and colour style pickers (cur values are null when the selected nodes differ) */
+function accIcon(k) {
+  const part = { top: '<path d="M8,1.5H20"/>', bottom: '<path d="M8,16.5H20"/>', left: '<path d="M1.5,5V13"/>', full: '<rect x="1.5" y="1.5" width="25" height="15" rx="4.5"/>', none: '' }[k];
+  return `<svg viewBox="0 0 28 18" width="28" height="18"><rect class="ai-box" x="1.5" y="1.5" width="25" height="15" rx="4.5"/><g class="ai-acc">${part}</g></svg>`;
+}
+function nodeStyleHTML(shape, acc, color) {
+  return `<div class="ihead">Shape</div><div class="shgrid">${SHAPES.map(([k, name]) => `<button class="shb${shape === k ? ' on' : ''}" data-ia="shape" data-v="${k}" title="${name}" aria-label="${name}">${shapeIcon(k)}</button>`).join('')}</div>
+    <div class="ihead">Colour</div>${colorPicker(color)}
+    <div class="ihead">Colour style</div><div class="accrow" style="--ac:${colorOf(color).c1}">${ACCENTS.map(([k, name]) => `<button class="accb${acc === k ? ' on' : ''}" data-ia="accent" data-v="${k}" title="${name}" aria-label="${name}">${accIcon(k)}</button>`).join('')}</div>`;
+}
+const sameOr = (ns, f) => ns.every(m => f(m) === f(ns[0])) ? f(ns[0]) : null;
 function renderInspector() {
   const box = $('#inspector');
   if (!S.canEdit) { box.innerHTML = ''; return; }
@@ -779,7 +937,7 @@ function renderInspector() {
     h = `<div class="sec-head"><span>${esc(p.name)}</span><span class="cnt">Panel</span></div><div class="insp">
       <div class="ihead">Look</div>
       <div class="glooks">${PANEL_LOOKS.map(([k, name]) => `<button class="glook${p.look === k ? ' on' : ''}" data-ia="plook" data-v="${k}" title="${name}"><span class="gl-prev gl-${k}"></span>${name}</button>`).join('')}</div>
-      <div class="ihead">Frame colour</div><div class="swrow">${Object.entries(COLORS).map(([k, v]) => `<button class="sw${(p.color || 'slate') === k ? ' on' : ''}" data-pc="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('')}</div>
+      <div class="ihead">Frame colour</div><div class="swrow">${Object.keys(COLORS).map(k => swatchBtn(k, (p.color || 'slate') === k, 'pc')).join('')}</div>
       <div class="row2"><button class="ibtn" style="flex:1" data-ia="pfold">${ic('chevr', 14)} ${p.folded ? 'Unfold' : 'Fold'}</button><button class="ibtn" style="flex:1" data-ia="prename">${ic('edit', 14)} Rename</button></div>
       ${p.folded ? '' : `<div class="row4"><button class="ib" data-ia="align" data-v="l" title="Align left">${ic('alignl', 15)}</button><button class="ib" data-ia="align" data-v="c" title="Align centres">${ic('alignc', 15)}</button><button class="ib" data-ia="align" data-v="t" title="Align top">${ic('alignt', 15)}</button><button class="ib" data-ia="tidy" title="Tidy up">${ic('tidy', 15)}</button></div>`}
       <button class="ibtn" data-ia="unpanel">${ic('panel', 14)} Remove panel (keep nodes)</button>
@@ -788,7 +946,7 @@ function renderInspector() {
     const n = nodeById([...S.sel][0]), p = n && panelOf(n.id);
     if (n) h = `<div class="sec-head"><span>${NODE_LABEL[n.type]}</span></div><div class="insp">
       <div class="seg3">${['title', 'note', 'sub'].map(t => `<button class="seg${n.type === t ? ' on' : ''}" data-ia="type" data-v="${t}">${NODE_LABEL[t]}</button>`).join('')}</div>
-      <div class="swrow">${swatches(n.color)}</div>
+      ${nodeStyleHTML(n.shape || 'round', accentOf(n), n.color || 'default')}
       <div class="row2"><button class="ibtn" style="flex:1" data-ia="dup">${ic('copy', 14)} Duplicate</button><button class="ibtn danger" data-ia="del" aria-label="Delete">${ic('trash', 14)}</button></div>
       ${p ? `<button class="ibtn" data-ia="outpanel">${ic('panel', 14)} Take out of “${esc(p.name)}”</button>` : `<button class="ibtn" data-ia="panel">${ic('panel', 14)} Put in a panel <kbd>P</kbd></button>`}
       <div class="meta">X ${Math.round(n.x)} · Y ${Math.round(n.y)} · W ${n.w}</div></div>`;
@@ -796,7 +954,7 @@ function renderInspector() {
     const g = selectedGroup(), inPanel = [...S.sel].some(id => panelOf(id));
     h = `<div class="sec-head"><span>${g ? esc(g.name) : S.sel.size + ' selected'}</span>${g ? '<span class="cnt">Group</span>' : ''}</div><div class="insp">
       <div class="row4"><button class="ib" data-ia="align" data-v="l" title="Align left">${ic('alignl', 15)}</button><button class="ib" data-ia="align" data-v="c" title="Align centres">${ic('alignc', 15)}</button><button class="ib" data-ia="align" data-v="t" title="Align top">${ic('alignt', 15)}</button><button class="ib" data-ia="tidy" title="Tidy up">${ic('tidy', 15)}</button></div>
-      <div class="ihead">${g ? 'Node colour' : 'Colour'}</div><div class="swrow">${swatches(null)}</div>
+      ${(ns => nodeStyleHTML(sameOr(ns, m => m.shape || 'round'), sameOr(ns, accentOf), sameOr(ns, m => m.color || 'default')))(selNodes())}
       ${g ? `<div class="row2"><button class="ibtn" style="flex:1" data-ia="grename">${ic('edit', 14)} Rename</button><button class="ibtn" style="flex:1" data-ia="ungroup">${ic('group', 14)} Ungroup</button></div>` : `<button class="ibtn" data-ia="group">${ic('group', 14)} Group <kbd>${MOD} G</kbd></button>`}
       <button class="ibtn" data-ia="panel">${ic('panel', 14)} Put in a new panel <kbd>P</kbd></button>
       ${inPanel ? `<button class="ibtn" data-ia="outpanel">${ic('panel', 14)} Take out of panel</button>` : ''}

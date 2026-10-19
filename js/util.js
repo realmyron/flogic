@@ -79,6 +79,7 @@ const ICONS = {
   fit: '<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>',
   board: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M3.5 9.5h17M9.5 20.5v-11"/>',
   icon: '<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.6l-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.3 3-5 6-5s5.4 1.7 6 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6M17.5 14.4c1.9.6 3.1 2.2 3.5 4.6"/>',
   shape: '<path d="M8.5 3 14 8.5 8.5 14 3 8.5z"/><circle cx="16.5" cy="16.5" r="4.5"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M3 9.5h18M7 6.8h4"/>',
   group: '<rect x="3" y="3" width="18" height="18" rx="4.5" stroke-dasharray="3 3"/><rect x="7" y="7" width="5.5" height="5.5" rx="1.4"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.4"/>',

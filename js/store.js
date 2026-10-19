@@ -284,7 +284,7 @@ function demoDoc() {
 
 /* ---------- state ---------- */
 let DOC = null;
-const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', autoPublish: false, wheel: 'zoom', theme: 'system', snap: true, noLimit: false, focus: 10, focusLast: 10 }, readLS(LS.cfg) || {});
+const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', autoPublish: false, wheel: 'zoom', theme: 'system', snap: true, noLimit: false, focus: 3, focusLast: 3, bgFx: 'clouds', readGlow: true }, readLS(LS.cfg) || {});
 const META = Object.assign({ dirty: false, baseSha: null, baseHash: null, publishedAt: 0 }, readLS(LS.meta) || {});
 const UI = Object.assign({ envId: null, views: {}, collapsed: {} }, readLS(LS.ui) || {});
 const S = {

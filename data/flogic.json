@@ -467,20 +467,6 @@
        "text": "Homosexuality is only possible if redefined into a non reproductive, non biological, societal definition."
       }
      ]
-    },
-    {
-     "id": "nbuhwqc5mp",
-     "type": "shape",
-     "x": 216,
-     "y": 222,
-     "w": 216,
-     "color": "default",
-     "tag": "",
-     "title": "Water",
-     "subtitle": "",
-     "blocks": [],
-     "shape": "diamond",
-     "accent": "full"
     }
    ],
    "edges": [
@@ -582,7 +568,7 @@
      }
     },
     {
-     "id": "l97l5d4mzo",
+     "id": "lup7g6w7on",
      "from": "noso4rr4vz",
      "fs": "r",
      "to": "nvivrd8px2",
@@ -600,8 +586,126 @@
   {
    "id": "eiw6bxmnsf",
    "name": "Environment 3",
-   "nodes": [],
-   "edges": [],
+   "nodes": [
+    {
+     "id": "ny16xsea1i",
+     "type": "note",
+     "x": 48,
+     "y": 216,
+     "w": 336,
+     "color": "default",
+     "tag": "Note",
+     "title": "ppp",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bk7qspva1i",
+       "kind": "text",
+       "text": ""
+      },
+      {
+       "id": "bf5dlugk3e",
+       "kind": "scenarios",
+       "label": "Scenarios",
+       "items": [
+        {
+         "id": "ssk8gcbk3e",
+         "title": "",
+         "steps": [
+          {
+           "id": "t6zyyt4k3e",
+           "label": "Then",
+           "text": "",
+           "alt": false
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "n61f2qjdt9",
+     "type": "title",
+     "x": 72,
+     "y": -216,
+     "w": 480,
+     "color": "default",
+     "tag": "",
+     "title": "",
+     "subtitle": "",
+     "blocks": []
+    },
+    {
+     "id": "nfk5eawgld",
+     "type": "note",
+     "x": 768,
+     "y": 240,
+     "w": 336,
+     "color": "default",
+     "tag": "Note",
+     "title": "",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b533sd3gld",
+       "kind": "text",
+       "text": ""
+      },
+      {
+       "id": "b4ikc6qnvz",
+       "kind": "icon",
+       "icon": "b:zap",
+       "size": "m"
+      }
+     ]
+    },
+    {
+     "id": "ng91y3gqzo",
+     "type": "shape",
+     "x": 432,
+     "y": 552,
+     "w": 216,
+     "color": "red",
+     "tag": "",
+     "title": "u",
+     "subtitle": "",
+     "blocks": [],
+     "shape": "diamond"
+    }
+   ],
+   "edges": [
+    {
+     "id": "lqzvoyif9b",
+     "from": "ny16xsea1i",
+     "fs": "t",
+     "to": "n61f2qjdt9",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l4quqfrwfz",
+     "from": "ng91y3gqzo",
+     "fs": "t",
+     "to": "nfk5eawgld",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l5fcto2xng",
+     "from": "ny16xsea1i",
+     "fs": "b",
+     "to": "ng91y3gqzo",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    }
+   ],
    "groups": [],
    "folder": "f6bboigff2",
    "panels": []
@@ -616,6 +720,13 @@
   {
    "id": "f3949hz1g4",
    "name": "Category 2"
+  }
+ ],
+ "icons": [
+  {
+   "id": "icii99stt1j",
+   "name": "sticker_820235",
+   "src": "data/assets/b889be3dcf1534abb14b5ed5.gif"
   }
  ]
 }

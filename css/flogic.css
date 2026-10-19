@@ -99,25 +99,41 @@ kbd{font-family:var(--font);font-size:11px;color:var(--faint)}
 .foot-btn:hover{background:var(--hover);color:var(--text)}
 
 /* environments */
+/* environments: rows you open; the active one has a coloured bar on its left */
 .env{position:relative;display:flex;align-items:center;gap:9px;height:32px;padding:0 10px;border-radius:9px;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
 .env:hover{background:var(--hover);color:var(--text)}
-.env.active{background:var(--sel-soft);color:var(--text)}
-.env.active .ic{color:var(--sel)}
+.env.active{background:var(--sel-soft);color:var(--text);font-weight:550}
+.env.active::after{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--sel)}
+.env.active .eic{color:var(--sel)}
 .env .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.env.child{padding-left:30px}
-.env.dragging{opacity:.35}
-.env.drop-before{box-shadow:inset 0 2px 0 var(--sel)}
-.env.drop-after{box-shadow:inset 0 -2px 0 var(--sel)}
-.efold{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 6px;margin-top:2px;border-radius:9px;color:var(--text2);font-weight:600;cursor:pointer;transition:background .12s,box-shadow .12s}
-.efold:hover{background:var(--hover)}
+.env.child{padding-left:28px}
+.env.dragging,.efold.dragging{opacity:.35}
+.env.drop-before,.efold.drop-before{box-shadow:inset 0 2px 0 var(--sel)}
+.env.drop-after,.efold.drop-after{box-shadow:inset 0 -2px 0 var(--sel)}
+.eic{flex:none;display:grid;place-items:center;width:16px;height:16px}
+.eic .emo{font-size:14px;line-height:1}
+.eic .nvi{width:16px;height:16px;object-fit:contain}
+/* categories: small section headings (not rows), with a line under them */
+.efold{position:relative;display:flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 6px;margin-top:12px;border-radius:7px;
+  font-size:10.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);cursor:pointer;transition:color .12s,background .12s,box-shadow .12s}
+.efold::before{content:"";position:absolute;left:8px;right:8px;top:-6px;height:1px;background:var(--panel-b)}
+.efold:first-child{margin-top:2px}
+.efold:first-child::before{display:none}
+.efold:hover,.efold.has-active{color:var(--text2)}
 .efold .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.efold>.ic{color:var(--muted)}
-.efold.has-active>.ic{color:var(--sel)}
-.efold.drop-in{background:var(--sel-soft);box-shadow:inset 0 0 0 1.5px var(--sel)}
-.efold .lchev{margin-right:-2px}
+.efold .eic{width:14px;height:14px;color:inherit;opacity:.9}
+.efold .eic .emo{font-size:12px}
+.efold .eic .nvi{width:14px;height:14px}
+.efold .cnt{letter-spacing:0}
+.efold.drop-in{background:var(--sel-soft);color:var(--sel);box-shadow:inset 0 0 0 1.5px var(--sel)}
+.efold .lchev{margin-right:-2px;width:14px}
 .efold-items{position:relative}
-.efold-items::before{content:"";position:absolute;left:15px;top:2px;bottom:6px;width:1px;background:var(--panel-b)}
-.efold-empty{padding:6px 10px 8px 30px;font-size:11.5px;color:var(--faint);font-style:italic}
+.efold-items::before{content:"";position:absolute;left:14px;top:2px;bottom:4px;width:1px;background:var(--panel-b)}
+.efold-empty{padding:6px 10px 8px 28px;font-size:11.5px;color:var(--faint);font-style:italic}
+/* drag grip shown on hover (owner only) */
+.rgrip{position:absolute;left:-2px;top:50%;transform:translateY(-50%);width:10px;display:grid;place-items:center;color:var(--faint);opacity:0;transition:opacity .12s;pointer-events:none}
+.env:hover>.rgrip,.efold:hover>.rgrip,.layer:hover>.rgrip{opacity:.8}
+.env[draggable],.efold[draggable],.layer[draggable]{cursor:grab}
 .efold-empty.drop-in{color:var(--sel)}
 .rename{flex:1;min-width:0;height:24px;padding:0 6px;margin:0 -6px;border-radius:6px;border:1px solid var(--sel);background:var(--panel-solid);outline:none;font-size:13px}
 
@@ -855,9 +871,10 @@ body.dragging-block .bi-size{display:none}
 .node[data-type="shape"] .rz{top:12px;bottom:12px}
 
 /* quote block */
-.b-quote{position:relative;margin:0;padding:2px 0 2px 26px}
-.q-mark{position:absolute;left:-2px;top:-10px;font-family:Georgia,"Times New Roman",serif;font-size:44px;line-height:1;color:var(--c);opacity:.55;pointer-events:none;user-select:none}
-.q-text{font-family:Georgia,"Iowan Old Style","Times New Roman",serif;font-size:15px;line-height:1.5;font-style:italic;color:var(--text)}
+.b-quote{position:relative;margin:0;padding:2px 0 2px 30px}
+/* an angular quote mark in the node's colour, drawn like the rest of the interface (no serif glyph) */
+.q-mark{position:absolute;left:0;top:4px;width:20px;height:16px;fill:var(--c);opacity:.7;pointer-events:none}
+.q-text{font-size:14.5px;line-height:1.55;font-weight:500;letter-spacing:-.005em;color:var(--text)}
 .node[data-type="sub"] .q-text{font-size:12.5px}
 .q-by{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-top:6px;font-size:12px;color:var(--muted)}
 .q-author{font-weight:600;color:var(--text2)}
@@ -866,7 +883,7 @@ body.dragging-block .bi-size{display:none}
 /* author and source take no room when both are empty (except on the selected node, to show where to type) */
 .node:not(.sel) .q-by:not(:has(> .ed:not(:empty))),body.viewer .q-by:not(:has(> .ed:not(:empty))){display:none}
 .node[data-type="shape"] .b-quote{padding-left:0}
-.node[data-type="shape"] .q-mark{position:static;display:block;height:22px;margin-bottom:-6px}
+.node[data-type="shape"] .q-mark{position:static;display:block;margin:0 auto 6px}
 .node[data-type="shape"] .q-by{justify-content:center}
 /* formula blocks (maths and chemistry, drawn by KaTeX) */
 .b-mx{position:relative}
@@ -893,3 +910,30 @@ body.editor .mx-out[data-act]:hover{background:var(--hover)}
 .fm-range{flex:1;accent-color:var(--sel);cursor:pointer}
 .fm-val{min-width:34px;text-align:right;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .fm-hint{margin:8px 0 0;font-size:11.5px;line-height:1.45;color:var(--muted)}
+
+/* performance: no soft shadows on lines and shapes while dragging, panning or zooming */
+body.moving .edge .vis,body.dragging-nodes .edge .vis,body.panning .edge .vis,body.bending .edge .vis,
+body.moving .nsh,body.dragging-nodes .nsh,body.panning .nsh{filter:none !important}
+
+/* Layers: drop indicators for drawing order */
+.layer{position:relative}
+.layer.ldrop-before{box-shadow:inset 0 2px 0 var(--sel)}
+.layer.ldrop-after{box-shadow:inset 0 -2px 0 var(--sel)}
+/* environment / category icon picker */
+.ni-prev{margin:0 0 14px;pointer-events:none;border:1px dashed var(--node-b2)}
+.ni-prev.efold{margin-top:0}
+.ni-prev.efold::before{display:none}
+.ni-row{display:flex;gap:6px;margin-bottom:10px}
+.ni-row input{flex:1;height:32px;padding:0 10px;border-radius:9px;border:1px solid var(--panel-b);background:var(--inset);font-size:15px;outline:none}
+.ni-row input:focus{border-color:var(--sel)}
+.ni-row .btn{font-size:16px;padding:0 10px;height:32px}
+.ni-emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:4px;margin-bottom:14px}
+.ni-emojis .ipi{height:36px;font-size:18px}
+/* the stage used to draw "Copy as image": no edit-only bits, no placeholders */
+.snap .port,.snap .rz,.snap .n-add,.snap .grip,.snap .bi-size,.snap .pport,.snap .pedge,.snap .pfold{display:none !important}
+.snap .ed:empty::before{content:none !important}
+.snap .eo{visibility:hidden !important}
+.snap .mx-src{display:none !important}
+/* in a copied image the lines sit on no background, so they get a solid mid grey that reads on light and dark */
+.snap .edge:not(.typed) .vis{stroke:#8d97ad}
+.snap .ah{fill:#8d97ad}

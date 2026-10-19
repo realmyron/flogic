@@ -2253,7 +2253,9 @@ document.addEventListener('click', e => {
 const veil = $('#focus-veil');
 const FOC = { touch: false };
 /* the comfort defaults changed (focus became a vignette at 3%): move older saved settings over once */
-if (CFG.comfortV !== 2) { CFG.focus = 3; CFG.focusLast = 3; if (!CFG.bgFx) CFG.bgFx = 'clouds'; if (CFG.readGlow == null) CFG.readGlow = true; CFG.comfortV = 2; saveCfg(); }
+if ((CFG.comfortV || 0) < 2) { CFG.focus = 3; CFG.focusLast = 3; if (CFG.readGlow == null) CFG.readGlow = true; }
+/* the particle trails were replaced by the living background (Drift by default) */
+if ((CFG.comfortV || 0) < 3) { CFG.bgFx = 'drift'; CFG.comfortV = 3; saveCfg(); }
 function focusLevel() { return clamp(+CFG.focus || 0, 0, 100) / 100; }
 function applyFocusLevel() {
   const f = focusLevel(), btn = $('[data-cmd="focus"]');
@@ -2279,96 +2281,60 @@ function toggleFocus() {
   toast(CFG.focus > 0 ? `Focus vignette on (${CFG.focus}%)` : 'Focus vignette off');
 }
 
-/* ---- background trails: moving the pointer over the board leaves a faint, slow light behind it on the
-   background (under the nodes). It is meant to be felt rather than seen: very low strength, large and
-   soft, a slow fade in, and a long fade out you can't see ending. Nothing runs once it has gone. */
-const FX_MODES = [['off', 'Off'], ['clouds', 'Clouds'], ['aurora', 'Aurora'], ['bloom', 'Bloom'], ['dust', 'Dust']];
-if (CFG.bgFx === 'ripples') CFG.bgFx = 'bloom';
-if (CFG.bgFx === 'sparkles') CFG.bgFx = 'dust';
-const fxCanvas = document.createElement('canvas');
-fxCanvas.id = 'bg-fx';
-fxCanvas.setAttribute('aria-hidden', 'true');
-vp.insertBefore(fxCanvas, vp.firstChild);
-const fx = fxCanvas.getContext('2d');
-const FX = { parts: [], raf: 0, last: 0, lx: null, ly: null, dist: 0, hue: 200, pal: null, sc: 0.25 };
-function fxMode() { return RM.matches || FOC.touch ? 'off' : (FX_MODES.some(m => m[0] === CFG.bgFx) ? CFG.bgFx : 'clouds'); }
-/* colours come from the theme's own background tints, so the trails match the static gradient */
-function fxPalette() {
-  if (FX.pal) return FX.pal;
-  const cs = getComputedStyle(document.documentElement);
-  /* '#rrggbb' or 'rgba(r,g,b,a)' -> [r, g, b] */
-  const rgb = v => {
-    const s = v.trim();
-    if (/^#[0-9a-f]{6}$/i.test(s)) return [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16));
-    return (s.match(/[\d.]+/g) || [120, 140, 255]).slice(0, 3).map(Number);
-  };
-  const bg = rgb(cs.getPropertyValue('--bg')), dark = bg[0] * 0.3 + bg[1] * 0.59 + bg[2] * 0.11 < 100;
-  FX.pal = { dark, a: rgb(cs.getPropertyValue('--amb1')), b: rgb(cs.getPropertyValue('--amb2')), sel: rgb(cs.getPropertyValue('--sel')) };
-  return FX.pal;
+/* ---- living background: the board's own soft background light (the two faint glows in its corners)
+   gently responds to you. Nothing new appears: the same light just leans, follows or slowly shifts,
+   so it reads as part of the page, not as an effect on top of it.
+     Drift (default): the glows lean a little toward the pointer, very slowly.
+     Follow: one more, very faint glow trails the pointer at a long delay.
+     Breathe: the glows slowly wander on their own (about a minute per cycle).
+     Off: the glows stay still, as they always were. */
+const FX_MODES = [['off', 'Off'], ['drift', 'Drift'], ['follow', 'Follow'], ['breathe', 'Breathe']];
+if (!FX_MODES.some(m => m[0] === CFG.bgFx)) CFG.bgFx = 'drift';
+const amb = document.createElement('div');
+amb.id = 'amb';
+amb.setAttribute('aria-hidden', 'true');
+amb.innerHTML = '<i class="ab1"></i><i class="ab2"></i><i class="ab3"></i>';
+$('#stage').prepend(amb);
+const [ab1, ab2, ab3] = amb.children;
+const AMB = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5, fx: 0, fy: 0, ftx: 0, fty: 0, raf: 0, seen: false };
+/* still when the device asks for reduced motion, and on touch screens (no pointer to follow) */
+function fxMode() { const m = CFG.bgFx || 'drift'; return m === 'off' || RM.matches || FOC.touch ? 'off' : m; }
+function fxApply() {
+  const m = fxMode();
+  amb.className = m;
+  if (m !== 'drift') { ab1.style.transform = ab2.style.transform = ''; }
+  if (m !== 'follow') ab3.classList.remove('on');
+  AMB.seen = false;
 }
-/* the soft modes are drawn at a quarter of the size and stretched (smooth, and almost free to draw) */
-function fxResize() {
-  FX.sc = fxMode() === 'dust' ? 0.5 : 0.25;
-  const w = Math.max(1, Math.round(vp.clientWidth * FX.sc)), h = Math.max(1, Math.round(vp.clientHeight * FX.sc));
-  if (fxCanvas.width !== w || fxCanvas.height !== h) { fxCanvas.width = w; fxCanvas.height = h; }
-}
-window.addEventListener('resize', () => { fxResize(); });
-const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-/* how bright a trail is over its life: eases in over the first fifth, then a long, soft fade out */
-const fxEnv = t => smooth(0, 0.2, t) * Math.pow(1 - smooth(0.25, 1, t), 1.6);
-/* a soft round light with a gentle (roughly Gaussian) falloff, so it has no visible edge */
-function fxSoft(x, y, r, c, a) {
-  if (a < 0.002 || r < 1) return;
-  const g = fx.createRadialGradient(x, y, 0, x, y, r), s = (k, f) => g.addColorStop(k, `rgba(${c[0]},${c[1]},${c[2]},${(a * f).toFixed(4)})`);
-  s(0, 1); s(0.2, 0.86); s(0.4, 0.58); s(0.6, 0.3); s(0.8, 0.1); s(1, 0);
-  fx.fillStyle = g; fx.beginPath(); fx.arc(x, y, r, 0, Math.PI * 2); fx.fill();
-}
-const hsl = (h, s, l) => { s /= 100; l /= 100; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); return [f(0), f(8), f(4)].map(v => Math.round(v * 255)); };
-function fxSpawn(x, y, dx, dy) {
-  const m = fxMode(), P = fxPalette(), R = Math.random;
-  const add = p => { FX.parts.push(p); if (FX.parts.length > 48) FX.parts.shift(); };
-  if (m === 'clouds') add({ x, y, vx: dx * 0.004 + (R() - 0.5) * 0.06, vy: dy * 0.004 + (R() - 0.5) * 0.06, r: 190 + R() * 120, grow: 0.25, t: 0, life: 7 + R() * 3, c: R() < 0.55 ? P.a : P.b, peak: P.dark ? 0.045 : 0.05 });
-  else if (m === 'aurora') { FX.hue = (FX.hue + 9) % 360; add({ x, y, vx: (R() - 0.5) * 0.05, vy: -0.03 - R() * 0.04, r: 150 + R() * 80, grow: 0.3, t: 0, life: 6 + R() * 2, c: hsl(FX.hue, 70, P.dark ? 62 : 60), peak: P.dark ? 0.038 : 0.042 }); }
-  /* bloom: small soft lights that slowly open up and dissolve, like ink in water */
-  else if (m === 'bloom') add({ x: x + (R() - 0.5) * 30, y: y + (R() - 0.5) * 30, vx: (R() - 0.5) * 0.04, vy: (R() - 0.5) * 0.04, r: 40 + R() * 30, grow: 3.2, t: 0, life: 8 + R() * 3, c: R() < 0.5 ? P.a : P.sel, peak: P.dark ? 0.05 : 0.05 });
-  /* dust: a few tiny, dim motes that drift up and away */
-  else if (m === 'dust') add({ x: x + (R() - 0.5) * 40, y: y + (R() - 0.5) * 40, vx: (R() - 0.5) * 0.1, vy: -0.05 - R() * 0.1, r: 3 + R() * 3, grow: 0, t: 0, life: 5 + R() * 3, c: P.dark ? P.b : P.sel, peak: P.dark ? 0.18 : 0.14, dot: true });
-  if (!FX.raf) { FX.last = performance.now(); FX.raf = requestAnimationFrame(fxFrame); }
-}
-function fxFrame(now) {
-  FX.raf = 0;
-  const dt = Math.min(0.05, (now - FX.last) / 1000), s = FX.sc;
-  FX.last = now;
-  fx.setTransform(1, 0, 0, 1, 0, 0);
-  fx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
-  fx.setTransform(s, 0, 0, s, 0, 0);
-  for (const p of FX.parts) {
-    p.t += dt / p.life;
-    p.x += p.vx * dt * 60; p.y += p.vy * dt * 60;
-    fxSoft(p.x, p.y, p.r * (1 + p.grow * smooth(0, 1, p.t)) * (p.dot ? 1 : 1), p.c, p.peak * fxEnv(p.t));
+function ambFrame() {
+  AMB.raf = 0;
+  const m = fxMode(), W = VR.width, H = VR.height;
+  if (m === 'drift') {
+    /* about 1.5 s to catch up, and at most a few percent of the screen */
+    AMB.x += (AMB.tx - AMB.x) * 0.02; AMB.y += (AMB.ty - AMB.y) * 0.02;
+    const dx = (AMB.x - 0.5) * W, dy = (AMB.y - 0.5) * H;
+    ab1.style.transform = `translate(${(dx * 0.07).toFixed(1)}px,${(dy * 0.07).toFixed(1)}px)`;
+    ab2.style.transform = `translate(${(-dx * 0.05).toFixed(1)}px,${(-dy * 0.05).toFixed(1)}px)`;
+    if (Math.abs(AMB.tx - AMB.x) + Math.abs(AMB.ty - AMB.y) > 0.0005) AMB.raf = requestAnimationFrame(ambFrame);
+  } else if (m === 'follow') {
+    AMB.fx += (AMB.ftx - AMB.fx) * 0.035; AMB.fy += (AMB.fty - AMB.fy) * 0.035;
+    ab3.style.transform = `translate(${AMB.fx.toFixed(1)}px,${AMB.fy.toFixed(1)}px)`;
+    if (Math.abs(AMB.ftx - AMB.fx) + Math.abs(AMB.fty - AMB.fy) > 0.3) AMB.raf = requestAnimationFrame(ambFrame);
   }
-  FX.parts = FX.parts.filter(p => p.t < 1);
-  if (FX.parts.length) FX.raf = requestAnimationFrame(fxFrame);
-  else { fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, fxCanvas.width, fxCanvas.height); }
 }
-vp.addEventListener('pointermove', e => {
-  if (e.pointerType === 'touch' || fxMode() === 'off' || e.buttons) return;
+window.addEventListener('pointermove', e => {
+  const m = fxMode();
+  if ((m !== 'drift' && m !== 'follow') || e.pointerType === 'touch' || !pointerInVp()) return;
   const x = e.clientX - VR.left, y = e.clientY - VR.top;
-  if (FX.lx == null) { FX.lx = x; FX.ly = y; return; }
-  const dx = x - FX.lx, dy = y - FX.ly, d = Math.hypot(dx, dy);
-  FX.lx = x; FX.ly = y;
-  if (d > 200) return;   // the pointer jumped (e.g. came back from a side panel)
-  FX.dist += d;
-  const every = { clouds: 140, aurora: 110, bloom: 120, dust: 60 }[fxMode()];
-  if (FX.dist >= every) { FX.dist = 0; fxSpawn(x, y, dx, dy); }
+  AMB.tx = x / VR.width; AMB.ty = y / VR.height;
+  AMB.ftx = x; AMB.fty = y;
+  if (!AMB.seen) { AMB.seen = true; AMB.fx = x; AMB.fy = y; }
+  if (m === 'follow') ab3.classList.add('on');
+  if (!AMB.raf) AMB.raf = requestAnimationFrame(ambFrame);
 }, { passive: true });
-vp.addEventListener('pointerleave', () => { FX.lx = null; });
-function setBgFx(m) {
-  CFG.bgFx = m; saveCfg();
-  FX.parts = []; FX.pal = null; fxResize();
-  fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
-  applyFocusLevel();
-}
+document.documentElement.addEventListener('pointerleave', () => ab3.classList.remove('on'));
+function setBgFx(m) { CFG.bgFx = m; saveCfg(); fxApply(); applyFocusLevel(); }
+function fxResize() {}
 
 /* ---- reading glow: over a node's text, a soft, round light follows the pointer beneath the words, like
    the faintest highlighter. It lives inside the node (so it never spills past its edges), sits under the
@@ -2424,9 +2390,9 @@ function comfortHTML() {
     <div class="fm-lab"><span>Focus vignette</span><b class="fm-val">${v ? v + '%' : 'Off'}</b></div>
     <input type="range" class="fm-range" min="0" max="100" step="1" value="${v}" aria-label="Focus vignette strength">
     <p class="fm-hint">Softens the edges of the board so your eyes settle on the middle. A few percent is enough. F switches it on or off.</p>
-    <div class="fm-lab"><span>Background trails</span></div>
-    <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'clouds') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
-    <p class="fm-hint">A faint, slow light left behind the pointer on the board's background.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
+    <div class="fm-lab"><span>Living background</span></div>
+    <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'drift') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
+    <p class="fm-hint">The board's soft background light leans toward your pointer (Drift), follows it (Follow), or slowly shifts on its own (Breathe).${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
     <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
   </div>`;
 }
@@ -2447,10 +2413,7 @@ function openFocusMenu(btn) {
   m.style.top = Math.max(8, b.top - m.offsetHeight - 8) + 'px';
   bindComfort(m);
 }
-setTimeout(() => { fxResize(); applyFocusLevel(); }, 50);
-/* theme changes recolour the trails */
-new MutationObserver(() => { FX.pal = null; }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { FX.pal = null; });
+setTimeout(() => { fxApply(); applyFocusLevel(); }, 50);
 
 /* environments *//* Change the icon of an environment or a category: a built-in icon, one of your icons, or any emoji or
    symbol typed in. The preview at the top shows the row as it will look. */

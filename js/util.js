@@ -145,7 +145,8 @@ function openMenu(x, y, items, opt = {}) {
   m.innerHTML = items.map((it, i) => {
     if (it === '-') return '<div class="msep"></div>';
     if (it.head) return `<div class="mh">${esc(it.head)}</div>`;
-    if (it.swatches) return `<div class="mswatches">${Object.entries(COLORS).map(([k, v]) => `<button class="sw${it.value === k ? ' on' : ''}" data-sw="${k}" style="--sw:${v}" title="${k}" aria-label="${k}"></button>`).join('')}</div>`;
+    if (it.swatches) return `<div class="mswatches">${(it.keys || Object.keys(COLORS)).map(k => swatchBtn(k, it.value === k, 'sw')).join('')}</div>`;
+    if (it.shapes) return `<div class="mshapes">${SHAPES.map(([k, name]) => `<button class="shb${it.value === k ? ' on' : ''}" data-shape="${k}" title="${name}" aria-label="${name}">${shapeIcon(k)}</button>`).join('')}</div>`;
     if (it.html) return it.html;
     return `<button class="mi${it.danger ? ' danger' : ''}" role="menuitem" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.icon ? ic(it.icon, 15) : '<span class="ic-sp"></span>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}${it.check !== undefined ? `<span class="mchk">${it.check ? ic('check', 14) : ''}</span>` : ''}</button>`;
   }).join('');
@@ -161,6 +162,8 @@ function openMenu(x, y, items, opt = {}) {
     if (opt.onClick && opt.onClick(e) === true) { closeMenu(); return; }
     const sw = e.target.closest('[data-sw]');
     if (sw) { const it = items.find(x => x && x.swatches); closeMenu(); it.fn(sw.dataset.sw); return; }
+    const shp = e.target.closest('[data-shape]');
+    if (shp) { const it = items.find(x => x && x.shapes); closeMenu(); it.fn(shp.dataset.shape); return; }
     const b = e.target.closest('[data-i]');
     if (b && !b.disabled) { const it = items[+b.dataset.i]; closeMenu(); it.fn && it.fn(); }
   });

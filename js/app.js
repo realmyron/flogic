@@ -454,72 +454,8 @@ function mdOut(s, inline) {
   if (!inline) t = t.replace(/^\s*(_{3,}|-{3,}|\*{3,})\s*$/gm, '\n---\n').replace(/\n{3,}/g, '\n\n');
   return t.trim();
 }
-function nodesMarkdown(ns) {
-  const ids = new Set(ns.map(n => n.id)), es = env().edges.filter(x => ids.has(x.from) && ids.has(x.to));
-  const byPos = (a, b) => (a.y - b.y) || (a.x - b.x);
-  const kids = new Map(ns.map(n => [n.id, []])), hasIn = new Set(es.map(x => x.to));
-  es.forEach(x => kids.get(x.from).push(nodeById(x.to)));
-  kids.forEach(a => a.sort((p, q) => (p.x - q.x) || (p.y - q.y)));
-  const order = [], seen = new Set();
-  const visit = n => { if (seen.has(n.id)) return; seen.add(n.id); order.push(n); kids.get(n.id).forEach(visit); };
-  ns.filter(n => !hasIn.has(n.id)).sort(byPos).forEach(visit);
-  ns.slice().sort(byPos).forEach(visit);
-  const H = { title: '#', note: '##', sub: '###', shape: '###' };
-  const quote = s => s.split('\n').map(l => '> ' + l).join('\n');
-  const sections = order.map(n => {
-    const L = [];
-    if (n.tag && n.type !== 'sub') L.push(`*${mdPlain(n.tag)}*`);
-    L.push(`${H[n.type]} ${mdOut(n.title, true) || nodeName(n)}`);
-    if (n.type === 'title' && n.subtitle) L.push('', mdOut(n.subtitle));
-    n.blocks.forEach(b => {
-      L.push('');
-      if (b.kind === 'text') L.push(mdOut(b.text));
-      else if (b.kind === 'highlight') L.push(quote(`**${mdPlain(b.label) || 'Note'}:** ${mdOut(b.text)}`));
-      else if (b.kind === 'category') L.push(`#### ${mdOut(b.label, true) || 'Category'}`, '', mdOut(b.text));
-      else if (b.kind === 'conclusion') L.push('---', '', `**${mdPlain(b.label) || 'Conclusion'}:** ${mdOut(b.text)}`);
-      else if (b.kind === 'scenarios') {
-        if (b.label) L.push(`**${mdPlain(b.label)}**`, '');
-        b.items.forEach((s, i) => {
-          L.push(`${i + 1}. **${mdOut(s.title, true) || 'Scenario ' + (i + 1)}**`);
-          s.steps.forEach(st => {
-            const lab = mdPlain(st.label), txt = mdOut(st.text, true).replace(/\n/g, ' ');
-            L.push(`   - ${lab ? (st.alt ? `*${lab}:*` : `**${lab}:**`) + ' ' : ''}${txt}`);
-          });
-        });
-      } else if (b.kind === 'checklist') {
-        if (b.label) L.push(`**${mdPlain(b.label)}**`, '');
-        b.items.forEach(it => L.push(`- [${it.done ? 'x' : ' '}] ${mdOut(it.text, true)}`));
-      } else if (b.kind === 'sources') {
-        L.push(`**${mdPlain(b.label) || 'Sources'}**`, '');
-        b.items.forEach(s => {
-          L.push(`- [${s.t || hostOf(s.u)}](${s.u})`);
-          if (s.note && s.note.trim()) L.push(mdOut(s.note).split('\n').map(l => '  ' + l).join('\n'));
-        });
-      } else if (b.kind === 'quote') {
-        L.push(quote(mdOut(b.text) || ''));
-        const by = [b.author && `**${mdPlain(b.author)}**`, b.cite && `*${mdPlain(b.cite)}*`].filter(Boolean).join(', ');
-        if (by) L.push('>', `> — ${by}`);
-      } else if (b.kind === 'math') {
-        if (b.tex.trim()) L.push('$$' + b.tex.trim() + '$$'); else L.pop();
-      } else if (b.kind === 'chem') {
-        if (b.tex.trim()) L.push('$$\\ce{' + b.tex.trim() + '}$$'); else L.pop();
-      } else if (b.kind === 'image') {
-        if (!b.src) L.pop();
-        else if (b.src.startsWith('data:')) L.push(`*[Image${b.caption ? ': ' + mdPlain(b.caption) : ''}]*`);
-        else { let u = b.src; try { u = new URL(b.src, location.href).href; } catch (_) {} L.push(`![${mdPlain(b.caption)}](${u})`); }
-      }
-    });
-    const out = es.filter(x => x.from === n.id);
-    if (out.length) {
-      L.push('', '→ ' + out.map(x => {
-        const t = nodeById(x.to), T = EDGE_TYPES[x.type];
-        return `${T ? `**${T.label}** ` : ''}[${nodeName(t)}](#${mdSlug(nodeName(t))})${x.label ? ` *(${x.label})*` : ''}`;
-      }).join(' · '));
-    }
-    return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-  });
-  return sections.join('\n\n') + '\n';
-}
+/* clean Markdown of the nodes (the writer lives in textio.js, which also reads text back in) */
+function nodesMarkdown(ns) { return boardText(ns, { sync: false }); }
 function copyText() {
   const ns = selNodes().filter(n => !n.hidden);
   if (!ns.length) return toast('Select one or more nodes first');
@@ -1321,6 +1257,8 @@ document.addEventListener('paste', e => {
   if (files.length) { e.preventDefault(); addImageFiles(files, at, S.sel.size === 1 ? selNodes()[0] : null); return; }
   const text = dt.getData('text/plain') || '';
   if (text.startsWith('flogic:')) { e.preventDefault(); try { pasteData(JSON.parse(text.slice(7)), at); } catch (_) {} return; }
+  /* Flogic text (from Copy text for AI, or an AI's reply): open the import window */
+  if (/<!--\s*node\b/i.test(text) || /FLOGIC FORMAT INSTRUCTIONS/.test(text)) { e.preventDefault(); openImport(text, { at, scope: [...S.sel] }); return; }
   if (CLIP && (!CLIP.sys || !text)) { e.preventDefault(); pasteData(CLIP, at); return; }
   if (!text.trim()) return;
   e.preventDefault();
@@ -2050,45 +1988,42 @@ vp.addEventListener('contextmenu', e => {
     { label: 'Shape', icon: 'shape', kbd: 'D', fn: () => createNode('shape', w.x, w.y) },
     '-',
     { label: 'Paste', icon: 'copy', kbd: MOD + 'V', disabled: !CLIP, fn: () => pasteData(CLIP, w) },
+    { label: 'Import text from clipboard', icon: 'upload', kbd: MOD + '⇧V', fn: () => importFromClipboard({ at: w }) },
+    { label: 'Import text from a file…', icon: 'folderopen', fn: () => importFromFile({ at: w }) },
+    { label: 'Copy all as text for AI', icon: 'bulb', disabled: !env().nodes.length, fn: () => copyTextForAI(env().nodes.filter(n => !n.hidden).map(n => n.id)) },
+    '-',
     { label: 'Select all', icon: 'cursor', kbd: MOD + 'A', disabled: !env().nodes.length, fn: () => selectNodes(env().nodes.filter(isShown).map(n => n.id)) },
     { label: 'Tidy up everything', icon: 'tidy', disabled: env().nodes.length < 2, fn: () => { S.sel.clear(); tidySel(); } },
     { label: 'Fit to screen', icon: 'fit', kbd: '⇧1', fn: () => fitAll() },
-  ], { keys: { t: 2, n: 3, s: 4, d: 5 } });
+  ], { keys: { t: 1, n: 2, s: 3, d: 4 } });
 });
+/* kept short (everything else is in the right-hand panel): edit, copy, import, arrange, delete */
 function nodeMenu(x, y) {
   const ns = selNodes(), multi = ns.length > 1, n = ns[0];
-  const inGroup = ns.some(m => groupOf(m.id));
-  const cur = ns.every(m => m.type === n.type) ? n.type : null;
+  const inGroup = ns.some(m => groupOf(m.id)), inPanel = ns.some(m => panelOf(m.id));
   return [
     !multi && { label: isShapeNode(n) ? 'Add icon, image or text…' : 'Add block…', icon: 'plus', fn: () => openBlockMenu({ x, y }, n) },
     !multi && { label: isShapeNode(n) ? 'Edit label' : 'Edit title', icon: 'edit', kbd: '↵', fn: () => editField(n.id, 'title', true) },
     { label: 'Duplicate', icon: 'copy', kbd: MOD + 'D', fn: duplicateSel },
     { label: 'Copy', icon: 'copy', kbd: MOD + 'C', fn: () => copySel() },
     { label: multi ? `Copy text of ${ns.length} nodes` : 'Copy text', icon: 'text2', kbd: MOD + '⌥C', fn: copyText },
+    { label: 'Copy text for AI', icon: 'bulb', fn: () => copyTextForAI(ns.map(m => m.id)) },
     { label: multi ? `Copy ${ns.length} nodes as image` : 'Copy as image', icon: 'image', fn: () => copyAsPng(ns.map(m => m.id)) },
     '-',
-    { head: 'Turn into' },
-    ...['title', 'note', 'sub', 'shape'].map(t => ({ label: NODE_LABEL[t], icon: t, check: cur === t, fn: () => setType(t) })),
-    { head: 'Colour' },
-    { swatches: true, value: multi ? null : n.color, keys: [...SOLID_KEYS, ...PASTEL_KEYS, ...Object.keys(GRADIENTS)], fn: setColor },
-    ns.every(isShapeNode) && { head: 'Shape' },
-    ns.every(isShapeNode) ? { shapes: true, value: sameOr(ns, shapeOf), fn: v => setNodeLook('shape', v) } : { label: 'Sharp corners', icon: 'note', check: ns.every(m => m.shape === 'rect'), fn: () => setNodeLook('shape', ns.every(m => m.shape === 'rect') ? 'round' : 'rect') },
+    { label: 'Import text from clipboard', icon: 'upload', kbd: MOD + '⇧V', fn: () => importFromClipboard({ scope: ns.map(m => m.id) }) },
+    { label: 'Import text from a file…', icon: 'folderopen', fn: () => importFromFile({ scope: ns.map(m => m.id) }) },
     '-',
     multi && { label: 'Group', icon: 'group', kbd: MOD + 'G', fn: groupSel },
     inGroup && { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: ungroupSel },
     multi && { label: 'Tidy up', icon: 'tidy', fn: tidySel },
-    ...panelMenuItems(ns.map(m => m.id)),
-    '-',
+    inPanel && { label: 'Take out of panel', icon: 'panel', fn: () => moveToPanel(ns.map(m => m.id), null) },
     { label: 'Hide', icon: 'eyeoff', kbd: MOD + '⇧H', fn: () => toggleHidden(ns.map(m => m.id)) },
-    { label: 'Bring to front', icon: 'front', kbd: MOD + '⇧]', fn: () => reorder(true) },
     { label: 'Bring forward', icon: 'front', kbd: MOD + ']', fn: () => stepZ(1) },
     { label: 'Send backward', icon: 'back', kbd: MOD + '[', fn: () => stepZ(-1) },
-    { label: 'Send to back', icon: 'back', kbd: MOD + '⇧[', fn: () => reorder(false) },
     '-',
     { label: multi ? `Delete ${ns.length} nodes` : 'Delete', icon: 'trash', kbd: 'Del', danger: true, fn: deleteSel },
   ];
-}
-function blockMenu(n, i, x, y) {
+}function blockMenu(n, i, x, y) {
   const b = n.blocks[i], shape = isShapeNode(n);
   const set = fn => () => { endEdit(); checkpoint(); fn(); renderNode(n); changed(); };
   return [
@@ -2186,6 +2121,7 @@ window.addEventListener('keydown', e => {
   if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (mod && k === 'y') { e.preventDefault(); redo(); return; }
   if (mod && k === 'a') { e.preventDefault(); selectNodes(env().nodes.filter(isShown).map(n => n.id)); return; }
+  if (mod && e.shiftKey && k === 'v') { e.preventDefault(); importFromClipboard({ at: pointerInVp() ? toWorld(PTR.x, PTR.y) : null, scope: [...S.sel] }); return; }
   if (mod && k === 'c') { copySel(); return; }
   if (mod && k === 'x') { copySel(true); deleteSel(); return; }
   if (mod && k === 'd') { e.preventDefault(); duplicateSel(); return; }
@@ -2369,7 +2305,7 @@ function gridFrame(now) {
   if (m === 'grid') {
     const pts = GF.trail.map(q => {
       const life = 1 - (now - q.at) / (TRAIL * 1000);
-      return life <= 0 ? null : { x: V.x + q.wx * V.z, y: V.y + q.wy * V.z, r: (95 + 55 * q.s) * (0.7 + 0.3 * life), a: q.s * Math.pow(life, 1.4) };
+      return life <= 0 ? null : { x: V.x + q.wx * V.z, y: V.y + q.wy * V.z, r: (80 + 40 * q.s) * (0.7 + 0.3 * life), a: q.s * Math.pow(life, 1.4) };
     }).filter(Boolean);
     GF.trail = GF.trail.filter(q => now - q.at < TRAIL * 1000);
     if (pts.length) {
@@ -2417,7 +2353,7 @@ window.addEventListener('pointermove', e => {
   GF.sp = GF.sp * 0.7 + Math.min(d, 80) * 0.3;
   GF.px = x; GF.py = y; GF.moved = performance.now();
   /* a new spot every 10px along the path; in between, the newest one keeps up with the pointer */
-  const w = toWorld(e.clientX, e.clientY), s = clamp(GF.sp / 22, 0.18, 1) * 0.75, last = GF.trail[GF.trail.length - 1];
+  const w = toWorld(e.clientX, e.clientY), s = clamp(GF.sp / 22, 0.18, 1) * 0.55, last = GF.trail[GF.trail.length - 1];
   if (last && Math.hypot((w.x - last.wx) * V.z, (w.y - last.wy) * V.z) < 10) Object.assign(last, { wx: w.x, wy: w.y, at: GF.moved, s: Math.max(last.s, s) });
   else { GF.trail.push({ wx: w.x, wy: w.y, at: GF.moved, s }); if (GF.trail.length > 90) GF.trail.shift(); }
   gridKick();
@@ -3078,7 +3014,7 @@ vp.addEventListener('dblclick', e => {
   const pl = t.closest('.plabel');
   if (pl && S.canEdit && !t.closest('[data-pfold]')) { renameFrame('p', pl.dataset.p); return; }
   /* double-click on empty board: a wave through the dots, just for fun */
-  if (!t.closest('.node, .pframe, .elabel, .gout, [data-e]')) { const w = toWorld(e.clientX, e.clientY); bgPulse(w.x, w.y, null, 0.8, 0.85); }
+  if (!t.closest('.node, .pframe, .elabel, .gout, [data-e]')) { const w = toWorld(e.clientX, e.clientY); bgPulse(w.x, w.y, null, 0.75, 0.6); }
 });
 
 /* ===================== theme, help, share, preview ===================== */
@@ -3105,7 +3041,7 @@ function openHelp() {
     ['Place freely (no snapping)', 'Hold Ctrl while dragging'], ['Connect nodes', 'Drag from a side dot'],
     ['Move a block', 'Drag its ⋮⋮ handle'], ['Nudge', 'Arrows (Shift ×4, Ctrl 1px)'],
     ['Duplicate', 'Ctrl+D'], ['Copy · paste', 'Ctrl+C · Ctrl+V'],
-    ['Copy text as Markdown', 'Ctrl+Alt+C'],
+    ['Copy text as Markdown', 'Ctrl+Alt+C'], ['Import text', 'Ctrl+Shift+V · right-click'],
     ['Group · ungroup', 'Ctrl+G · Ctrl+Shift+G'], ['Hide · show', 'Ctrl+Shift+H or the eye in Layers'],
     ['Put selection in a panel', 'P'], ['Move into · out of a panel', 'Drag nodes onto it · off it'],
     ['Move a panel', 'Drag its edge or name'], ['Fold a panel', 'The arrow by its name'],

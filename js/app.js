@@ -156,9 +156,12 @@ function startEdit(el, cx, cy) {
   }
   checkpoint();
   S.editing = { el, id: ne.dataset.id, f: el.dataset.f, before: raw };
+  /* a formula's source is hidden until it is edited */
+  const mx = el.closest('.b-mx');
+  if (mx) mx.classList.add('src-on');
   el.textContent = raw;
   el.setAttribute('contenteditable', PLAIN);
-  el.setAttribute('spellcheck', 'true');
+  el.setAttribute('spellcheck', mx ? 'false' : 'true');
   ne.classList.add('editing');
   el.focus({ preventScroll: true });
   setEditSelection(at, at);
@@ -186,6 +189,8 @@ function endEdit() {
   el.innerHTML = mdField(v, !!el.dataset.single);
   const ne = el.closest('.node');
   if (ne) ne.classList.remove('editing');
+  const mx = el.closest('.b-mx');
+  if (mx) { mx.classList.remove('src-on'); mxPreview(mx, mx.closest('.blk').classList.contains('k-chem') ? 'chem' : 'math', v); }
   if (n) markNode(n);
   if (document.activeElement === el) el.blur();
   getSelection().removeAllRanges();
@@ -199,6 +204,9 @@ nodesWrap.addEventListener('input', e => {
   let v = ed.el.innerText;
   if (v === '\n' || v === '') { v = ''; if (ed.el.innerHTML) ed.el.innerHTML = ''; }
   setPath(n, ed.f, v);
+  /* formulas redraw as you type */
+  const mx = ed.el.closest('.b-mx');
+  if (mx) mxPreview(mx, mx.closest('.blk').classList.contains('k-chem') ? 'chem' : 'math', v.replace(/\n+$/, ''));
   changed();
 });
 nodesWrap.addEventListener('focusout', e => { if (S.editing && e.target === S.editing.el) endEdit(); });
@@ -486,6 +494,14 @@ function nodesMarkdown(ns) {
           L.push(`- [${s.t || hostOf(s.u)}](${s.u})`);
           if (s.note && s.note.trim()) L.push(mdOut(s.note).split('\n').map(l => '  ' + l).join('\n'));
         });
+      } else if (b.kind === 'quote') {
+        L.push(quote(mdOut(b.text) || ''));
+        const by = [b.author && `**${mdPlain(b.author)}**`, b.cite && `*${mdPlain(b.cite)}*`].filter(Boolean).join(', ');
+        if (by) L.push('>', `> — ${by}`);
+      } else if (b.kind === 'math') {
+        if (b.tex.trim()) L.push('$$' + b.tex.trim() + '$$'); else L.pop();
+      } else if (b.kind === 'chem') {
+        if (b.tex.trim()) L.push('$$\\ce{' + b.tex.trim() + '}$$'); else L.pop();
       } else if (b.kind === 'image') {
         if (!b.src) L.pop();
         else if (b.src.startsWith('data:')) L.push(`*[Image${b.caption ? ': ' + mdPlain(b.caption) : ''}]*`);
@@ -903,7 +919,7 @@ function editEdgeLabel(id) {
 }
 
 /* ===================== blocks ===================== */
-const FIRST_FIELD = { text: 'text', highlight: 'text', category: 'text', conclusion: 'text', scenarios: 'items.0.title', checklist: 'items.0.text' };
+const FIRST_FIELD = { text: 'text', highlight: 'text', category: 'text', conclusion: 'text', scenarios: 'items.0.title', checklist: 'items.0.text', quote: 'text', math: 'tex', chem: 'tex' };
 function landed(n, i) {
   const el = NODE_EL.get(n.id), b = el && el.querySelector(`.blk[data-i="${i}"]`);
   if (b) { b.classList.remove('landed'); void b.offsetWidth; b.classList.add('landed'); }
@@ -1028,6 +1044,7 @@ nodesWrap.addEventListener('click', e => {
     case 'del-src': mut(() => b.items.splice(si, 1)); break;
     case 'pick-img': pickImage(n.id, b.id); break;
     case 'pick-icon': openIconPicker(n.id, b.id); break;
+    case 'edit-tex': if (S.canEdit) editField(n.id, `blocks.${bi}.tex`); break;
     case 'icon-size': if (b.size !== a.dataset.v) mut(() => { b.size = a.dataset.v; }); break;
   }
 });
@@ -2001,8 +2018,7 @@ function edgeMenu(id) {
   const st = lineStyle(ed);
   return [
     { head: 'Line style' },
-    { label: 'Fluid', icon: 'fluid', check: st === 'fluid', fn: () => edgeSet(id, { style: 'fluid' }) },
-    { label: 'Geometric', icon: 'geo', check: st === 'geometric', fn: () => edgeSet(id, { style: 'geometric' }) },
+    ...LINE_STYLES.map(([k, name]) => ({ label: name, icon: LINE_ICON[k], check: st === k, fn: () => edgeSet(id, { style: k }) })),
     '-',
     { label: 'Arrow', icon: 'arrowr', check: ed.arrow, fn: () => edgeSet(id, { arrow: !ed.arrow }) },
     { label: 'Dashed', icon: 'dash', check: ed.dashed, fn: () => edgeSet(id, { dashed: !ed.dashed }) },
@@ -2055,6 +2071,7 @@ window.addEventListener('keydown', e => {
   if (mod && e.altKey && e.code === 'KeyC') { e.preventDefault(); copyText(); return; }
   if (e.key === 'Escape') { clearSel(); closePanels(); return; }
   if (e.key === '?') { openHelp(); return; }
+  if (k === 'f' && !mod && !e.altKey) { e.preventDefault(); toggleFocus(); return; }
   if (!S.canEdit) {
     if (e.key.startsWith('Arrow')) { e.preventDefault(); const st = e.shiftKey ? 240 : 60; V.x -= (k === 'arrowright' ? st : k === 'arrowleft' ? -st : 0); V.y -= (k === 'arrowdown' ? st : k === 'arrowup' ? -st : 0); applyView(); }
     if (k === 'h' || k === 'v') setTool(k === 'h' ? 'hand' : 'select');
@@ -2111,6 +2128,7 @@ document.addEventListener('click', e => {
     case 'zoomout': zoomBy(0.8); break;
     case 'zoom100': zoomBy(1 / V.z); break;
     case 'fit': fitAll(); break;
+    case 'focus': openFocusMenu(b); break;
     case 'theme': cycleTheme(); break;
     case 'help': openHelp(); break;
     case 'settings': case 'signin': openSettings(); break;
@@ -2124,8 +2142,83 @@ document.addEventListener('click', e => {
   }
 });
 
-/* environments */
-function switchEnv(id) {
+/* ===================== focus mode =====================
+   Away from the pointer the board softly blurs, dims a touch and loses a little colour, like the edge of
+   your vision; around the pointer everything stays sharp. The sharp spot glides after the pointer (and
+   sits on the text you are typing while editing). The strength (0 to 100%) sets how strong the blur is
+   and how small the sharp spot gets: around 10% it is barely noticeable but still pulls attention in. */
+const veil = $('#focus-veil');
+const FOC = { x: 0, y: 0, raf: 0, on: false, touch: false, init: false, last: null };
+function focusLevel() { return FOC.touch ? 0 : clamp(+CFG.focus || 0, 0, 100) / 100; }
+function applyFocusLevel() {
+  const f = focusLevel(), btn = $('[data-cmd="focus"]');
+  if (btn) btn.classList.toggle('on', f > 0);
+  FOC.on = f > 0;
+  if (!f) { veil.style.display = 'none'; return; }
+  const blur = 0.5 + 7.5 * Math.pow(f, 1.4), sat = 1 - 0.45 * Math.pow(f, 1.5), dim = 42 * Math.pow(f, 1.6);
+  veil.style.display = 'block';
+  veil.style.backdropFilter = veil.style.webkitBackdropFilter = `blur(${blur.toFixed(2)}px) saturate(${sat.toFixed(2)})`;
+  veil.style.background = `color-mix(in srgb,var(--bg) ${dim.toFixed(1)}%,transparent)`;
+  focusMask(); kickFocus();
+}
+/* where attention is: the caret while typing, else the pointer (its last spot on the board while it is over the side panels) */
+function focusTarget() {
+  if (S.editing && S.editing.el.isConnected) {
+    const sel = getSelection();
+    let r = sel.rangeCount ? sel.getRangeAt(0).getBoundingClientRect() : null;
+    if (!r || (!r.width && !r.height)) r = S.editing.el.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - VR.left, y: r.top + r.height / 2 - VR.top };
+  }
+  if (PTR.x >= 0 && pointerInVp()) FOC.last = { x: PTR.x - VR.left, y: PTR.y - VR.top };
+  return FOC.last || { x: VR.width / 2, y: VR.height / 2 };
+}
+function focusMask() {
+  const f = focusLevel();
+  if (!f) return;
+  const big = Math.max(VR.width, VR.height), r = big * 0.62 + (150 - big * 0.62) * Math.pow(f, 0.6), inner = r * (0.5 - 0.12 * f);
+  /* a smooth (smoothstep) falloff from sharp to fully soft */
+  const at = k => (inner + (r - inner) * k).toFixed(1) + 'px';
+  const m = `radial-gradient(circle at ${FOC.x.toFixed(1)}px ${FOC.y.toFixed(1)}px,transparent ${inner.toFixed(1)}px,rgba(0,0,0,.12) ${at(0.22)},rgba(0,0,0,.43) ${at(0.45)},rgba(0,0,0,.78) ${at(0.7)},#000 ${at(1)})`;
+  veil.style.maskImage = veil.style.webkitMaskImage = m;
+}
+function focusFrame() {
+  FOC.raf = 0;
+  if (!FOC.on) return;
+  const t = focusTarget();
+  if (!FOC.init) { FOC.x = t.x; FOC.y = t.y; FOC.init = true; }
+  const k = RM.matches ? 1 : 0.2;
+  FOC.x += (t.x - FOC.x) * k; FOC.y += (t.y - FOC.y) * k;
+  focusMask();
+  if (Math.abs(t.x - FOC.x) + Math.abs(t.y - FOC.y) > 0.3) FOC.raf = requestAnimationFrame(focusFrame);
+}
+function kickFocus() { if (FOC.on && !FOC.raf) FOC.raf = requestAnimationFrame(focusFrame); }
+window.addEventListener('pointermove', e => {
+  const touch = e.pointerType === 'touch';
+  if (touch !== FOC.touch) { FOC.touch = touch; applyFocusLevel(); }   /* no pointer to follow on touch screens */
+  kickFocus();
+}, { passive: true });
+document.addEventListener('selectionchange', () => { if (S.editing) kickFocus(); });
+window.addEventListener('resize', kickFocus);
+function setFocusLevel(v) {
+  CFG.focus = clamp(Math.round(v), 0, 100);
+  if (CFG.focus > 0) CFG.focusLast = CFG.focus;
+  saveCfg(); applyFocusLevel();
+}
+function toggleFocus() {
+  setFocusLevel(CFG.focus > 0 ? 0 : (CFG.focusLast || 10));
+  toast(CFG.focus > 0 ? `Focus mode on (${CFG.focus}%)` : 'Focus mode off');
+}
+function openFocusMenu(btn) {
+  const v = Math.round(+CFG.focus || 0), b = btn.getBoundingClientRect();
+  const label = x => x ? x + '%' : 'Off';
+  const m = openMenu(b.left, b.top, [{ head: 'Focus mode' }, { html: `<div class="fm"><div class="fm-row"><input type="range" class="fm-range" min="0" max="100" step="1" value="${v}" aria-label="Focus strength"><b class="fm-val">${label(v)}</b></div><p class="fm-hint">Softly blurs the board away from your pointer, so what you are working on stands out. Low values work best: barely noticeable, but they still help. Press F to switch it on or off.</p></div>` }], { cls: 'fmenu' });
+  m.style.top = Math.max(8, b.top - m.offsetHeight - 8) + 'px';
+  const range = m.querySelector('.fm-range'), val = m.querySelector('.fm-val');
+  range.addEventListener('input', () => { setFocusLevel(+range.value); val.textContent = label(CFG.focus); });
+}
+setTimeout(applyFocusLevel, 50);
+
+/* environments */function switchEnv(id) {
   endEdit();
   if (!DOC.envs.some(e => e.id === id)) id = DOC.envs[0].id;
   S.envId = id; UI.envId = id;
@@ -2623,6 +2716,7 @@ function openHelp() {
     ['Undo · redo', 'Ctrl+Z · Ctrl+Shift+Z'],
     ['Delete', 'Delete'], ['Fit all · selection', 'Shift+1 · Shift+2'],
     ['Zoom to 100%', 'Ctrl+0'], ['Publish', 'Ctrl+S'],
+    ['Focus mode on · off', 'F (strength: the button by the zoom)'],
   ].map(([a, b]) => `<div><span>${a}</span><kbd>${esc(b.replace(/Ctrl/g, MOD))}</kbd></div>`).join('');
   openModal(`<div class="mhead"><h3>Keyboard & mouse</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div>
     <div class="mbody"><section><div class="keys">${K}</div></section>
@@ -2671,7 +2765,7 @@ function openSettings() {
   const prefs = S.canEdit ? `<section><h4>${ic('settings', 15)} Board</h4>
     <div class="field"><span>Mouse wheel</span><div class="segs" id="s-wheel"><button data-v="zoom" class="${CFG.wheel !== 'pan' ? 'on' : ''}">Zooms</button><button data-v="pan" class="${CFG.wheel === 'pan' ? 'on' : ''}">Scrolls</button></div></div>
     <label class="tog"><input type="checkbox" id="s-snap"${CFG.snap !== false ? ' checked' : ''}><span></span>Snap to the grid and to other nodes (hold Ctrl to bypass)</label>
-    <div class="field"><span>Connection lines<br><small class="hint">Default for every line. Right-click a line to change just that one.</small></span><div class="segs" id="s-lines"><button data-v="fluid" class="${(DOC.lineStyle || 'fluid') === 'fluid' ? 'on' : ''}">Fluid</button><button data-v="geometric" class="${DOC.lineStyle === 'geometric' ? 'on' : ''}">Geometric</button></div></div>
+    <div class="field"><span>Connection lines<br><small class="hint">Default for every line. Right-click a line to change just that one.</small></span><div class="segs" id="s-lines">${LINE_STYLES.map(([k, name]) => `<button data-v="${k}" class="${(DOC.lineStyle || 'fluid') === k ? 'on' : ''}">${name}</button>`).join('')}</div></div>
     <label class="tog"><input type="checkbox" id="s-nolimit"${CFG.noLimit ? ' checked' : ''}><span></span>Remove the ${NODE_LIMIT.toLocaleString()}-node limit per environment (very large boards can get slow)</label></section>
     <section><h4>${ic('bubble', 15)} Visitor suggestions</h4><p class="hint">Without a relay, visitors need a GitHub account to send suggestions. With a relay (a free Cloudflare Worker, see the README), anyone can send one without signing in. Paste the relay's address here, then publish.</p>
     <div class="grid2" style="grid-template-columns:1fr"><label>Relay address<input id="s-relay" value="${esc(DOC.relay || '')}" placeholder="https://flogic-relay.your-name.workers.dev" spellcheck="false" autocomplete="off"></label></div>
@@ -2827,7 +2921,7 @@ function fillIcons() {
   put('[data-tool="select"]', 'cursor'); put('[data-tool="hand"]', 'hand');
   put('[data-new="title"]', 'title'); put('[data-new="note"]', 'note'); put('[data-new="sub"]', 'sub'); put('[data-new="shape"]', 'shape');
   put('[data-cmd="undo"]', 'undo'); put('[data-cmd="redo"]', 'redo');
-  put('[data-cmd="zoomout"]', 'minus', 16); put('[data-cmd="zoomin"]', 'plus', 16); put('[data-cmd="fit"]', 'fit', 16);
+  put('[data-cmd="zoomout"]', 'minus', 16); put('[data-cmd="zoomin"]', 'plus', 16); put('[data-cmd="fit"]', 'fit', 16); put('[data-cmd="focus"]', 'focus', 16);
   put('#env-add', 'plus', 15); put('#cat-add', 'folderplus', 15); put('[data-cmd="help"]', 'help', 16);
   put('[data-cmd="show-left"]', 'menu'); put('[data-cmd="show-right"]', 'layers'); put('[data-cmd="close-panels"]', 'x', 15);
   $('.search-ic').innerHTML = ic('search', 14);

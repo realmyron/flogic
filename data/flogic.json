@@ -554,17 +554,6 @@
      "dashed": false
     },
     {
-     "id": "lnfvl2wwh7",
-     "from": "noso4rr4vz",
-     "fs": "r",
-     "to": "nvivrd8px2",
-     "ts": "l",
-     "label": "",
-     "arrow": true,
-     "dashed": false,
-     "style": "fluid"
-    },
-    {
      "id": "lgzbsmrl7n",
      "from": "n8d9hjd6ra",
      "fs": "b",
@@ -577,31 +566,53 @@
       "dx": 0,
       "dy": 5
      }
+    },
+    {
+     "id": "l97l5d4mzo",
+     "from": "noso4rr4vz",
+     "fs": "r",
+     "to": "nvivrd8px2",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "style": "fluid"
     }
    ],
    "groups": [],
    "folder": "f6bboigff2",
-   "panels": []
+   "panels": [
+    {
+     "id": "pqm34qgs2a",
+     "name": "Panel 1",
+     "members": [
+      "nuvef0ypz",
+      "n8d9hjd6ra"
+     ],
+     "look": "dotted"
+    }
+   ]
   },
   {
    "id": "eiw6bxmnsf",
    "name": "Environment 3",
    "nodes": [
     {
-     "id": "n1gmlxpxqt",
+     "id": "nxu11rw2j0",
      "type": "note",
-     "x": -48,
-     "y": -168,
+     "x": 336,
+     "y": 120,
      "w": 336,
      "color": "default",
      "tag": "Note",
-     "title": "n",
+     "title": "",
      "subtitle": "",
      "blocks": [
       {
-       "id": "bmtk1lvxqt",
-       "kind": "text",
-       "text": ""
+       "id": "b61dn2e9rp",
+       "kind": "image",
+       "src": "data/assets/3a97cb0b16b77c113fbc7746.webp",
+       "caption": ""
       }
      ]
     }

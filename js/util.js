@@ -103,7 +103,7 @@ const ICONS = {
   geo: '<path d="M4 19h7a2 2 0 0 0 2-2V7a2 2 0 0 1 2-2h5"/>',
   straight: '<path d="M4.5 19.5 19.5 4.5"/><circle cx="4.5" cy="19.5" r="1.4"/><circle cx="19.5" cy="4.5" r="1.4"/>',
   rope: '<path d="M3 6c4 13 14 13 18 0"/><circle cx="3" cy="6" r="1.4"/><circle cx="21" cy="6" r="1.4"/>',
-  quote: '<path d="M10 7H6.5A1.5 1.5 0 0 0 5 8.5V12h4v-1.5A3.5 3.5 0 0 0 5.5 17"/><path d="M19 7h-3.5A1.5 1.5 0 0 0 14 8.5V12h4v-1.5a3.5 3.5 0 0 0-3.5 6.5"/>',
+  quote: '<path d="M3.5 5.5h6.5v6l-2.7 6.5H4.7l2.3-6.5H3.5zM14 5.5h6.5v6l-2.7 6.5h-2.6l2.3-6.5H14z"/>',
   math: '<path d="M4 6h7M7.5 2.5v7M14 5l5 5M19 5l-5 5M4 16h7M14 15h5M14 19h5"/>',
   chem: '<path d="M9.5 3h5M10 3v5.5L4.8 18a2 2 0 0 0 1.8 3h10.8a2 2 0 0 0 1.8-3L14 8.5V3"/><path d="M7.5 14h9"/>',
   focus: '<circle cx="12" cy="12" r="3"/><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>',

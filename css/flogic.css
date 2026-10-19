@@ -937,3 +937,23 @@ body.moving .nsh,body.dragging-nodes .nsh,body.panning .nsh{filter:none !importa
 /* in a copied image the lines sit on no background, so they get a solid mid grey that reads on light and dark */
 .snap .edge:not(.typed) .vis{stroke:#8d97ad}
 .snap .ah{fill:#8d97ad}
+
+/* comfort: background trails (a canvas under the board) and the reading glow (above the text) */
+#bg-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#read-glow{--glow:rgba(255,208,92,.24);position:absolute;left:0;top:0;z-index:4;pointer-events:none;border-radius:50%;opacity:0;
+  background:radial-gradient(closest-side,var(--glow),color-mix(in srgb,var(--glow) 45%,transparent) 55%,transparent);mix-blend-mode:multiply;
+  transition:opacity .35s ease,width .2s,height .2s;will-change:transform}
+#read-glow.on{opacity:1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #read-glow{--glow:rgba(150,170,255,.11);mix-blend-mode:screen}}
+:root[data-theme="dark"] #read-glow{--glow:rgba(150,170,255,.11);mix-blend-mode:screen}
+body.dragging-nodes #read-glow,body.panning #read-glow,body.connecting #read-glow{opacity:0}
+.fm-lab{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px;font-size:12px;font-weight:600;color:var(--text2)}
+.fm-lab:first-child{margin-top:2px}
+.fm .fm-range{width:100%}
+.fm-segs{display:flex;flex-wrap:wrap;gap:2px;padding:2px;border-radius:9px;background:var(--inset);border:1px solid var(--panel-b)}
+.fm-segs button{flex:1;height:26px;padding:0 6px;border-radius:7px;font-size:11.5px;color:var(--muted)}
+.fm-segs button:hover{color:var(--text)}
+.fm-segs button.on{background:var(--panel-solid);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.fm-hint{margin:6px 0 0}
+.fm-tog{margin-top:12px;font-size:12px;line-height:1.4}
+.fmenu{width:300px}

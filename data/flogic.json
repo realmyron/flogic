@@ -437,7 +437,7 @@
      "x": 432,
      "y": 660,
      "w": 480,
-     "color": "p-mint",
+     "color": "p-coral",
      "tag": "CONCLUSION",
      "title": "Impossibility",
      "subtitle": "",
@@ -529,21 +529,6 @@
      "dashed": false
     },
     {
-     "id": "ldoe0innlc",
-     "from": "nbnt5jgf28",
-     "fs": "r",
-     "to": "n8d9hjd6ra",
-     "ts": "r",
-     "label": "",
-     "arrow": true,
-     "dashed": true,
-     "bend": {
-      "dx": 474,
-      "dy": 181
-     },
-     "style": "geometric"
-    },
-    {
      "id": "l59kwd717m",
      "from": "nbnt5jgf28",
      "fs": "b",
@@ -552,20 +537,6 @@
      "label": "",
      "arrow": true,
      "dashed": false
-    },
-    {
-     "id": "lgzbsmrl7n",
-     "from": "n8d9hjd6ra",
-     "fs": "b",
-     "to": "nvivrd8px2",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false,
-     "bend": {
-      "dx": 0,
-      "dy": 5
-     }
     },
     {
      "id": "lup7g6w7on",
@@ -577,11 +548,47 @@
      "arrow": true,
      "dashed": false,
      "style": "fluid"
+    },
+    {
+     "id": "led79mdyw6",
+     "from": "nbnt5jgf28",
+     "fs": "r",
+     "to": "nvivrd8px2",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l8fr9w6wwk",
+     "from": "nbnt5jgf28",
+     "fs": "r",
+     "to": "n8d9hjd6ra",
+     "ts": "r",
+     "label": "",
+     "arrow": true,
+     "dashed": true,
+     "style": "geometric",
+     "bend": {
+      "dx": 474,
+      "dy": 181
+     }
+    },
+    {
+     "id": "lp4wufvpfc",
+     "from": "n8d9hjd6ra",
+     "fs": "b",
+     "to": "nvivrd8px2",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
     }
    ],
    "groups": [],
    "folder": "f6bboigff2",
-   "panels": []
+   "panels": [],
+   "icon": "t:🎮"
   },
   {
    "id": "eiw6bxmnsf",

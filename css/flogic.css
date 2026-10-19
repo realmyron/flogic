@@ -8,21 +8,27 @@
   --ease:cubic-bezier(.2,.8,.2,1);
   --spring:cubic-bezier(.3,1.45,.55,1);
 
-  /* light mode: muted greys instead of bright white, easier on the eyes */
-  --bg:#dfe2e7; --dot:rgba(30,40,70,.17);
-  --amb1:rgba(14,128,118,.15); --amb2:rgba(18,104,138,.12);
-  --panel:rgba(233,235,240,.92); --panel-solid:#eceef2; --panel-b:rgba(20,30,60,.10);
-  --text:#1e2330; --text2:#333a49; --muted:#5f6779; --faint:#959cad;
-  --hover:rgba(20,30,60,.06); --press:rgba(20,30,60,.10);
-  --node:#eceef2; --node-top:#f0f2f5; --node-sub:#e8eaef;
-  --node-b:rgba(20,30,60,.12); --node-b2:rgba(20,30,60,.19); --node-hi:rgba(255,255,255,.55);
-  --inset:rgba(20,30,60,.045);
-  --sel:#4d6bf5; --sel-soft:rgba(77,107,245,.15); --on-sel:#fff;
-  --line:rgba(60,72,100,.45); --guide:#ff3d7f; --edge-sh:rgba(20,30,60,.28); --shape-f:drop-shadow(0 1px 1px rgba(20,30,60,.05)) drop-shadow(0 6px 11px rgba(20,30,60,.08)); --shape-sh2:rgba(20,30,60,.24);
-  --sh-1:0 1px 2px rgba(20,30,60,.05),0 6px 22px rgba(20,30,60,.07);
-  --sh-2:0 22px 56px rgba(20,30,60,.2),0 6px 14px rgba(20,30,60,.08);
-  --sh-menu:0 14px 44px rgba(20,30,60,.2),0 2px 6px rgba(20,30,60,.08);
-  --ok:#17a36d; --warn:#d38a12; --err:#e5484d;
+  /* light mode: a cool light-grey board with soft off-white cards on it, the same indigo/violet glow as
+     dark mode, and enough contrast that lines, panels and text read clearly */
+  --bg:#e6e8ee; --dot:rgba(38,48,86,.17);
+  --amb1:rgba(98,118,255,.11); --amb2:rgba(172,126,255,.09);
+  --panel:rgba(246,247,251,.84); --panel-solid:#f7f8fb; --panel-b:rgba(26,34,66,.09);
+  --text:#161a27; --text2:#2e3547; --muted:#596175; --faint:#8a92a5;
+  --hover:rgba(26,34,66,.055); --press:rgba(26,34,66,.09);
+  --node:#f8f9fb; --node-top:#fdfdfe; --node-sub:#f3f4f8;
+  --node-b:rgba(26,34,66,.1); --node-b2:rgba(26,34,66,.18); --node-hi:rgba(255,255,255,.95);
+  --inset:rgba(26,34,66,.04);
+  --sel:#4a63f2; --sel-soft:rgba(74,99,242,.12); --on-sel:#fff;
+  --line:rgba(50,60,92,.5); --guide:#ff3d7f; --edge-sh:rgba(26,34,66,.14); --shape-f:drop-shadow(0 1px 1px rgba(26,34,66,.07)) drop-shadow(0 6px 14px rgba(26,34,66,.08)); --shape-sh2:rgba(26,34,66,.2);
+  --sh-1:0 1px 2px rgba(26,34,66,.06),0 4px 12px rgba(26,34,66,.05),0 14px 34px rgba(26,34,66,.05);
+  --sh-2:0 24px 56px rgba(26,34,66,.18),0 6px 14px rgba(26,34,66,.08);
+  --sh-menu:0 16px 44px rgba(26,34,66,.16),0 2px 6px rgba(26,34,66,.07);
+  --ok:#139a66; --warn:#c98210; --err:#e0464b;
+  /* panels: how strongly their fill and border show, and how much their colour is deepened */
+  --pfk:2; --pbk:1.2; --pf-gc:70%;
+  /* the glow on effects: a bright core with a coloured halo reads as light on a light board */
+  --fx-glow:drop-shadow(0 0 1.5px rgba(255,255,255,.95)) drop-shadow(0 0 5px currentColor);
+  --fx-glow-thin:drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 3.5px currentColor);
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
@@ -40,6 +46,8 @@
     --sh-1:0 1px 0 rgba(255,255,255,.03) inset,0 8px 28px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.25);
     --sh-2:0 28px 70px rgba(0,0,0,.55),0 8px 18px rgba(0,0,0,.3);
     --sh-menu:0 16px 50px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
+    --pfk:1; --pbk:1; --pf-gc:100%; --fx-glow:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 7px currentColor);
+    --fx-glow-thin:drop-shadow(0 0 2.5px currentColor);
     color-scheme:dark;
   }
 }
@@ -57,6 +65,8 @@
   --sh-1:0 1px 0 rgba(255,255,255,.03) inset,0 8px 28px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.25);
   --sh-2:0 28px 70px rgba(0,0,0,.55),0 8px 18px rgba(0,0,0,.3);
   --sh-menu:0 16px 50px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
+  --pfk:1; --pbk:1; --pf-gc:100%; --fx-glow:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 7px currentColor);
+  --fx-glow-thin:drop-shadow(0 0 2.5px currentColor);
   color-scheme:dark;
 }
 
@@ -298,15 +308,15 @@ body.viewer .elabel{cursor:default}
 
 /* panels: framed areas around nodes. --gc is the panel's frame colour.
    Looks: dotted (default), outline, tinted, hatched, grid, card. */
-.pframe{--gc:#8f9bb3;position:absolute;left:0;top:0;z-index:0;border:2px solid transparent;border-radius:28px;pointer-events:none;transition:border-color .15s,background .15s,box-shadow .15s}
-.pframe[data-look="dotted"]{border:2.5px dotted color-mix(in srgb,var(--gc) 75%,transparent);background:color-mix(in srgb,var(--gc) 4%,transparent)}
-.pframe[data-look="outline"]{border:1.5px solid color-mix(in srgb,var(--gc) 60%,transparent)}
-.pframe[data-look="tinted"]{border:1px solid color-mix(in srgb,var(--gc) 22%,transparent);background:color-mix(in srgb,var(--gc) 11%,transparent)}
-.pframe[data-look="hatched"]{border:1.5px solid color-mix(in srgb,var(--gc) 50%,transparent);
-  background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--gc) 18%,transparent) 0 1.5px,transparent 1.5px 13px),color-mix(in srgb,var(--gc) 3%,transparent)}
-.pframe[data-look="grid"]{border:1.5px dashed color-mix(in srgb,var(--gc) 55%,transparent);
-  background:radial-gradient(circle,color-mix(in srgb,var(--gc) 45%,transparent) 1.2px,transparent 1.7px) 0 0/16px 16px,color-mix(in srgb,var(--gc) 4%,transparent)}
-.pframe[data-look="card"]{border:1px solid color-mix(in srgb,var(--gc) 40%,var(--node-b));border-radius:24px;box-shadow:var(--sh-1);
+.pframe{--gc:#8f9bb3;--gcx:color-mix(in srgb,var(--gc) var(--pf-gc,100%),#222a44);position:absolute;left:0;top:0;z-index:0;border:2px solid transparent;border-radius:28px;pointer-events:none;transition:border-color .15s,background .15s,box-shadow .15s}
+.pframe[data-look="dotted"]{border:2.5px dotted color-mix(in srgb,var(--gcx) min(100%,calc(75% * var(--pbk,1))),transparent);background:color-mix(in srgb,var(--gc) calc(4% * var(--pfk,1)),transparent)}
+.pframe[data-look="outline"]{border:1.5px solid color-mix(in srgb,var(--gcx) min(100%,calc(60% * var(--pbk,1))),transparent)}
+.pframe[data-look="tinted"]{border:1px solid color-mix(in srgb,var(--gcx) calc(22% * var(--pbk,1)),transparent);background:color-mix(in srgb,var(--gc) calc(11% * var(--pfk,1)),transparent)}
+.pframe[data-look="hatched"]{border:1.5px solid color-mix(in srgb,var(--gcx) calc(50% * var(--pbk,1)),transparent);
+  background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--gcx) calc(18% * var(--pbk,1)),transparent) 0 1.5px,transparent 1.5px 13px),color-mix(in srgb,var(--gc) calc(3% * var(--pfk,1)),transparent)}
+.pframe[data-look="grid"]{border:1.5px dashed color-mix(in srgb,var(--gcx) calc(55% * var(--pbk,1)),transparent);
+  background:radial-gradient(circle,color-mix(in srgb,var(--gcx) calc(45% * var(--pbk,1)),transparent) 1.2px,transparent 1.7px) 0 0/16px 16px,color-mix(in srgb,var(--gc) calc(4% * var(--pfk,1)),transparent)}
+.pframe[data-look="card"]{border:1px solid color-mix(in srgb,var(--gcx) 40%,var(--node-b));border-radius:24px;box-shadow:var(--sh-1);
   background:linear-gradient(180deg,color-mix(in srgb,var(--gc) 16%,var(--node)) 0 34px,color-mix(in srgb,var(--node) 62%,transparent) 34px)}
 .pframe.folded{border-radius:16px}
 .pframe.folded[data-look="card"]{background:color-mix(in srgb,var(--gc) 16%,var(--node))}
@@ -323,8 +333,8 @@ body.viewer .elabel{cursor:default}
 .pedge.e-r{top:-10px;bottom:-10px;right:-10px;width:20px}
 body.viewer .pedge,body.viewer .plabel{cursor:pointer}
 .plabel{position:absolute;left:14px;bottom:100%;margin-bottom:6px;display:flex;align-items:center;gap:5px;padding:3px 9px 3px 3px;border-radius:9px;
-  font-size:12px;font-weight:600;color:color-mix(in srgb,var(--gc) 65%,var(--text2));pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
-.plabel>.ic{color:var(--gc)}
+  font-size:12px;font-weight:600;color:color-mix(in srgb,var(--gcx) 65%,var(--text2));pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
+.plabel>.ic{color:var(--gcx)}
 .pframe[data-look="card"] .plabel{bottom:auto;top:4px;left:8px;margin:0;color:var(--text)}
 .pframe.folded .plabel{bottom:auto;top:50%;left:8px;margin:0;transform:translateY(-50%);color:var(--text)}
 .plabel:hover,.pframe.sel .plabel{background:var(--sel-soft);color:var(--sel)}
@@ -986,9 +996,9 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
 .imp .tog{margin-top:10px}
 
 /* action effects: a glowing charge along a path, flying dots, a panel building up and breaking apart */
-.fx-pulse{fill:none;stroke-linecap:round;pointer-events:none;filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 7px currentColor)}
-.fx-pulse.thin{filter:drop-shadow(0 0 2.5px currentColor)}
-.fx-dot{pointer-events:none;filter:drop-shadow(0 0 3px currentColor)}
+.fx-pulse{fill:none;stroke-linecap:round;pointer-events:none;filter:var(--fx-glow)}
+.fx-pulse.thin{filter:var(--fx-glow-thin)}
+.fx-dot{pointer-events:none;filter:var(--fx-glow)}
 .pframe.pf-born{animation:pfBorn .5s ease .42s both}
 @keyframes pfBorn{from{opacity:0}to{opacity:1}}
 .pframe.dying,.pframe.dying *{pointer-events:none !important}

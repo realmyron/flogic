@@ -853,3 +853,43 @@ body.dragging-block .bi-size{display:none}
 .ipi img{max-width:28px;max-height:28px;object-fit:contain}
 .ip-empty{grid-column:1/-1;font-size:12px;line-height:1.5;color:var(--muted);padding:12px;border:1px dashed var(--node-b2);border-radius:10px}
 .node[data-type="shape"] .rz{top:12px;bottom:12px}
+
+/* quote block */
+.b-quote{position:relative;margin:0;padding:2px 0 2px 26px}
+.q-mark{position:absolute;left:-2px;top:-10px;font-family:Georgia,"Times New Roman",serif;font-size:44px;line-height:1;color:var(--c);opacity:.55;pointer-events:none;user-select:none}
+.q-text{font-family:Georgia,"Iowan Old Style","Times New Roman",serif;font-size:15px;line-height:1.5;font-style:italic;color:var(--text)}
+.node[data-type="sub"] .q-text{font-size:12.5px}
+.q-by{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-top:6px;font-size:12px;color:var(--muted)}
+.q-author{font-weight:600;color:var(--text2)}
+.q-author:not(:empty)::before{content:"— ";font-weight:400;color:var(--faint)}
+.q-cite{font-style:italic}
+/* author and source take no room when both are empty (except on the selected node, to show where to type) */
+.node:not(.sel) .q-by:not(:has(> .ed:not(:empty))),body.viewer .q-by:not(:has(> .ed:not(:empty))){display:none}
+.node[data-type="shape"] .b-quote{padding-left:0}
+.node[data-type="shape"] .q-mark{position:static;display:block;height:22px;margin-bottom:-6px}
+.node[data-type="shape"] .q-by{justify-content:center}
+/* formula blocks (maths and chemistry, drawn by KaTeX) */
+.b-mx{position:relative}
+.mx-out{overflow-x:auto;overflow-y:hidden;color:var(--text);border-radius:8px;scrollbar-width:thin}
+.mx-out .katex-display{margin:4px 0}
+.mx-out .katex{font-size:1.12em}
+body.editor .mx-out[data-act]{cursor:text}
+body.editor .mx-out[data-act]:hover{background:var(--hover)}
+.mx-raw{display:block;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text2);white-space:pre-wrap;text-align:center;padding:6px 0}
+.mx-empty{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:1.5px dashed var(--node-b2);font-size:12px;color:var(--faint)}
+.mx-src{display:none;margin-top:6px !important;padding:7px 10px !important;border-radius:8px;background:var(--inset);border:1px solid var(--sel);
+  font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text);text-align:left}
+.b-mx.src-on .mx-src{display:block}
+.blk.k-math .mx-src:empty::before,.blk.k-chem .mx-src:empty::before{font-family:inherit}
+/* connection line styles: four choices in two rows */
+.seg4{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px;border-radius:9px;background:var(--inset);border:1px solid var(--panel-b)}
+.seg4 .seg{height:28px}
+#s-lines{flex-wrap:wrap}
+/* focus mode: a veil over the board that blurs and softens everything outside the spot around the pointer */
+#focus-veil{position:absolute;inset:0;z-index:5;display:none;pointer-events:none}
+.fmenu{width:280px}
+.fm{padding:4px 12px 10px}
+.fm-row{display:flex;align-items:center;gap:10px}
+.fm-range{flex:1;accent-color:var(--sel);cursor:pointer}
+.fm-val{min-width:34px;text-align:right;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.fm-hint{margin:8px 0 0;font-size:11.5px;line-height:1.45;color:var(--muted)}

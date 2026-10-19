@@ -993,3 +993,17 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
 @keyframes pfBorn{from{opacity:0}to{opacity:1}}
 .pframe.dying,.pframe.dying *{pointer-events:none !important}
 .pframe.dying{transition:opacity .5s ease .25s;opacity:0}
+.fx-break{fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none}
+
+/* live viewer count in the top bar; hover for this environment vs the whole board */
+.pill.viewers{position:relative;gap:6px;cursor:default;font-variant-numeric:tabular-nums}
+.pill.viewers b{font-weight:650;color:var(--text)}
+.vw-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 50%,transparent);animation:vwLive 2.4s ease-out infinite}
+@keyframes vwLive{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 45%,transparent)}70%,100%{box-shadow:0 0 0 6px transparent}}
+.vw-pop{position:absolute;top:calc(100% + 8px);right:0;z-index:60;display:flex;flex-direction:column;gap:4px;min-width:220px;padding:10px 12px;border-radius:12px;
+  background:var(--panel-solid);border:1px solid var(--panel-b);box-shadow:var(--sh-menu);font-size:12.5px;color:var(--text2);white-space:nowrap;
+  opacity:0;translate:0 -4px;pointer-events:none;transition:opacity .15s,translate .15s}
+.pill.viewers:hover .vw-pop{opacity:1;translate:0 0}
+.vw-row b{display:inline-block;min-width:18px}
+.vw-pop small{margin-top:2px;font-size:11px;color:var(--faint)}
+@media (prefers-reduced-motion:reduce){.vw-dot{animation:none}}

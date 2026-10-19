@@ -7,10 +7,10 @@
 <meta name="description" content="Flogic: flow + logic boards.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='12' height='10' rx='3.5' fill='%237b93ff'/%3E%3Crect x='17' y='18' width='12' height='10' rx='3.5' fill='%23b18bff'/%3E%3Cpath d='M15 9c6 0 8 3 8 9' stroke='%239d8fff' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect"a href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- the ?v= tag makes browsers fetch fresh copies after each update (change it whenever files change) -->
-<link rel="stylesheet" href="css/flogic.css?v=2026-10-19c">
+<link rel="stylesheet" href="css/flogic.css?v=2026-10-19d">
 <script>try{var t=JSON.parse(localStorage.getItem('flogic.cfg')||'{}').theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
@@ -48,6 +48,7 @@
         <div id="bubbles"></div>
         <svg id="overlay" aria-hidden="true"><path id="conn-preview" d=""/><g id="guide-g"></g></svg>
       </div>
+      <div id="focus-veil" aria-hidden="true"></div>
       <div id="marquee"></div>
       <div id="empty-hint" hidden></div>
     </div>
@@ -72,6 +73,8 @@
       <button class="tb zl" id="zoom-label" data-cmd="zoom100" data-tip="Reset to 100% · Ctrl 0">100%</button>
       <button class="tb" data-cmd="zoomin" data-tip="Zoom in · Ctrl +"></button>
       <button class="tb" data-cmd="fit" data-tip="Fit to screen · Shift 1"></button>
+      <span class="tb-sep"></span>
+      <button class="tb" data-cmd="focus" data-tip="Focus mode · F"></button>
     </div>
     <canvas id="minimap" class="panel float" width="200" height="132" aria-label="Minimap"></canvas>
   </main>
@@ -91,10 +94,10 @@
 <input type="file" id="file-img" accept="image/*" hidden>
 <input type="file" id="file-json" accept="application/json,.json" hidden>
 
-<script src="js/util.js?v=2026-10-19c"></script>
-<script src="js/store.js?v=2026-10-19c"></script>
-<script src="js/render.js?v=2026-10-19c"></script>
-<script src="js/suggest.js?v=2026-10-19c"></script>
-<script src="js/app.js?v=2026-10-19c"></script>
+<script src="js/util.js?v=2026-10-19d"></script>
+<script src="js/store.js?v=2026-10-19d"></script>
+<script src="js/render.js?v=2026-10-19d"></script>
+<script src="js/suggest.js?v=2026-10-19d"></script>
+<script src="js/app.js?v=2026-10-19d"></script>
 </body>
 </html>

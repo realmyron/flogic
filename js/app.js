@@ -1677,7 +1677,7 @@ function endConnect(e) {
   CONN = null;
   document.body.classList.remove('connecting');
   clearConnHL();
-  const d = c.detached;
+  const d = c.detached, pd = connPreview.getAttribute('d');
   if (c.target) {
     connPreview.setAttribute('d', '');
     if (!d) checkpoint();
@@ -1685,11 +1685,12 @@ function endConnect(e) {
     if (ok && d) { const es = env().edges, ne = es[es.length - 1]; Object.assign(ne, { label: d.label, arrow: d.arrow, dashed: d.dashed }); if (d.style) ne.style = d.style; if (d.bend) ne.bend = d.bend; }
     if (ok || d) { drawEdges(); renderInspector(); changed(); }
     if (ok) { const es = env().edges; chargeEdge(es[es.length - 1].id); }
-    if (!ok && d) toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
+    if (!ok && d) { fxEdgeBreak(pd, null); toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] }); }
     return;
   }
   if (d) {
     connPreview.setAttribute('d', '');
+    fxEdgeBreak(pd, null);   // a line pulled off and dropped on nothing breaks apart where it was let go
     drawEdges(); renderInspector(); changed();
     toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
     return;
@@ -2465,9 +2466,9 @@ function rectOutlinePoints(r, n) {
   return out;
 }
 /* dots that travel between scattered spots and an outline (inward: they gather; otherwise they scatter) */
-function flyDots(pts, color, inward) {
+function flyDots(pts, color, inward, spread = 1) {
   pts.forEach(([x, y]) => {
-    const ang = Math.random() * Math.PI * 2, dist = 70 + Math.random() * 170, sx = x + Math.cos(ang) * dist, sy = y + Math.sin(ang) * dist;
+    const ang = Math.random() * Math.PI * 2, dist = (70 + Math.random() * 170) * spread, sx = x + Math.cos(ang) * dist, sy = y + Math.sin(ang) * dist;
     const c = svgNew('circle', { cx: 0, cy: 0, r: (1.6 + Math.random() * 1.2).toFixed(1), class: 'fx-dot' });
     c.style.fill = color; c.style.color = color;
     OVL.appendChild(c);
@@ -2480,6 +2481,28 @@ function flyDots(pts, color, inward) {
     const done = () => c.remove();
     an.onfinish = done; setTimeout(done, dur + delay + 400);
   });
+}
+/* a removed connection breaks into short pieces that fade, and a few dots drift off it */
+function fxEdgeBreak(d, color) {
+  if (!fxOn() || !d) return;
+  const g = svgNew('path', { d, class: 'fx-break', pathLength: '1' });
+  g.style.stroke = color || 'var(--line)';
+  edgeG.appendChild(g);
+  const an = g.animate([
+    { strokeDasharray: '1 0', opacity: 0.9 },
+    { strokeDasharray: '0.07 0.03', opacity: 0.8, offset: 0.3 },
+    { strokeDasharray: '0.012 0.088', opacity: 0 },
+  ], { duration: 560, easing: 'cubic-bezier(.3,.6,.4,1)', fill: 'both' });
+  const done = () => g.remove();
+  an.onfinish = done; setTimeout(done, 1000);
+  /* dots along the line, drifting a little way off */
+  let L = 0;
+  try { L = g.getTotalLength(); } catch (_) {}
+  if (L > 4) {
+    const k = Math.round(clamp(L / 60, 4, 14)), pts = [];
+    for (let i = 0; i < k; i++) { const q = g.getPointAtLength(L * (i + 0.5) / k); pts.push([q.x, q.y]); }
+    flyDots(pts, color || getComputedStyle(g).stroke, false, 0.22);
+  }
 }
 /* a new panel builds itself out of dots, then its frame fades in */
 function fxPanelIn(el, p, r) {
@@ -2590,7 +2613,52 @@ function openFocusMenu(btn) {
 }
 setTimeout(() => { fxApply(); applyFocusLevel(); }, 50);
 
-/* environments *//* Change the icon of an environment or a category: a built-in icon, one of your icons, or any emoji or
+/* environments *//* ===================== live viewer count =====================
+   With the relay set up (Settings → Visitor suggestions) and its live count switched on (see the README),
+   every open board checks in every 20 seconds with a random id for this tab and the environment it shows.
+   The relay answers with how many boards are open, overall and per environment. Nothing personal is sent.
+   Without it, the indicator simply stays hidden. */
+const PRES = { sid: null, timer: 0, counts: null, off: false, fails: 0 };
+try { PRES.sid = sessionStorage.getItem('flogic.sid'); } catch (_) {}
+if (!PRES.sid) { PRES.sid = uid('v') + Math.random().toString(36).slice(2, 8); try { sessionStorage.setItem('flogic.sid', PRES.sid); } catch (_) {} }
+const presenceUrl = () => (DOC && DOC.relay ? DOC.relay.replace(/\/+$/, '') + '/presence' : '');
+async function presencePing() {
+  clearTimeout(PRES.timer);
+  const u = presenceUrl();
+  if (!u || document.hidden) { PRES.counts = null; renderPresence(); return; }
+  try {
+    /* plain text, so the browser doesn't need to ask the relay's permission first on every check-in */
+    const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ sid: PRES.sid, env: S.envId }) });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    PRES.counts = j; PRES.fails = 0;
+  } catch (_) {
+    PRES.counts = null; PRES.fails++;
+  }
+  renderPresence();
+  /* every 20 s; after errors (e.g. the relay has no live count yet) only every few minutes */
+  PRES.timer = setTimeout(presencePing, PRES.fails ? Math.min(300000, 30000 * PRES.fails) : 20000);
+}
+function presenceLeave() {
+  const u = presenceUrl();
+  if (!u) return;
+  try { navigator.sendBeacon(u + '/leave', new Blob([JSON.stringify({ sid: PRES.sid })], { type: 'text/plain' })); } catch (_) {}
+}
+function renderPresence() {
+  const el = $('#viewers'), c = PRES.counts;
+  if (!el) return;
+  if (!c || !c.total) { el.hidden = true; return; }
+  const here = (c.envs && c.envs[S.envId]) || 0, total = c.total, name = (env() && env().name) || 'this environment';
+  el.hidden = false;
+  el.innerHTML = `<span class="vw-dot"></span>${ic('users', 14)}<b>${total}</b>` +
+    `<span class="vw-pop" role="tooltip"><span class="vw-row"><b>${here}</b> viewing “${esc(name)}”</span><span class="vw-row"><b>${total}</b> on the whole board</span><small>Live · counts every open tab, including yours</small></span>`;
+  el.setAttribute('aria-label', `${total} viewing now, ${here} in this environment`);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) presenceLeave(); else presencePing(); });
+window.addEventListener('pagehide', presenceLeave);
+setTimeout(presencePing, 1500);
+
+/* Change the icon of an environment or a category: a built-in icon, one of your icons, or any emoji or
    symbol typed in. The preview at the top shows the row as it will look. */
 const EMOJIS = ['📁', '📂', '🗂️', '📌', '📍', '⭐', '✨', '🔥', '💡', '🧠', '🎯', '🚀', '🧪', '🔬', '🧬', '⚗️', '📐', '📊', '📈', '🗺️', '🌍', '🏛️', '⚖️', '💬',
   '📝', '📚', '🎨', '🎵', '🎮', '🛠️', '⚙️', '🔒', '🔑', '💰', '❤️', '✅', '❓', '❗', '⚠️', '🌱', '🌙', '☀️', '⚡', '🧩', '🏁', '👀', '🤖', '🐙',
@@ -2659,6 +2727,7 @@ function openNavIconPicker(kind, id) {
   if (v && isFinite(v.cx) && isFinite(v.z)) { V.z = clamp(v.z, ZMIN, ZMAX); V.x = VR.width / 2 - v.cx * V.z; V.y = VR.height / 2 - v.cy * V.z; applyView(); }
   else { fitAll(true); requestAnimationFrame(() => requestAnimationFrame(() => fitAll(true))); }
   popIn(env().nodes.map(n => n.id), true);
+  if (typeof PRES !== 'undefined' && PRES.sid) presencePing();   // tell the live count which environment this tab shows now
   animateEdgesIn(120 + Math.min(env().nodes.length, 30) * 10);
 }
 function addEnv(folderId) {
@@ -3294,6 +3363,7 @@ function openSettings() {
       changed();
       relaySt.className = 'sstat ok';
       relaySt.textContent = v ? 'Saved. Publish so visitors get it.' : 'Removed. Publish so visitors get it.';
+      PRES.fails = 0; presencePing();
     });
     q('#s-relay-test').addEventListener('click', async () => {
       const v = relayVal();
@@ -3303,7 +3373,7 @@ function openSettings() {
         const r = await fetch(v, { cache: 'no-store' }), j = await r.json();
         if (!j || j.service !== 'flogic-relay') throw new Error('that address is not a Flogic relay');
         if (!j.configured) throw new Error('the relay is running but GITHUB_TOKEN, REPO or ALLOWED_ORIGIN is missing');
-        relaySt.className = 'sstat ok'; relaySt.textContent = 'Relay is working ✓';
+        relaySt.className = 'sstat ok'; relaySt.textContent = 'Relay is working ✓' + (j.presence ? ' · live viewer count on' : ' · live viewer count not set up (see the README)');
       } catch (err) { relaySt.className = 'sstat err'; relaySt.textContent = 'Not reachable: ' + err.message; }
     });
   }

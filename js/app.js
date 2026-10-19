@@ -2244,83 +2244,204 @@ document.addEventListener('click', e => {
   }
 });
 
-/* ===================== focus mode =====================
-   Away from the pointer the board softly blurs, dims a touch and loses a little colour, like the edge of
-   your vision; around the pointer everything stays sharp. The sharp spot glides after the pointer (and
-   sits on the text you are typing while editing). The strength (0 to 100%) sets how strong the blur is
-   and how small the sharp spot gets: around 10% it is barely noticeable but still pulls attention in. */
+/* ===================== comfort =====================
+   Three quiet helpers, each set per browser (so visitors can use them too) and meant to be felt more
+   than seen: a focus vignette, light trails on the board's background, and a reading glow. */
+
+/* ---- focus vignette: the edges of the board blur, dim and lose a little colour, so the eye settles on
+   the middle. The strength (0 to 100%) sets how far in it reaches and how strong it is. */
 const veil = $('#focus-veil');
-const FOC = { x: 0, y: 0, raf: 0, on: false, touch: false, init: false, last: null };
-function focusLevel() { return FOC.touch ? 0 : clamp(+CFG.focus || 0, 0, 100) / 100; }
+const FOC = { touch: false };
+/* the comfort defaults changed (focus became a vignette at 3%): move older saved settings over once */
+if (CFG.comfortV !== 2) { CFG.focus = 3; CFG.focusLast = 3; if (!CFG.bgFx) CFG.bgFx = 'clouds'; if (CFG.readGlow == null) CFG.readGlow = true; CFG.comfortV = 2; saveCfg(); }
+function focusLevel() { return clamp(+CFG.focus || 0, 0, 100) / 100; }
 function applyFocusLevel() {
   const f = focusLevel(), btn = $('[data-cmd="focus"]');
-  if (btn) btn.classList.toggle('on', f > 0);
-  FOC.on = f > 0;
-  /* everything grows from zero: about 0.25px of blur at 10% (only there if you look for it), 8px at 100%.
-     Below about 3% there is nothing to see, so the veil is left off (it costs a little to draw). */
-  const blur = 8 * Math.pow(f, 1.5), sat = 1 - 0.45 * Math.pow(f, 2), dim = 40 * Math.pow(f, 2.2);
-  if (blur < 0.04) { veil.style.display = 'none'; FOC.on = false; return; }
+  if (btn) btn.classList.toggle('on', f > 0 || fxMode() !== 'off' || !!CFG.readGlow);
+  if (!f) { veil.style.display = 'none'; return; }
+  /* at 3% only the corners soften (about 0.25px); at 100% everything but the middle is strongly blurred */
+  const blur = 8 * Math.pow(f, 0.95), sat = 1 - 0.4 * Math.pow(f, 1.2), dim = 34 * Math.pow(f, 1.25);
+  const inner = 68 - 50 * Math.pow(f, 0.6);   // % of the way to the corners that stays sharp
+  const at = k => (inner + (100 - inner) * k).toFixed(1) + '%';
   veil.style.display = 'block';
   veil.style.backdropFilter = veil.style.webkitBackdropFilter = `blur(${blur.toFixed(2)}px) saturate(${sat.toFixed(2)})`;
   veil.style.background = `color-mix(in srgb,var(--bg) ${dim.toFixed(1)}%,transparent)`;
-  focusMask(); kickFocus();
+  veil.style.maskImage = veil.style.webkitMaskImage =
+    `radial-gradient(ellipse at 50% 50%,transparent ${inner.toFixed(1)}%,rgba(0,0,0,.12) ${at(0.22)},rgba(0,0,0,.43) ${at(0.45)},rgba(0,0,0,.78) ${at(0.7)},#000 100%)`;
 }
-/* where attention is: the caret while typing, else the pointer (its last spot on the board while it is over the side panels) */
-function focusTarget() {
-  if (S.editing && S.editing.el.isConnected) {
-    const sel = getSelection();
-    let r = sel.rangeCount ? sel.getRangeAt(0).getBoundingClientRect() : null;
-    if (!r || (!r.width && !r.height)) r = S.editing.el.getBoundingClientRect();
-    return { x: r.left + r.width / 2 - VR.left, y: r.top + r.height / 2 - VR.top };
-  }
-  if (PTR.x >= 0 && pointerInVp()) FOC.last = { x: PTR.x - VR.left, y: PTR.y - VR.top };
-  return FOC.last || { x: VR.width / 2, y: VR.height / 2 };
-}
-function focusMask() {
-  const f = focusLevel();
-  if (!f) return;
-  const big = Math.max(VR.width, VR.height), r = big * 0.85 + (150 - big * 0.85) * Math.pow(f, 0.75), inner = r * (0.55 - 0.15 * f);
-  /* a smooth (smoothstep) falloff from sharp to fully soft */
-  const at = k => (inner + (r - inner) * k).toFixed(1) + 'px';
-  const m = `radial-gradient(circle at ${FOC.x.toFixed(1)}px ${FOC.y.toFixed(1)}px,transparent ${inner.toFixed(1)}px,rgba(0,0,0,.12) ${at(0.22)},rgba(0,0,0,.43) ${at(0.45)},rgba(0,0,0,.78) ${at(0.7)},#000 ${at(1)})`;
-  veil.style.maskImage = veil.style.webkitMaskImage = m;
-}
-function focusFrame() {
-  FOC.raf = 0;
-  if (!FOC.on) return;
-  const t = focusTarget();
-  if (!FOC.init) { FOC.x = t.x; FOC.y = t.y; FOC.init = true; }
-  const k = RM.matches ? 1 : 0.2;
-  FOC.x += (t.x - FOC.x) * k; FOC.y += (t.y - FOC.y) * k;
-  focusMask();
-  if (Math.abs(t.x - FOC.x) + Math.abs(t.y - FOC.y) > 0.3) FOC.raf = requestAnimationFrame(focusFrame);
-}
-function kickFocus() { if (FOC.on && !FOC.raf) FOC.raf = requestAnimationFrame(focusFrame); }
-window.addEventListener('pointermove', e => {
-  const touch = e.pointerType === 'touch';
-  if (touch !== FOC.touch) { FOC.touch = touch; applyFocusLevel(); }   /* no pointer to follow on touch screens */
-  kickFocus();
-}, { passive: true });
-document.addEventListener('selectionchange', () => { if (S.editing) kickFocus(); });
-window.addEventListener('resize', kickFocus);
 function setFocusLevel(v) {
   CFG.focus = clamp(Math.round(v), 0, 100);
   if (CFG.focus > 0) CFG.focusLast = CFG.focus;
   saveCfg(); applyFocusLevel();
 }
 function toggleFocus() {
-  setFocusLevel(CFG.focus > 0 ? 0 : (CFG.focusLast || 10));
-  toast(CFG.focus > 0 ? `Focus mode on (${CFG.focus}%)` : 'Focus mode off');
+  setFocusLevel(CFG.focus > 0 ? 0 : (CFG.focusLast || 3));
+  toast(CFG.focus > 0 ? `Focus vignette on (${CFG.focus}%)` : 'Focus vignette off');
+}
+
+/* ---- background trails: moving the pointer over the board leaves soft light behind it, drawn on a
+   canvas under the nodes. Nothing moves while the pointer rests, and nothing runs once it has faded. */
+const FX_MODES = [['off', 'Off'], ['clouds', 'Clouds'], ['aurora', 'Aurora'], ['ripples', 'Ripples'], ['sparkles', 'Sparkles']];
+const fxCanvas = document.createElement('canvas');
+fxCanvas.id = 'bg-fx';
+fxCanvas.setAttribute('aria-hidden', 'true');
+vp.insertBefore(fxCanvas, vp.firstChild);
+const fx = fxCanvas.getContext('2d');
+const FX = { parts: [], raf: 0, last: 0, lx: null, ly: null, dist: 0, hue: 200, pal: null, sc: 1 };
+function fxMode() { return RM.matches || FOC.touch ? 'off' : (FX_MODES.some(m => m[0] === CFG.bgFx) ? CFG.bgFx : 'clouds'); }
+/* colours come from the theme's own background tints, so the trails match the static gradient */
+function fxPalette() {
+  if (FX.pal) return FX.pal;
+  const cs = getComputedStyle(document.documentElement);
+  /* '#rrggbb' or 'rgba(r,g,b,a)' -> [r, g, b] */
+  const rgb = v => {
+    const s = v.trim();
+    if (/^#[0-9a-f]{6}$/i.test(s)) return [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16));
+    return (s.match(/[\d.]+/g) || [120, 140, 255]).slice(0, 3).map(Number);
+  };
+  const bg = rgb(cs.getPropertyValue('--bg')), dark = bg[0] * 0.3 + bg[1] * 0.59 + bg[2] * 0.11 < 100;
+  FX.pal = { dark, a: rgb(cs.getPropertyValue('--amb1')), b: rgb(cs.getPropertyValue('--amb2')), sel: rgb(cs.getPropertyValue('--sel')) };
+  return FX.pal;
+}
+function fxResize() {
+  FX.sc = fxMode() === 'clouds' || fxMode() === 'aurora' ? 0.5 : 1;   // soft modes draw at half size (cheaper, and blur doesn't need detail)
+  const w = Math.max(1, Math.round(vp.clientWidth * FX.sc)), h = Math.max(1, Math.round(vp.clientHeight * FX.sc));
+  if (fxCanvas.width !== w || fxCanvas.height !== h) { fxCanvas.width = w; fxCanvas.height = h; }
+}
+window.addEventListener('resize', () => { fxResize(); });
+function fxSpawn(x, y, dx, dy, burst) {
+  const m = fxMode(), P = fxPalette(), R = Math.random;
+  const add = p => { FX.parts.push(p); if (FX.parts.length > 110) FX.parts.shift(); };
+  if (m === 'clouds') add({ k: 'c', x, y, vx: dx * 0.02 + (R() - 0.5) * 0.15, vy: dy * 0.02 + (R() - 0.5) * 0.15 - 0.04, r: 70 + R() * 80, t: 0, life: 3.6 + R() * 1.6, c: R() < 0.55 ? P.a : P.b });
+  else if (m === 'aurora') { FX.hue = (FX.hue + 5) % 360; add({ k: 'a', x, y, vx: (R() - 0.5) * 0.2, vy: -0.1 - R() * 0.15, r: 38 + R() * 26, t: 0, life: 2.3 + R() * 0.8, h: FX.hue }); }
+  else if (m === 'ripples') add({ k: 'r', x, y, vx: 0, vy: 0, r: 0, max: burst ? 140 : 70 + R() * 30, t: 0, life: burst ? 1.9 : 1.5 });
+  else if (m === 'sparkles') for (let i = 0; i < (burst ? 6 : 1); i++) add({ k: 's', x: x + (R() - 0.5) * 14, y: y + (R() - 0.5) * 14, vx: (R() - 0.5) * 0.35, vy: -0.15 - R() * 0.35, r: 0.9 + R() * 1.4, t: 0, life: 1.4 + R() * 1.1, ph: R() * 6 });
+  if (!FX.raf) { FX.last = performance.now(); FX.raf = requestAnimationFrame(fxFrame); }
+}
+function fxFrame(now) {
+  FX.raf = 0;
+  const dt = Math.min(0.05, (now - FX.last) / 1000), s = FX.sc, P = fxPalette();
+  FX.last = now;
+  fx.setTransform(1, 0, 0, 1, 0, 0);
+  fx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+  fx.setTransform(s, 0, 0, s, 0, 0);
+  fx.globalCompositeOperation = P.dark ? 'lighter' : 'source-over';
+  const col = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
+  for (const p of FX.parts) {
+    p.t += dt / p.life;
+    p.x += p.vx * dt * 60; p.y += p.vy * dt * 60;
+    const t = p.t, life = Math.sin(Math.PI * Math.min(1, t));     // fades in and out
+    if (p.k === 'c' || p.k === 'a') {
+      const a = (p.k === 'c' ? (P.dark ? 0.10 : 0.09) : (P.dark ? 0.085 : 0.08)) * life, r = p.r * (0.85 + 0.3 * t);
+      const c = p.k === 'c' ? col(p.c, a) : `hsla(${p.h},${P.dark ? 85 : 75}%,${P.dark ? 66 : 58}%,${a.toFixed(3)})`;
+      const g = fx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      g.addColorStop(0, c); g.addColorStop(1, p.k === 'c' ? col(p.c, 0) : `hsla(${p.h},80%,60%,0)`);
+      fx.fillStyle = g; fx.beginPath(); fx.arc(p.x, p.y, r, 0, Math.PI * 2); fx.fill();
+    } else if (p.k === 'r') {
+      const e = 1 - Math.pow(1 - Math.min(1, t), 3);                 // eases out as it spreads
+      fx.strokeStyle = col(P.sel, (P.dark ? 0.26 : 0.22) * (1 - t));
+      fx.lineWidth = 1.4;
+      fx.beginPath(); fx.arc(p.x, p.y, 4 + e * p.max, 0, Math.PI * 2); fx.stroke();
+    } else {
+      const tw = 0.65 + 0.35 * Math.sin(p.ph + t * 18), a = (P.dark ? 0.75 : 0.55) * life * tw, c = P.dark ? P.b : P.sel;
+      const g = fx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 5);
+      g.addColorStop(0, col(c, a)); g.addColorStop(0.25, col(c, a * 0.45)); g.addColorStop(1, col(c, 0));
+      fx.fillStyle = g; fx.beginPath(); fx.arc(p.x, p.y, p.r * 5, 0, Math.PI * 2); fx.fill();
+    }
+  }
+  FX.parts = FX.parts.filter(p => p.t < 1);
+  if (FX.parts.length) FX.raf = requestAnimationFrame(fxFrame);
+  else { fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, fxCanvas.width, fxCanvas.height); }
+}
+vp.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch' || fxMode() === 'off') return;
+  const x = e.clientX - VR.left, y = e.clientY - VR.top;
+  if (FX.lx == null) { FX.lx = x; FX.ly = y; return; }
+  const dx = x - FX.lx, dy = y - FX.ly, d = Math.hypot(dx, dy);
+  FX.lx = x; FX.ly = y;
+  if (d > 200) return;   // the pointer jumped (e.g. came back from a side panel)
+  FX.dist += d;
+  const every = { clouds: 34, aurora: 16, ripples: 95, sparkles: 12 }[fxMode()];
+  if (FX.dist >= every) { FX.dist = 0; fxSpawn(x, y, dx, dy); }
+}, { passive: true });
+vp.addEventListener('pointerleave', () => { FX.lx = null; });
+vp.addEventListener('pointerdown', e => { if (e.button === 0 && e.pointerType !== 'touch' && fxMode() !== 'off' && !e.target.closest('.node, .elabel, .pframe')) fxSpawn(e.clientX - VR.left, e.clientY - VR.top, 0, 0, true); });
+function setBgFx(m) {
+  CFG.bgFx = m; saveCfg();
+  FX.parts = []; FX.pal = null; fxResize();
+  fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+  applyFocusLevel();
+}
+
+/* ---- reading glow: over text, a soft light the height of a line follows the pointer, like a very
+   faint highlighter, so the eye keeps its place along a sentence. */
+const glow = document.createElement('div');
+glow.id = 'read-glow';
+glow.setAttribute('aria-hidden', 'true');
+vp.appendChild(glow);
+const RG = { x: 0, y: 0, tx: 0, ty: 0, raf: 0, on: false };
+function glowFrame() {
+  RG.raf = 0;
+  const k = RM.matches ? 1 : 0.38;
+  RG.x += (RG.tx - RG.x) * k; RG.y += (RG.ty - RG.y) * k;
+  glow.style.transform = `translate(${RG.x.toFixed(1)}px,${RG.y.toFixed(1)}px) translate(-50%,-50%)`;
+  if (Math.abs(RG.tx - RG.x) + Math.abs(RG.ty - RG.y) > 0.3) RG.raf = requestAnimationFrame(glowFrame);
+}
+vp.addEventListener('pointermove', e => {
+  const t = e.target, over = !!CFG.readGlow && e.pointerType !== 'touch' && !e.buttons && !S.editing &&
+    t.closest && t.closest('.node [data-f], .node .b-text, .node .mx-out') && !t.closest('button, img, .port, .rz, .grip');
+  if (!over) { if (RG.on) { RG.on = false; glow.classList.remove('on'); } return; }
+  const x = e.clientX - VR.left, y = e.clientY - VR.top;
+  /* about one line tall at the current zoom, and several words wide */
+  const lh = clamp(24 * V.z, 14, 72);
+  glow.style.width = (lh * 7.5).toFixed(0) + 'px'; glow.style.height = (lh * 1.7).toFixed(0) + 'px';
+  RG.tx = x; RG.ty = y;
+  if (!RG.on) { RG.on = true; RG.x = x; RG.y = y; glow.classList.add('on'); }
+  if (!RG.raf) RG.raf = requestAnimationFrame(glowFrame);
+}, { passive: true });
+vp.addEventListener('pointerleave', () => { RG.on = false; glow.classList.remove('on'); });
+function setReadGlow(on) { CFG.readGlow = !!on; saveCfg(); if (!on) { RG.on = false; glow.classList.remove('on'); } applyFocusLevel(); }
+
+/* no pointer to follow on touch screens */
+window.addEventListener('pointermove', e => {
+  const touch = e.pointerType === 'touch';
+  if (touch !== FOC.touch) { FOC.touch = touch; applyFocusLevel(); }
+}, { passive: true });
+
+/* ---- the controls: the button by the zoom (everyone), and the Comfort section in Settings */
+function comfortHTML() {
+  const v = Math.round(+CFG.focus || 0);
+  return `<div class="fm">
+    <div class="fm-lab"><span>Focus vignette</span><b class="fm-val">${v ? v + '%' : 'Off'}</b></div>
+    <input type="range" class="fm-range" min="0" max="100" step="1" value="${v}" aria-label="Focus vignette strength">
+    <p class="fm-hint">Softens the edges of the board so your eyes settle on the middle. A few percent is enough. F switches it on or off.</p>
+    <div class="fm-lab"><span>Background trails</span></div>
+    <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'clouds') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
+    <p class="fm-hint">Light left behind the pointer on the board's background.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
+    <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light follows the pointer along the text you read</label>
+  </div>`;
+}
+function bindComfort(root) {
+  const range = $('.fm-range', root), val = $('.fm-val', root);
+  range.addEventListener('input', () => { setFocusLevel(+range.value); val.textContent = CFG.focus ? CFG.focus + '%' : 'Off'; });
+  $('.fm-segs', root).addEventListener('click', e => {
+    const b = e.target.closest('[data-fx]');
+    if (!b) return;
+    setBgFx(b.dataset.fx);
+    $$('[data-fx]', root).forEach(x => x.classList.toggle('on', x === b));
+  });
+  $('.fm-glow', root).addEventListener('change', e => setReadGlow(e.target.checked));
 }
 function openFocusMenu(btn) {
-  const v = Math.round(+CFG.focus || 0), b = btn.getBoundingClientRect();
-  const label = x => x ? x + '%' : 'Off';
-  const m = openMenu(b.left, b.top, [{ head: 'Focus mode' }, { html: `<div class="fm"><div class="fm-row"><input type="range" class="fm-range" min="0" max="100" step="1" value="${v}" aria-label="Focus strength"><b class="fm-val">${label(v)}</b></div><p class="fm-hint">Softly blurs the board away from your pointer, so what you are working on stands out. Low values work best: barely noticeable, but they still help. Press F to switch it on or off.</p></div>` }], { cls: 'fmenu' });
+  const b = btn.getBoundingClientRect();
+  const m = openMenu(b.left, b.top, [{ head: 'Comfort' }, { html: comfortHTML() }], { cls: 'fmenu' });
   m.style.top = Math.max(8, b.top - m.offsetHeight - 8) + 'px';
-  const range = m.querySelector('.fm-range'), val = m.querySelector('.fm-val');
-  range.addEventListener('input', () => { setFocusLevel(+range.value); val.textContent = label(CFG.focus); });
+  bindComfort(m);
 }
-setTimeout(applyFocusLevel, 50);
+setTimeout(() => { fxResize(); applyFocusLevel(); }, 50);
+/* theme changes recolour the trails */
+new MutationObserver(() => { FX.pal = null; }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { FX.pal = null; });
 
 /* environments *//* Change the icon of an environment or a category: a built-in icon, one of your icons, or any emoji or
    symbol typed in. The preview at the top shows the row as it will look. */
@@ -2928,7 +3049,7 @@ function openHelp() {
     ['Undo · redo', 'Ctrl+Z · Ctrl+Shift+Z'],
     ['Delete', 'Delete'], ['Fit all · selection', 'Shift+1 · Shift+2'],
     ['Zoom to 100%', 'Ctrl+0'], ['Publish', 'Ctrl+S'],
-    ['Focus mode on · off', 'F (strength: the button by the zoom)'],
+    ['Focus vignette on · off', 'F (comfort options: the button by the zoom)'],
   ].map(([a, b]) => `<div><span>${a}</span><kbd>${esc(b.replace(/Ctrl/g, MOD))}</kbd></div>`).join('');
   openModal(`<div class="mhead"><h3>Keyboard & mouse</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div>
     <div class="mbody"><section><div class="keys">${K}</div></section>
@@ -2984,7 +3105,8 @@ function openSettings() {
     <div class="mrow"><span class="sstat" id="s-relay-st">${DOC.relay ? 'Visitors can send suggestions without signing in' : 'Not set: visitors use GitHub to send suggestions'}</span><span class="grow"></span><button class="btn" id="s-relay-test">Test</button><button class="btn primary" id="s-relay-save">Save</button></div></section>
     <section><h4>${ic('download', 15)} Backup</h4><p class="hint">Your work autosaves in this browser. Export a copy now and then, or import one to replace this board.</p>
     <div class="mrow" style="margin-top:0"><button class="btn" id="s-exp">${ic('download', 14)} Export JSON</button><button class="btn" id="s-imp">${ic('upload', 14)} Import JSON</button>${S.connected ? `<button class="btn" id="s-pull">${ic('refresh', 14)} Reload from GitHub</button>` : ''}</div></section>` : '';
-  const m = openModal(`<div class="mhead"><h3>${S.canEdit ? 'Settings' : 'Sign in to edit'}</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div><div class="mbody">${conn}${prefs}</div>`);
+  const m = openModal(`<div class="mhead"><h3>${S.canEdit ? 'Settings' : 'Sign in to edit'}</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div><div class="mbody">${conn}${prefs}<section><h4>${ic('focus', 15)} Comfort</h4>${comfortHTML()}</section></div>`);
+  bindComfort(m.el);
   const q = s => $(s, m.el);
   q('#s-go').addEventListener('click', async () => {
     const st = q('#s-stat'), prev = Object.assign({}, CFG);

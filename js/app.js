@@ -2279,15 +2279,18 @@ function toggleFocus() {
   toast(CFG.focus > 0 ? `Focus vignette on (${CFG.focus}%)` : 'Focus vignette off');
 }
 
-/* ---- background trails: moving the pointer over the board leaves soft light behind it, drawn on a
-   canvas under the nodes. Nothing moves while the pointer rests, and nothing runs once it has faded. */
-const FX_MODES = [['off', 'Off'], ['clouds', 'Clouds'], ['aurora', 'Aurora'], ['ripples', 'Ripples'], ['sparkles', 'Sparkles']];
+/* ---- background trails: moving the pointer over the board leaves a faint, slow light behind it on the
+   background (under the nodes). It is meant to be felt rather than seen: very low strength, large and
+   soft, a slow fade in, and a long fade out you can't see ending. Nothing runs once it has gone. */
+const FX_MODES = [['off', 'Off'], ['clouds', 'Clouds'], ['aurora', 'Aurora'], ['bloom', 'Bloom'], ['dust', 'Dust']];
+if (CFG.bgFx === 'ripples') CFG.bgFx = 'bloom';
+if (CFG.bgFx === 'sparkles') CFG.bgFx = 'dust';
 const fxCanvas = document.createElement('canvas');
 fxCanvas.id = 'bg-fx';
 fxCanvas.setAttribute('aria-hidden', 'true');
 vp.insertBefore(fxCanvas, vp.firstChild);
 const fx = fxCanvas.getContext('2d');
-const FX = { parts: [], raf: 0, last: 0, lx: null, ly: null, dist: 0, hue: 200, pal: null, sc: 1 };
+const FX = { parts: [], raf: 0, last: 0, lx: null, ly: null, dist: 0, hue: 200, pal: null, sc: 0.25 };
 function fxMode() { return RM.matches || FOC.touch ? 'off' : (FX_MODES.some(m => m[0] === CFG.bgFx) ? CFG.bgFx : 'clouds'); }
 /* colours come from the theme's own background tints, so the trails match the static gradient */
 function fxPalette() {
@@ -2303,69 +2306,63 @@ function fxPalette() {
   FX.pal = { dark, a: rgb(cs.getPropertyValue('--amb1')), b: rgb(cs.getPropertyValue('--amb2')), sel: rgb(cs.getPropertyValue('--sel')) };
   return FX.pal;
 }
+/* the soft modes are drawn at a quarter of the size and stretched (smooth, and almost free to draw) */
 function fxResize() {
-  FX.sc = fxMode() === 'clouds' || fxMode() === 'aurora' ? 0.5 : 1;   // soft modes draw at half size (cheaper, and blur doesn't need detail)
+  FX.sc = fxMode() === 'dust' ? 0.5 : 0.25;
   const w = Math.max(1, Math.round(vp.clientWidth * FX.sc)), h = Math.max(1, Math.round(vp.clientHeight * FX.sc));
   if (fxCanvas.width !== w || fxCanvas.height !== h) { fxCanvas.width = w; fxCanvas.height = h; }
 }
 window.addEventListener('resize', () => { fxResize(); });
-function fxSpawn(x, y, dx, dy, burst) {
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+/* how bright a trail is over its life: eases in over the first fifth, then a long, soft fade out */
+const fxEnv = t => smooth(0, 0.2, t) * Math.pow(1 - smooth(0.25, 1, t), 1.6);
+/* a soft round light with a gentle (roughly Gaussian) falloff, so it has no visible edge */
+function fxSoft(x, y, r, c, a) {
+  if (a < 0.002 || r < 1) return;
+  const g = fx.createRadialGradient(x, y, 0, x, y, r), s = (k, f) => g.addColorStop(k, `rgba(${c[0]},${c[1]},${c[2]},${(a * f).toFixed(4)})`);
+  s(0, 1); s(0.2, 0.86); s(0.4, 0.58); s(0.6, 0.3); s(0.8, 0.1); s(1, 0);
+  fx.fillStyle = g; fx.beginPath(); fx.arc(x, y, r, 0, Math.PI * 2); fx.fill();
+}
+const hsl = (h, s, l) => { s /= 100; l /= 100; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); return [f(0), f(8), f(4)].map(v => Math.round(v * 255)); };
+function fxSpawn(x, y, dx, dy) {
   const m = fxMode(), P = fxPalette(), R = Math.random;
-  const add = p => { FX.parts.push(p); if (FX.parts.length > 110) FX.parts.shift(); };
-  if (m === 'clouds') add({ k: 'c', x, y, vx: dx * 0.02 + (R() - 0.5) * 0.15, vy: dy * 0.02 + (R() - 0.5) * 0.15 - 0.04, r: 70 + R() * 80, t: 0, life: 3.6 + R() * 1.6, c: R() < 0.55 ? P.a : P.b });
-  else if (m === 'aurora') { FX.hue = (FX.hue + 5) % 360; add({ k: 'a', x, y, vx: (R() - 0.5) * 0.2, vy: -0.1 - R() * 0.15, r: 38 + R() * 26, t: 0, life: 2.3 + R() * 0.8, h: FX.hue }); }
-  else if (m === 'ripples') add({ k: 'r', x, y, vx: 0, vy: 0, r: 0, max: burst ? 140 : 70 + R() * 30, t: 0, life: burst ? 1.9 : 1.5 });
-  else if (m === 'sparkles') for (let i = 0; i < (burst ? 6 : 1); i++) add({ k: 's', x: x + (R() - 0.5) * 14, y: y + (R() - 0.5) * 14, vx: (R() - 0.5) * 0.35, vy: -0.15 - R() * 0.35, r: 0.9 + R() * 1.4, t: 0, life: 1.4 + R() * 1.1, ph: R() * 6 });
+  const add = p => { FX.parts.push(p); if (FX.parts.length > 48) FX.parts.shift(); };
+  if (m === 'clouds') add({ x, y, vx: dx * 0.004 + (R() - 0.5) * 0.06, vy: dy * 0.004 + (R() - 0.5) * 0.06, r: 190 + R() * 120, grow: 0.25, t: 0, life: 7 + R() * 3, c: R() < 0.55 ? P.a : P.b, peak: P.dark ? 0.045 : 0.05 });
+  else if (m === 'aurora') { FX.hue = (FX.hue + 9) % 360; add({ x, y, vx: (R() - 0.5) * 0.05, vy: -0.03 - R() * 0.04, r: 150 + R() * 80, grow: 0.3, t: 0, life: 6 + R() * 2, c: hsl(FX.hue, 70, P.dark ? 62 : 60), peak: P.dark ? 0.038 : 0.042 }); }
+  /* bloom: small soft lights that slowly open up and dissolve, like ink in water */
+  else if (m === 'bloom') add({ x: x + (R() - 0.5) * 30, y: y + (R() - 0.5) * 30, vx: (R() - 0.5) * 0.04, vy: (R() - 0.5) * 0.04, r: 40 + R() * 30, grow: 3.2, t: 0, life: 8 + R() * 3, c: R() < 0.5 ? P.a : P.sel, peak: P.dark ? 0.05 : 0.05 });
+  /* dust: a few tiny, dim motes that drift up and away */
+  else if (m === 'dust') add({ x: x + (R() - 0.5) * 40, y: y + (R() - 0.5) * 40, vx: (R() - 0.5) * 0.1, vy: -0.05 - R() * 0.1, r: 3 + R() * 3, grow: 0, t: 0, life: 5 + R() * 3, c: P.dark ? P.b : P.sel, peak: P.dark ? 0.18 : 0.14, dot: true });
   if (!FX.raf) { FX.last = performance.now(); FX.raf = requestAnimationFrame(fxFrame); }
 }
 function fxFrame(now) {
   FX.raf = 0;
-  const dt = Math.min(0.05, (now - FX.last) / 1000), s = FX.sc, P = fxPalette();
+  const dt = Math.min(0.05, (now - FX.last) / 1000), s = FX.sc;
   FX.last = now;
   fx.setTransform(1, 0, 0, 1, 0, 0);
   fx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
   fx.setTransform(s, 0, 0, s, 0, 0);
-  fx.globalCompositeOperation = P.dark ? 'lighter' : 'source-over';
-  const col = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
   for (const p of FX.parts) {
     p.t += dt / p.life;
     p.x += p.vx * dt * 60; p.y += p.vy * dt * 60;
-    const t = p.t, life = Math.sin(Math.PI * Math.min(1, t));     // fades in and out
-    if (p.k === 'c' || p.k === 'a') {
-      const a = (p.k === 'c' ? (P.dark ? 0.10 : 0.09) : (P.dark ? 0.085 : 0.08)) * life, r = p.r * (0.85 + 0.3 * t);
-      const c = p.k === 'c' ? col(p.c, a) : `hsla(${p.h},${P.dark ? 85 : 75}%,${P.dark ? 66 : 58}%,${a.toFixed(3)})`;
-      const g = fx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-      g.addColorStop(0, c); g.addColorStop(1, p.k === 'c' ? col(p.c, 0) : `hsla(${p.h},80%,60%,0)`);
-      fx.fillStyle = g; fx.beginPath(); fx.arc(p.x, p.y, r, 0, Math.PI * 2); fx.fill();
-    } else if (p.k === 'r') {
-      const e = 1 - Math.pow(1 - Math.min(1, t), 3);                 // eases out as it spreads
-      fx.strokeStyle = col(P.sel, (P.dark ? 0.26 : 0.22) * (1 - t));
-      fx.lineWidth = 1.4;
-      fx.beginPath(); fx.arc(p.x, p.y, 4 + e * p.max, 0, Math.PI * 2); fx.stroke();
-    } else {
-      const tw = 0.65 + 0.35 * Math.sin(p.ph + t * 18), a = (P.dark ? 0.75 : 0.55) * life * tw, c = P.dark ? P.b : P.sel;
-      const g = fx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 5);
-      g.addColorStop(0, col(c, a)); g.addColorStop(0.25, col(c, a * 0.45)); g.addColorStop(1, col(c, 0));
-      fx.fillStyle = g; fx.beginPath(); fx.arc(p.x, p.y, p.r * 5, 0, Math.PI * 2); fx.fill();
-    }
+    fxSoft(p.x, p.y, p.r * (1 + p.grow * smooth(0, 1, p.t)) * (p.dot ? 1 : 1), p.c, p.peak * fxEnv(p.t));
   }
   FX.parts = FX.parts.filter(p => p.t < 1);
   if (FX.parts.length) FX.raf = requestAnimationFrame(fxFrame);
   else { fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, fxCanvas.width, fxCanvas.height); }
 }
 vp.addEventListener('pointermove', e => {
-  if (e.pointerType === 'touch' || fxMode() === 'off') return;
+  if (e.pointerType === 'touch' || fxMode() === 'off' || e.buttons) return;
   const x = e.clientX - VR.left, y = e.clientY - VR.top;
   if (FX.lx == null) { FX.lx = x; FX.ly = y; return; }
   const dx = x - FX.lx, dy = y - FX.ly, d = Math.hypot(dx, dy);
   FX.lx = x; FX.ly = y;
   if (d > 200) return;   // the pointer jumped (e.g. came back from a side panel)
   FX.dist += d;
-  const every = { clouds: 34, aurora: 16, ripples: 95, sparkles: 12 }[fxMode()];
+  const every = { clouds: 140, aurora: 110, bloom: 120, dust: 60 }[fxMode()];
   if (FX.dist >= every) { FX.dist = 0; fxSpawn(x, y, dx, dy); }
 }, { passive: true });
 vp.addEventListener('pointerleave', () => { FX.lx = null; });
-vp.addEventListener('pointerdown', e => { if (e.button === 0 && e.pointerType !== 'touch' && fxMode() !== 'off' && !e.target.closest('.node, .elabel, .pframe')) fxSpawn(e.clientX - VR.left, e.clientY - VR.top, 0, 0, true); });
 function setBgFx(m) {
   CFG.bgFx = m; saveCfg();
   FX.parts = []; FX.pal = null; fxResize();
@@ -2373,34 +2370,46 @@ function setBgFx(m) {
   applyFocusLevel();
 }
 
-/* ---- reading glow: over text, a soft light the height of a line follows the pointer, like a very
-   faint highlighter, so the eye keeps its place along a sentence. */
+/* ---- reading glow: over a node's text, a soft, round light follows the pointer beneath the words, like
+   the faintest highlighter. It lives inside the node (so it never spills past its edges), sits under the
+   text (so the words stay crisp), and is sized to the line you are reading. */
 const glow = document.createElement('div');
-glow.id = 'read-glow';
+glow.className = 'read-glow';
 glow.setAttribute('aria-hidden', 'true');
-vp.appendChild(glow);
-const RG = { x: 0, y: 0, tx: 0, ty: 0, raf: 0, on: false };
+const RG = { x: 0, y: 0, tx: 0, ty: 0, raf: 0, on: false, host: null };
 function glowFrame() {
   RG.raf = 0;
-  const k = RM.matches ? 1 : 0.38;
+  const k = RM.matches ? 1 : 0.22;
   RG.x += (RG.tx - RG.x) * k; RG.y += (RG.ty - RG.y) * k;
   glow.style.transform = `translate(${RG.x.toFixed(1)}px,${RG.y.toFixed(1)}px) translate(-50%,-50%)`;
-  if (Math.abs(RG.tx - RG.x) + Math.abs(RG.ty - RG.y) > 0.3) RG.raf = requestAnimationFrame(glowFrame);
+  if (Math.abs(RG.tx - RG.x) + Math.abs(RG.ty - RG.y) > 0.2) RG.raf = requestAnimationFrame(glowFrame);
 }
+function glowOff() { if (RG.on) { RG.on = false; glow.classList.remove('on'); } }
 vp.addEventListener('pointermove', e => {
-  const t = e.target, over = !!CFG.readGlow && e.pointerType !== 'touch' && !e.buttons && !S.editing &&
-    t.closest && t.closest('.node [data-f], .node .b-text, .node .mx-out') && !t.closest('button, img, .port, .rz, .grip');
-  if (!over) { if (RG.on) { RG.on = false; glow.classList.remove('on'); } return; }
-  const x = e.clientX - VR.left, y = e.clientY - VR.top;
-  /* about one line tall at the current zoom, and several words wide */
-  const lh = clamp(24 * V.z, 14, 72);
-  glow.style.width = (lh * 7.5).toFixed(0) + 'px'; glow.style.height = (lh * 1.7).toFixed(0) + 'px';
+  const t = e.target;
+  const ok = !!CFG.readGlow && e.pointerType !== 'touch' && !e.buttons && !S.editing && t.closest && !t.closest('button, img, .port, .rz, .grip');
+  const field = ok && t.closest('.node [data-f], .node .b-text, .node .mx-out');
+  if (!field) { glowOff(); return; }
+  const ne = field.closest('.node');
+  /* a clipping layer inside the node, under its text */
+  let clip = ne.querySelector(':scope > .rg-clip');
+  if (!clip) {
+    clip = document.createElement('div'); clip.className = 'rg-clip';
+    const sh = ne.querySelector(':scope > .nsh');   // on a shape node it goes above the shape's fill
+    if (sh) sh.after(clip); else ne.insertBefore(clip, ne.firstChild);
+  }
+  const nr = ne.getBoundingClientRect(), z = V.z;
+  const x = (e.clientX - nr.left) / z, y = (e.clientY - nr.top) / z;
+  /* about two lines tall, a little wider than tall */
+  const fs = parseFloat(getComputedStyle(field).fontSize) || 14, h = clamp(fs * 3.4, 34, 110);
+  glow.style.width = (h * 1.7).toFixed(0) + 'px'; glow.style.height = h.toFixed(0) + 'px';
   RG.tx = x; RG.ty = y;
+  if (glow.parentNode !== clip) { clip.appendChild(glow); RG.x = x; RG.y = y; }
   if (!RG.on) { RG.on = true; RG.x = x; RG.y = y; glow.classList.add('on'); }
   if (!RG.raf) RG.raf = requestAnimationFrame(glowFrame);
 }, { passive: true });
-vp.addEventListener('pointerleave', () => { RG.on = false; glow.classList.remove('on'); });
-function setReadGlow(on) { CFG.readGlow = !!on; saveCfg(); if (!on) { RG.on = false; glow.classList.remove('on'); } applyFocusLevel(); }
+vp.addEventListener('pointerleave', glowOff);
+function setReadGlow(on) { CFG.readGlow = !!on; saveCfg(); if (!on) glowOff(); applyFocusLevel(); }
 
 /* no pointer to follow on touch screens */
 window.addEventListener('pointermove', e => {
@@ -2417,8 +2426,8 @@ function comfortHTML() {
     <p class="fm-hint">Softens the edges of the board so your eyes settle on the middle. A few percent is enough. F switches it on or off.</p>
     <div class="fm-lab"><span>Background trails</span></div>
     <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'clouds') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
-    <p class="fm-hint">Light left behind the pointer on the board's background.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
-    <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light follows the pointer along the text you read</label>
+    <p class="fm-hint">A faint, slow light left behind the pointer on the board's background.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
+    <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
   </div>`;
 }
 function bindComfort(root) {

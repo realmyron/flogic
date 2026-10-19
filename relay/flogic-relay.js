@@ -7,6 +7,11 @@
      GITHUB_TOKEN    (Secret) fine-grained token with only "Issues: Read and write" on your board's repo
      REPO            (Text)   e.g.  realmyron/realmyron.github.io
      ALLOWED_ORIGIN  (Text)   your site, e.g.  https://realmyron.github.io   (several: separate with commas)
+
+   Live viewer count (optional): open boards check in at /presence every 20 seconds, saying which
+   environment they show, and get back how many are open right now. The count is kept in memory by a
+   small Durable Object (the PRESENCE binding, see wrangler.toml); nothing is stored and no personal
+   data is sent, only a random id per open tab. Without the binding, everything else still works.
 */
 
 const LIMIT_PER_HOUR = 10;            // suggestions per visitor (IP) per hour, per worker instance
@@ -27,7 +32,19 @@ export default {
     const reply = (status, body) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return reply(200, { ok: true, service: 'flogic-relay', configured: !!(env.GITHUB_TOKEN && env.REPO && allowed.length) });
+    if (request.method === 'GET') return reply(200, { ok: true, service: 'flogic-relay', configured: !!(env.GITHUB_TOKEN && env.REPO && allowed.length), presence: !!env.PRESENCE });
+
+    /* live viewer count */
+    const path = new URL(request.url).pathname.replace(/\/+$/, '');
+    if (path === '/presence' || path === '/presence/leave') {
+      if (request.method !== 'POST') return reply(405, { error: 'Use POST' });
+      if (!originOk) return reply(403, { error: 'This site is not allowed here' });
+      if (!env.PRESENCE) return reply(501, { error: 'The live viewer count is not set up on this relay' });
+      const body = (await request.text()).slice(0, 400);
+      const stub = env.PRESENCE.get(env.PRESENCE.idFromName(origin));
+      const r = await stub.fetch('https://presence' + path, { method: 'POST', body });
+      return reply(r.status, await r.json());
+    }
     if (request.method !== 'POST') return reply(405, { error: 'Use POST' });
     if (!originOk) return reply(403, { error: 'This site is not allowed to send suggestions here' });
     if (!env.GITHUB_TOKEN || !env.REPO) return reply(500, { error: 'The relay is not set up yet' });
@@ -77,4 +94,26 @@ export default {
 
 function clean(v, max) {
   return String(v == null ? '' : v).replace(/\r/g, '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').trim().slice(0, max);
+}
+
+/* Who has the board open right now: a random tab id -> { environment, last check-in }. Kept in memory
+   only; a tab that hasn't checked in for 65 seconds no longer counts. */
+export class Presence {
+  constructor() { this.seen = new Map(); }
+  async fetch(request) {
+    const now = Date.now(), leave = new URL(request.url).pathname.endsWith('/leave');
+    let d = {};
+    try { d = JSON.parse(await request.text()); } catch (_) {}
+    const sid = clean(d && d.sid, 40), envId = clean(d && d.env, 40);
+    if (sid && /^[\w-]+$/.test(sid)) {
+      if (leave) this.seen.delete(sid);
+      else if (this.seen.size < 20000 || this.seen.has(sid)) this.seen.set(sid, { env: envId, t: now });
+    }
+    const envs = {};
+    for (const [k, v] of this.seen) {
+      if (now - v.t > 65000) { this.seen.delete(k); continue; }
+      if (v.env) envs[v.env] = (envs[v.env] || 0) + 1;
+    }
+    return new Response(JSON.stringify({ ok: true, total: this.seen.size, envs }), { headers: { 'Content-Type': 'application/json' } });
+  }
 }

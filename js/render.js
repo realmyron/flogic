@@ -157,10 +157,102 @@ function portPos(n, side) {
    Lines start and end on the sides you dragged between. */
 const f1 = v => v.toFixed(1);
 function lineStyle(ed) { return (ed && ed.style) || DOC.lineStyle || 'fluid'; }
+const LINE_ICON = { fluid: 'fluid', geometric: 'geo', straight: 'straight', catenary: 'rope' };
 /* `via` is an optional point the line is bent through (set by dragging the line's middle handle) */
 function bez(p1, s1, p2, s2, style, avoid, via) {
-  if ((style || lineStyle()) === 'geometric') return via ? routeGeoVia(p1, s1, p2, s2, via) : routeGeo(p1, s1, p2, s2, avoid);
+  const st = style || lineStyle();
+  if (st === 'geometric') return via ? routeGeoVia(p1, s1, p2, s2, via) : routeGeo(p1, s1, p2, s2, avoid);
+  if (st === 'straight') return via ? roundedPath([p1, via, p2], 18) : { d: `M${f1(p1.x)} ${f1(p1.y)} L${f1(p2.x)} ${f1(p2.y)}`, mid: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 } };
+  if (st === 'catenary') return ropePath(ropeRest(p1, p2, ropeLength(p1, p2, via)));
   return via ? routeFluidVia(p1, s1, p2, s2, via) : routeFluid(p1, s1, p2, s2);
+}
+/* ---------- rope lines ----------
+   A rope is a chain of points pulled down by gravity and held at both ends (Verlet integration with
+   length constraints), so it settles into a real catenary and swings when a node moves. Its length is a
+   little more than the gap between its ends; dragging its middle handle down gives it more slack. */
+const ROPES = new Map();
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+function ropeLength(p1, p2, via) {
+  const d = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  if (via) return Math.max(d + 4, (Math.hypot(via.x - p1.x, via.y - p1.y) + Math.hypot(p2.x - via.x, p2.y - via.y)) * 1.02);
+  return d * 1.12 + 40;
+}
+/* the resting shape, as a parabola of the right length (used to start a rope, and while dragging a new line) */
+function ropeRest(p1, p2, L, n) {
+  const d = Math.max(1, Math.hypot(p2.x - p1.x, p2.y - p1.y)), N = n || clamp(Math.round(L / 26), 10, 28);
+  const h = Math.sqrt(Math.max(0, 3 * d * (L - d) / 8));
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const x = p1.x + (p2.x - p1.x) * t, y = p1.y + (p2.y - p1.y) * t + 4 * h * t * (1 - t);
+    pts.push({ x, y, px: x, py: y });
+  }
+  return pts;
+}
+/* smooth path through the rope's points; its middle is halfway along */
+function ropePath(pts) {
+  let d = `M${f1(pts[0].x)} ${f1(pts[0].y)}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const m = { x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 };
+    d += ` Q${f1(pts[i].x)} ${f1(pts[i].y)} ${f1(m.x)} ${f1(m.y)}`;
+  }
+  const last = pts[pts.length - 1];
+  d += ` L${f1(last.x)} ${f1(last.y)}`;
+  const k = (pts.length - 1) / 2, i = Math.floor(k), f = k - i, a = pts[i], b = pts[Math.min(i + 1, pts.length - 1)];
+  return { d, mid: { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f } };
+}
+/* the rope for a line: pinned to its two ends, swinging toward rest */
+function ropeFor(id, p1, p2, via) {
+  const L = ropeLength(p1, p2, via);
+  let r = ROPES.get(id);
+  /* a much longer or shorter rope gets a fresh set of points (keeps it smooth) */
+  if (!r || RM.matches || Math.abs(clamp(Math.round(L / 26), 10, 28) - r.pts.length) > 6) {
+    r = { pts: ropeRest(p1, p2, L), L, calm: 0, steps: 0 };
+    ROPES.set(id, r);
+    return ropePath(r.pts);
+  }
+  const a = r.pts[0], b = r.pts[r.pts.length - 1];
+  if (Math.abs(a.x - p1.x) + Math.abs(a.y - p1.y) + Math.abs(b.x - p2.x) + Math.abs(b.y - p2.y) > 0.01 || Math.abs(r.L - L) > 0.5) {
+    a.x = a.px = p1.x; a.y = a.py = p1.y; b.x = b.px = p2.x; b.y = b.py = p2.y;
+    r.L = L; r.calm = 0; r.steps = 0;
+    kickRopes();
+  }
+  return ropePath(r.pts);
+}
+let ROPE_RAF = 0;
+function kickRopes() { if (!ROPE_RAF) ROPE_RAF = requestAnimationFrame(ropeTick); }
+function ropeTick() {
+  ROPE_RAF = 0;
+  let moving = false;
+  for (const [id, r] of ROPES) {
+    if (!EDGE_EL.has(id)) { ROPES.delete(id); continue; }
+    if (r.calm > 20) continue;
+    const P = r.pts, n = P.length, seg = r.L / (n - 1);
+    let most = 0;
+    for (let i = 1; i < n - 1; i++) {
+      const p = P[i], vx = (p.x - p.px) * 0.975, vy = (p.y - p.py) * 0.975;
+      p.px = p.x; p.py = p.y;
+      p.x += vx; p.y += vy + 0.55;
+    }
+    for (let k = 0; k < 16; k++) {
+      for (let i = 0; i < n - 1; i++) {
+        const p = P[i], q = P[i + 1], dx = q.x - p.x, dy = q.y - p.y, dist = Math.hypot(dx, dy) || 1e-4;
+        const diff = (dist - seg) / dist, pinP = i === 0, pinQ = i + 1 === n - 1;
+        if (pinP && pinQ) continue;
+        const wp = pinP ? 0 : pinQ ? 1 : 0.5, wq = pinQ ? 0 : pinP ? 1 : 0.5;
+        p.x += dx * diff * wp; p.y += dy * diff * wp;
+        q.x -= dx * diff * wq; q.y -= dy * diff * wq;
+      }
+    }
+    for (let i = 1; i < n - 1; i++) most = Math.max(most, Math.abs(P[i].x - P[i].px), Math.abs(P[i].y - P[i].py));
+    /* at rest when barely moving for a moment (the solver leaves a tiny tremble), or after 8 s at most */
+    r.steps = (r.steps || 0) + 1;
+    r.calm = most < 0.12 ? r.calm + 1 : 0;
+    if (r.steps > 480) r.calm = 21;
+    if (r.calm <= 20) moving = true;
+  }
+  drawEdges();
+  if (moving) kickRopes();
 }
 /* A smooth curve through start -> B -> end that picks its own angles (centripetal Catmull-Rom).
    Hidden guide points sit just inside each node, so the line still leaves and arrives straight
@@ -415,6 +507,19 @@ function blockHTML(n, b, i) {
       if (b.src) inner = `<figure class="b-img"><img src="${esc(imgSrc(b.src))}" data-src="${esc(b.src)}" alt="${esc(b.caption || '')}" draggable="false">${fld(n, P + '.caption', 'figcaption', 'cap', { ph: 'Caption…' })}</figure>`;
       else inner = `<div class="img-drop eo"${eoAttr()}><div class="idr" data-act="pick-img">${ic('image', 22)}<div><b>Add an image</b><small>Click to upload, drop a file, or paste</small></div></div><input class="img-url" placeholder="…or paste an image link and press Enter"></div>`;
       break;
+    case 'quote':
+      inner = `<blockquote class="b-quote"><span class="q-mark" aria-hidden="true">“</span>${fld(n, P + '.text', 'div', 'b-text q-text', { ph: 'Quote…' })}` +
+        `<footer class="q-by">${fld(n, P + '.author', 'span', 'q-author', { ph: 'Author', single: 1 })}${fld(n, P + '.cite', 'span', 'q-cite', { ph: 'Source, year', single: 1 })}</footer></blockquote>`;
+      break;
+    case 'math': case 'chem': {
+      /* the rendered formula; its source (LaTeX, or mhchem for chemistry) shows only while it is being edited */
+      const ph = b.kind === 'math' ? 'e.g. x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}' : 'e.g. 2H2 + O2 -> 2H2O';
+      inner = `<div class="b-mx">` + (b.tex.trim()
+        ? `<div class="mx-out"${E ? ' data-act="edit-tex" title="Click to edit"' : ''} data-mx="${b.kind}" data-tex="${esc(b.tex)}">${texHTML(b.kind, b.tex)}</div>`
+        : `<div class="mx-out mx-empty eo"${eoAttr()} data-act="edit-tex">${ic(b.kind === 'math' ? 'math' : 'chem', 16)} ${b.kind === 'math' ? 'Click to write a formula' : 'Click to write a chemical formula'}</div>`) +
+        fld(n, P + '.tex', 'div', 'mx-src', { ph }) + '</div>';
+      break;
+    }
     case 'icon': {
       const pic = iconHTML(b.icon);
       inner = `<div class="b-icon s-${b.size || 'm'}">` + (E
@@ -429,6 +534,44 @@ function blockHTML(n, b, i) {
       break;
   }
   return `<div class="blk k-${b.kind}" data-i="${i}">${E ? `<span class="grip" title="Drag to move">${ic('grip', 14)}</span>` : ''}${inner}</div>`;   /* blocks are deleted from the right-click menu only, so they can't be removed by accident */
+}
+/* ---------- formulas ----------
+   Maths is LaTeX, chemistry is mhchem (\ce{…}), both drawn by KaTeX. KaTeX is only downloaded once a
+   board has a formula; until then (or if it can't load) the source shows as plain text. */
+const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/';
+let KX = null;
+function loadKatex() {
+  if (KX) return KX;
+  const add = (tag, attrs) => new Promise((res, rej) => { const el = document.createElement(tag); Object.assign(el, attrs); el.onload = res; el.onerror = rej; document.head.appendChild(el); });
+  KX = add('link', { rel: 'stylesheet', href: KATEX + 'katex.min.css', crossOrigin: 'anonymous' })
+    .then(() => add('script', { src: KATEX + 'katex.min.js', crossOrigin: 'anonymous' }))
+    .then(() => add('script', { src: KATEX + 'contrib/mhchem.min.js', crossOrigin: 'anonymous' }))
+    .then(() => { refreshFormulas(); return true; })
+    .catch(() => false);
+  return KX;
+}
+function texHTML(kind, tex) {
+  if (!window.katex) { loadKatex(); return `<code class="mx-raw">${esc(tex)}</code>`; }
+  try { return window.katex.renderToString(kind === 'chem' ? `\\ce{${tex}}` : tex, { displayMode: true, throwOnError: false, output: 'html' }); }
+  catch (e) { return `<code class="mx-raw">${esc(tex)}</code>`; }
+}
+/* show a formula block's current source as its picture (while typing, and when done) */
+function mxPreview(box, kind, tex) {
+  const old = box.querySelector('.mx-out');
+  const out = document.createElement('div');
+  if (tex.trim()) {
+    out.className = 'mx-out'; out.dataset.act = 'edit-tex'; out.title = 'Click to edit';
+    out.dataset.mx = kind; out.dataset.tex = tex;
+    out.innerHTML = texHTML(kind, tex);
+  } else {
+    out.className = 'mx-out mx-empty eo'; out.dataset.act = 'edit-tex';
+    out.innerHTML = `${ic(kind === 'math' ? 'math' : 'chem', 16)} ${kind === 'math' ? 'Click to write a formula' : 'Click to write a chemical formula'}`;
+  }
+  if (old) old.replaceWith(out); else box.prepend(out);
+}
+/* redraw every formula on the board (after KaTeX loads, or while one is being typed) */
+function refreshFormulas(root) {
+  $$('.mx-out[data-tex]', root || document).forEach(el => { el.innerHTML = texHTML(el.dataset.mx, el.dataset.tex); });
 }
 /* Icons: 'b:<name>' is one of Flogic's own line icons (drawn in the node's colour), 'u:<id>' one of the
    owner's uploaded icons (DOC.icons). */
@@ -549,7 +692,8 @@ function drawEdges() {
       avoid = [];
       for (const [id, rc] of nodeRects) if (id !== it.a && id !== it.b && !inside.has(id)) avoid.push(rc);
     }
-    const g = bez(p1, it.s1, p2, it.s2, style, avoid, bendPoint(ed, p1, p2));
+    const via = bendPoint(ed, p1, p2);
+    const g = style === 'catenary' ? ropeFor(ed.id, p1, p2, via) : bez(p1, it.s1, p2, it.s2, style, avoid, via);
     seen.add(ed.id);
     let r = EDGE_EL.get(ed.id);
     if (!r) {
@@ -922,7 +1066,7 @@ function renderInspector() {
     const ed = e.edges.find(x => x.id === S.edgeSel);
     const st = lineStyle(ed);
     if (ed) h = `<div class="sec-head"><span>Connection</span></div><div class="insp">
-      <div class="seg3"><button class="seg${st === 'fluid' ? ' on' : ''}" data-ia="estyle" data-v="fluid">${ic('fluid', 14)} Fluid</button><button class="seg${st === 'geometric' ? ' on' : ''}" data-ia="estyle" data-v="geometric">${ic('geo', 14)} Geometric</button></div>
+      <div class="seg4">${LINE_STYLES.map(([k, name]) => `<button class="seg${st === k ? ' on' : ''}" data-ia="estyle" data-v="${k}">${ic(LINE_ICON[k], 14)} ${name}</button>`).join('')}</div>
       <div class="row2"><button class="seg${ed.arrow ? ' on' : ''}" data-ia="arrow">${ic('arrowr', 14)} Arrow</button><button class="seg${ed.dashed ? ' on' : ''}" data-ia="dashed">${ic('dash', 14)} Dashed</button></div>
       <div class="ihead">Connection type</div>${typeGridHTML(ed.type)}
       <button class="ibtn" data-ia="elabel">${ic('edit', 14)} ${ed.label ? 'Edit label' : 'Add label'}</button>

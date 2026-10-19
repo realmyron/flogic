@@ -81,10 +81,10 @@ function shapeIcon(k) {
   const p = shapePaths(k, bw, bh, Math.round(clamp(bh * 0.32, 12, 40))), sc = Math.min((W - 2) / bw, (H - 2) / bh);
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><g transform="translate(${f1((W - bw * sc) / 2)},${f1((H - bh * sc) / 2)}) scale(${sc.toFixed(4)})"><path d="${p.d}" vector-effect="non-scaling-stroke"/>${p.line ? `<path d="${p.line}" vector-effect="non-scaling-stroke"/>` : ''}</g></svg>`;
 }
-/* the effective colour style: shape nodes default to a tinted fill, sub-notes to a line on the left,
+/* the effective colour style: shape nodes default to a full outline, sub-notes to a line on the left,
    the others to a line on top */
-const accentOf = n => n.accent || (n.type === 'shape' ? 'tint' : n.type === 'sub' ? 'left' : 'top');
-const defaultAccent = type => type === 'shape' ? 'tint' : type === 'sub' ? 'left' : 'top';
+const defaultAccent = type => type === 'shape' ? 'full' : type === 'sub' ? 'left' : 'top';
+const accentOf = n => n.accent || defaultAccent(n.type);
 /* colour, colour style and shape of a node element */
 function paintNode(el, n) {
   const { c1, c2 } = colorOf(n.color), acc = accentOf(n), sh = isShapeNode(n);
@@ -94,8 +94,9 @@ function paintNode(el, n) {
   else ['--c2', '--cg', '--cgv'].forEach(k => el.style.removeProperty(k));
   el.classList.toggle('grad', !!c2);
   el.dataset.acc = acc;
-  /* the colour shows when it was picked, on everything but plain notes, or when a colour style was chosen */
-  el.classList.toggle('acc-on', acc !== 'none' && (!!n.accent || n.type !== 'note' || (n.color || 'default') !== 'default'));
+  /* the colour shows when it was picked, when a colour style was chosen, and on titles and sub-notes;
+     plain notes and shapes in the default colour keep the normal neutral outline */
+  el.classList.toggle('acc-on', acc !== 'none' && (!!n.accent || n.type === 'title' || n.type === 'sub' || (n.color || 'default') !== 'default'));
   el.dataset.shape = shapeOf(n);
   el.classList.toggle('svgs', sh);
   if (sh) { el.style.setProperty('--w', n.w + 'px'); el.style.setProperty('--mh', shapeMinH(n) + 'px'); el.style.setProperty('--s', shapeSlant(n) + 'px'); }
@@ -115,12 +116,15 @@ function drawShape(el, n) {
     svg = document.createElementNS(SVGNS, 'svg');
     svg.setAttribute('class', 'nsh');
     svg.setAttribute('aria-hidden', 'true');
-    svg.innerHTML = `<defs><linearGradient gradientUnits="userSpaceOnUse" x1="0" y1="0" y2="0"><stop offset="0" style="stop-color:var(--c)"/><stop offset="1" style="stop-color:var(--c2,var(--c))"/></linearGradient></defs><path class="sh-fill"/><path class="sh-line"/><path class="sh-acc"/>`;
+    svg.innerHTML = `<defs><linearGradient gradientUnits="userSpaceOnUse" x1="0" y1="0" y2="0"><stop offset="0" style="stop-color:var(--c)"/><stop offset="1" style="stop-color:var(--c2,var(--c))"/></linearGradient><linearGradient class="nfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--node-top)"/><stop offset="1" style="stop-color:var(--node)"/></linearGradient></defs><path class="sh-fill"/><path class="sh-line"/><path class="sh-acc"/>`;
     el.prepend(svg);
   }
   const s = shapeSlant(n), p = shapePaths(n.shape, W - 1, H - 1, s), acc = accentOf(n);
   const [fill, line, accP] = svg.querySelectorAll('path'), lg = svg.querySelector('linearGradient'), gid = 'ng-' + n.id;
   lg.id = gid; lg.setAttribute('x2', W);
+  /* the same top-to-bottom shading as the other nodes */
+  svg.querySelector('.nfill').id = 'nf-' + n.id;
+  fill.setAttribute('fill', `url(#nf-${n.id})`);
   Object.assign(svg.style, { left: '-1px', top: '-1px', width: W + 'px', height: H + 'px' });
   svg.setAttribute('viewBox', `-0.5 -0.5 ${W} ${H}`);
   fill.setAttribute('d', p.d);
@@ -367,10 +371,11 @@ function fld(n, path, tag, cls, o = {}) {
 function nodeHTML(n) {
   const E = S.canEdit, T = n.type;
   let h = '';
-  /* shape nodes: a centred label and optional smaller details, no blocks */
+  /* shape nodes: an optional label, centred, with icon / image / text blocks above or below it */
   if (T === 'shape') {
-    if (E) h += `<div class="ports">${SIDES.map(s => `<i class="port p-${s}" data-side="${s}"></i>`).join('')}</div><div class="rz" title="Drag to resize"></div>`;
-    return h + `<div class="sn-body">${fld(n, 'title', 'div', 'n-title sn-title', { ph: 'Label' })}${fld(n, 'subtitle', 'div', 'sn-sub', { ph: 'Details (optional)' })}</div>`;
+    if (E) h += `<div class="ports">${SIDES.map(s => `<i class="port p-${s}" data-side="${s}"></i>`).join('')}</div><div class="rz" title="Drag to resize"></div><button class="n-add" data-act="add-block" title="Add an icon, image or text" aria-label="Add content">${ic('plus', 15)}</button>`;
+    const part = above => n.blocks.map((b, i) => SHAPE_KINDS.includes(b.kind) && !!b.above === above ? blockHTML(n, b, i) : '').join('');
+    return h + `<div class="blocks sn-body">${part(true)}${fld(n, 'title', 'div', 'n-title sn-title', { ph: 'Label (optional)' })}${part(false)}</div>`;
   }
   if (E) h += `<div class="ports">${SIDES.map(s => `<i class="port p-${s}" data-side="${s}"></i>`).join('')}</div><div class="rz" title="Drag to resize"></div><button class="n-add" data-act="add-block" title="Add a block" aria-label="Add a block">${ic('plus', 15)}</button>`;
   h += '<div class="n-head">';
@@ -410,6 +415,13 @@ function blockHTML(n, b, i) {
       if (b.src) inner = `<figure class="b-img"><img src="${esc(imgSrc(b.src))}" data-src="${esc(b.src)}" alt="${esc(b.caption || '')}" draggable="false">${fld(n, P + '.caption', 'figcaption', 'cap', { ph: 'Caption…' })}</figure>`;
       else inner = `<div class="img-drop eo"${eoAttr()}><div class="idr" data-act="pick-img">${ic('image', 22)}<div><b>Add an image</b><small>Click to upload, drop a file, or paste</small></div></div><input class="img-url" placeholder="…or paste an image link and press Enter"></div>`;
       break;
+    case 'icon': {
+      const pic = iconHTML(b.icon);
+      inner = `<div class="b-icon s-${b.size || 'm'}">` + (E
+        ? `<button class="bic${pic ? '' : ' empty'}" data-act="pick-icon" title="${pic ? 'Change icon' : 'Choose an icon'}">${pic || ic('plus', 16)}</button><span class="bi-size">${['s', 'm', 'l'].map(k => `<button class="${(b.size || 'm') === k ? 'on' : ''}" data-act="icon-size" data-v="${k}" title="${{ s: 'Small', m: 'Medium', l: 'Large' }[k]}">${k.toUpperCase()}</button>`).join('')}</span>`
+        : `<span class="bic${pic ? '' : ' empty'}">${pic}</span>`) + '</div>';
+      break;
+    }
     case 'sources':
       inner = `<div class="b-src">${fld(n, P + '.label', 'div', 'lab', { ph: 'Sources', single: 1 })}<div class="src-list">` +
         b.items.map((s, si) => sourceHTML(n, P, s, si)).join('') +
@@ -417,6 +429,19 @@ function blockHTML(n, b, i) {
       break;
   }
   return `<div class="blk k-${b.kind}" data-i="${i}">${E ? `<span class="grip" title="Drag to move">${ic('grip', 14)}</span>` : ''}${inner}</div>`;   /* blocks are deleted from the right-click menu only, so they can't be removed by accident */
+}
+/* Icons: 'b:<name>' is one of Flogic's own line icons (drawn in the node's colour), 'u:<id>' one of the
+   owner's uploaded icons (DOC.icons). */
+const BUILTIN_ICONS = ['check', 'x', 'q', 'warn', 'zap', 'key', 'ban', 'clock', 'bulb', 'partof', 'link', 'image', 'board', 'folder', 'github',
+  'eye', 'lock', 'settings', 'upload', 'edit', 'copy', 'trash', 'refresh', 'bubble', 'note', 'title', 'group', 'panel', 'layers', 'shape', 'arrowr', 'swap', 'plus', 'minus'];
+function iconHTML(ref) {
+  if (typeof ref !== 'string') return '';
+  if (ref.startsWith('b:') && ICONS[ref.slice(2)]) return ic(ref.slice(2), 24);
+  if (ref.startsWith('u:')) {
+    const it = (DOC.icons || []).find(x => x.id === ref.slice(2));
+    if (it) return `<img src="${esc(imgSrc(it.src))}" alt="${esc(it.name)}" draggable="false">`;
+  }
+  return '';
 }
 /* categories start open; the owner's open/closed choice is saved, visitors can fold them for themselves */
 function catClosed(b) { const k = 'f:' + b.id; return k in S.open ? S.open[k] : !!b.closed; }
@@ -512,21 +537,7 @@ function drawEdges() {
     if (!ra || !rb) continue;
     list.push({ ed, a, b, ra, rb, s1: ed.fs, s2: ed.ts, o1: 0, o2: 0 });
   }
-  /* 2. several lines on one face fan out instead of sharing a single point */
-  const faces = new Map();
-  const addFace = (id, side, it, end, other) => {
-    const k = id + side;
-    if (!faces.has(k)) faces.set(k, []);
-    faces.get(k).push({ it, end, key: side === 't' || side === 'b' ? other.x + other.w / 2 : other.y + other.h / 2 });
-  };
-  list.forEach(it => { addFace(it.a, it.s1, it, 'o1', it.rb); addFace(it.b, it.s2, it, 'o2', it.ra); });
-  for (const [k, arr] of faces) {
-    if (arr.length < 2) continue;
-    const side = k.slice(-1), r = rects.get(k.slice(0, -1));
-    const span = (side === 't' || side === 'b' ? r.w : r.h) * 0.6, gap = Math.min(18, span / (arr.length - 1));
-    arr.sort((p, q) => p.key - q.key).forEach((f, i) => { f.it[f.end] = (i - (arr.length - 1) / 2) * gap; });
-  }
-  /* 3. draw */
+  /* 2. draw. Lines that meet the same side of a node share its middle point and overlap there. */
   for (const it of list) {
     const ed = it.ed, style = lineStyle(ed);
     const p1 = shapeAdjust(it.a, it.s1, sidePoint(it.ra, it.s1, it.o1)), p2 = shapeAdjust(it.b, it.s2, sidePoint(it.rb, it.s2, it.o2));

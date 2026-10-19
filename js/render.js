@@ -751,7 +751,13 @@ function drawEdges() {
       r.lab.style.transform = `translate(${g.mid.x}px,${g.mid.y}px) translate(-50%,${centred ? '-50%' : '12px'})`;
     } else r.lab.style.display = 'none';
   }
-  for (const [id, r] of EDGE_EL) if (!seen.has(id)) { r.g.remove(); r.lab.remove(); if (r.mask) r.mask.remove(); EDGE_EL.delete(id); }
+  /* lines that are gone break apart (not the one being pulled off with the mouse, and not dozens at once) */
+  const gone = [...EDGE_EL.keys()].filter(id => !seen.has(id)), grabbed = typeof CONN !== 'undefined' && CONN && CONN.detached && CONN.detached.edge.id;
+  for (const id of gone) {
+    const r = EDGE_EL.get(id);
+    if (gone.length <= 30 && id !== grabbed && typeof fxEdgeBreak === 'function') fxEdgeBreak(r.vis.getAttribute('d'), r.type && EDGE_TYPES[r.type] ? EDGE_TYPES[r.type].color : null);
+    r.g.remove(); r.lab.remove(); if (r.mask) r.mask.remove(); EDGE_EL.delete(id);
+  }
 }
 /* Lines draw themselves in, one after another, after the nodes pop in (used when switching environments).
    A mask stroke grows along each line and reveals it, so dashed lines stay dashed while they draw. */
@@ -1145,7 +1151,9 @@ function renderTop(force) {
   }
   if (key === TOPKEY && !force) return;
   TOPKEY = key;
-  el.innerHTML = h;
+  /* first: the live viewer count (filled in by renderPresence, hidden until there is a count) */
+  el.innerHTML = '<span class="pill viewers" id="viewers" hidden></span>' + h;
+  if (typeof renderPresence === 'function') renderPresence();
 }
 function renderEmptyHint() {
   const hint = $('#empty-hint'), empty = !env().nodes.length;

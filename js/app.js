@@ -182,7 +182,7 @@ function endEdit() {
     v = el.innerText.replace(/\xa0/g, ' ').replace(/\n+$/, '');
     if (el.dataset.single) v = v.replace(/\s*\n\s*/g, ' ');
     setPath(n, ed.f, v);
-    if (v !== ed.before) changed();
+    if (v !== ed.before) { changed(); editPulse(n, el); }
   }
   el.removeAttribute('contenteditable');
   el.removeAttribute('spellcheck');
@@ -387,7 +387,7 @@ function createNode(type, wx, wy, o = {}) {
   const n = addNodeRaw(type, x, y);
   S.sel = new Set([n.id]); S.edgeSel = null;
   structureChanged(); refreshSel(); popIn([n.id]);
-  bgPulse(x + n.w / 2, y + 48, colorOf(n.color).c1, 0.6, 0.62);
+  bgPulse(x + n.w / 2, y + 48, colorOf(n.color).c1, 0.45, 0.5, true);
   if (o.edit !== false) editField(n.id, 'title');
   return n;
 }
@@ -586,7 +586,7 @@ function pasteData(data, at) {
   S.sel = new Set(added); S.edgeSel = null;
   structureChanged(); refreshSel(); popIn(added, true);
   const pb = bboxOf(added.map(nodeById), true);
-  bgPulse(pb.x + pb.w / 2, pb.y + pb.h / 2, null, 0.9, 0.65);
+  bgPulse(pb.x + pb.w / 2, pb.y + pb.h / 2, null, 0.7, 0.5, true);
 }
 function duplicateSel() { if (S.sel.size) pasteData(selData(), null); }
 
@@ -971,6 +971,8 @@ function addBlock(n, kind, idx) {
   renderNode(n); changed(); renderLayers();
   const i = n.blocks.indexOf(b);
   landed(n, i);
+  const ne = NODE_EL.get(n.id);
+  editPulse(n, ne && ne.querySelector(`.blk[data-i="${i}"]`));
   if (FIRST_FIELD[kind]) editField(n.id, `blocks.${i}.${FIRST_FIELD[kind]}`);
   if (kind === 'sources') openSourceForm(n.id, i);
   if (kind === 'icon') openIconPicker(n.id, b.id);
@@ -1505,7 +1507,7 @@ function endDrag(aborted) {
     else if (free.length) moved = setPanel(free, null, false);
   }
   syncZ();
-  if (!aborted) { const db = bboxOf(d.ids.map(nodeById).filter(Boolean), true), ln = nodeById(d.lead); if (db) bgPulse(db.x + db.w / 2, db.y + db.h / 2, ln && colorOf(ln.color).c1, 0.35); }
+  if (!aborted) { const db = bboxOf(d.ids.map(nodeById).filter(Boolean), true), ln = nodeById(d.lead); if (db) bgPulse(db.x + db.w / 2, db.y + db.h / 2, ln && colorOf(ln.color).c1, 0.22, 0.45); }
   if (moved) {
     structureChanged(); refreshSel();
     const p = target && panelById(target);
@@ -2018,6 +2020,7 @@ function nodeMenu(x, y) {
     { label: 'Import text from a file…', icon: 'folderopen', fn: () => importFromFile({ scope: ns.map(m => m.id) }) },
     '-',
     multi && { label: 'Group', icon: 'group', kbd: MOD + 'G', fn: groupSel },
+    { label: 'Put in a panel', icon: 'panel', kbd: 'P', fn: panelFromSel },
     inGroup && { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: ungroupSel },
     multi && { label: 'Tidy up', icon: 'tidy', fn: tidySel },
     inPanel && { label: 'Take out of panel', icon: 'panel', fn: () => moveToPanel(ns.map(m => m.id), null) },
@@ -2273,10 +2276,11 @@ function gridKick() { if (!GF.raf && fxMode() !== 'off') { GF.last = performance
 /* size: how far it spreads (1 = about 350px); strength: how bright (1 = full) */
 function bgPulse(wx, wy, color, size = 1, strength = 1, implode = false) {
   if (fxMode() === 'off') return;
-  GF.waves.push({ wx, wy, c: toRgb(color || '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('')), t: 0, life: 0.7 + 0.3 * size, R: 120 + 230 * size, k: (0.55 + 0.45 * Math.min(1, size)) * strength, implode });
+  GF.waves.push({ wx, wy, c: toRgb(color || '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('')), t: 0, life: 0.85 + 0.35 * size, R: 80 + 200 * size, k: (0.55 + 0.45 * Math.min(1, size)) * strength, implode });
   if (GF.waves.length > 12) GF.waves.shift();
   gridKick();
 }
+const sstep = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
 /* light the dots in a box (screen px) with intensity f(x, y) in 0..1 */
 function gridDots(x1, y1, x2, y2, c, f) {
   let g = GRID * V.z;
@@ -2341,7 +2345,7 @@ function gridFrame(now) {
     const t = Math.min(1, w.t), e = 1 - Math.pow(1 - t, 3), cx = V.x + w.wx * V.z, cy = V.y + w.wy * V.z;
     /* an implosion (a dying pulse) draws in toward its centre instead of spreading out */
     const rad = w.implode ? 6 + w.R * (1 - e) : 10 + w.R * e, band = w.implode ? 30 + 20 * (1 - e) : 34 + 26 * e;
-    const fade = w.implode ? w.k * Math.sin(Math.PI * t) : w.k * Math.pow(1 - t, 1.5);
+    const fade = w.implode ? w.k * Math.pow(Math.sin(Math.PI * t), 1.3) : w.k * sstep(0, 0.18, t) * Math.pow(1 - t, 2);
     const box = rad + band;
     if (cx + box < 0 || cy + box < 0 || cx - box > W || cy - box > H) continue;
     gridDots(cx - box, cy - box, cx + box, cy + box, w.c, (x, y) => { const d = (Math.hypot(x - cx, y - cy) - rad) / band; return fade * Math.exp(-d * d * 2.2); });
@@ -2378,11 +2382,11 @@ const fxOn = () => fxMode() !== 'off';
 function svgNew(tag, attrs) { const el = document.createElementNS(SVGNS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
 const selHex = () => '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('');
 /* a soft glowing segment that travels along a path (world coordinates) and is removed after */
-function runPulse(d, color, { dur = 450, len = 0.22, width = 3, delay = 0, fade = 0.85 } = {}) {
-  const p = svgNew('path', { d, class: 'fx-pulse', pathLength: '1' });
+function runPulse(d, color, { dur = 450, len = 0.22, width = 3, delay = 0, fade = 0.85, peak = 1, thin = false } = {}) {
+  const p = svgNew('path', { d, class: 'fx-pulse' + (thin ? ' thin' : ''), pathLength: '1' });
   p.style.stroke = color; p.style.color = color; p.style.strokeWidth = width; p.style.strokeDasharray = `${len} ${2 + len}`;
   OVL.appendChild(p);
-  const a = p.animate([{ strokeDashoffset: len, opacity: 1 }, { strokeDashoffset: -1, opacity: fade }], { duration: dur, delay, easing: 'cubic-bezier(.45,.05,.3,1)', fill: 'both' });
+  const a = p.animate([{ strokeDashoffset: len, opacity: peak }, { strokeDashoffset: -1, opacity: fade * peak }], { duration: dur, delay, easing: 'cubic-bezier(.45,.05,.3,1)', fill: 'both' });
   const done = () => p.remove();
   a.onfinish = done; setTimeout(done, dur + delay + 400);
 }
@@ -2423,23 +2427,30 @@ function halves(d, ox, oy, at) {
 function outlinePulse(id, at, color, delay = 0) {
   const h = outlineHalves(id, at);
   if (!h) return;
-  h.forEach(d => runPulse(d, color, { dur: 640, len: 0.3, width: 2.4, delay, fade: 0 }));
+  h.forEach(d => runPulse(d, color, { dur: 680, len: 0.28, width: 1.5, delay, fade: 0, peak: 0.85, thin: true }));
 }
-/* a new connection: a pulse round the start node, a charge along the line, then a pulse round the end node */
+/* a new connection: a charge along the line, then a pulse round the node it points to */
 function chargeEdge(edgeId) {
   if (!fxOn()) return;
   const ed = env().edges.find(x => x.id === edgeId), r = EDGE_EL.get(edgeId);
   if (!ed || !r || !r.p1) return;
   const T = EDGE_TYPES[ed.type], color = T ? T.color : selHex();
-  outlinePulse(ed.from, r.p1, color, 0);
-  runPulse(r.vis.getAttribute('d'), color, { dur: 460, len: 0.24, width: 3.2, delay: 60 });
-  outlinePulse(ed.to, r.p2, color, 400);
+  runPulse(r.vis.getAttribute('d'), color, { dur: 440, len: 0.2, width: 2, peak: 0.9, thin: true });
+  outlinePulse(ed.to, r.p2, color, 340);
 }
-/* deleting a node: the dots around it draw in and fade, while the node flickers out (CSS .leaving) */
+/* deleting a node: a soft wave spreads out through the dots from where it was, while it fades (CSS .leaving) */
 function dyingPulse(n, el) {
   if (!fxOn()) return;
-  const r = { x: n.x, y: n.y, w: el ? el.offsetWidth : n.w, h: el ? el.offsetHeight : 160 };
-  bgPulse(r.x + r.w / 2, r.y + r.h / 2, colorOf(n.color).c1, Math.min(1, 0.25 + Math.max(r.w, r.h) / 900), 0.55, true);
+  const w = el ? el.offsetWidth : n.w, h = el ? el.offsetHeight : 160;
+  bgPulse(n.x + w / 2, n.y + h / 2, colorOf(n.color).c1, 0.5, 0.45);
+}
+/* an edited node: a pulse runs round its outline, starting next to what was changed */
+function editPulse(n, from) {
+  if (!fxOn() || !n || !NODE_EL.get(n.id)) return;
+  const r = rectOf(n);
+  let at = { x: r.x + r.w / 2, y: r.y };
+  if (from && from.isConnected) { const b = from.getBoundingClientRect(); at = toWorld(b.left + b.width / 2, b.top + b.height / 2); }
+  outlinePulse(n.id, at, colorOf(n.color).c1, 0);
 }
 /* points spaced along a rectangle's outline (world coordinates) */
 function rectOutlinePoints(r, n) {
@@ -3153,7 +3164,7 @@ vp.addEventListener('dblclick', e => {
   const pl = t.closest('.plabel');
   if (pl && S.canEdit && !t.closest('[data-pfold]')) { renameFrame('p', pl.dataset.p); return; }
   /* double-click on empty board: a wave through the dots, just for fun */
-  if (!t.closest('.node, .pframe, .elabel, .gout, [data-e]')) { const w = toWorld(e.clientX, e.clientY); bgPulse(w.x, w.y, null, 0.75, 0.6); }
+  if (!t.closest('.node, .pframe, .elabel, .gout, [data-e]')) { const w = toWorld(e.clientX, e.clientY); bgPulse(w.x, w.y, null, 0.5, 0.5); }
 });
 
 /* ===================== theme, help, share, preview ===================== */

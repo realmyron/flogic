@@ -556,10 +556,23 @@ function setType(type) {
 }
 function setColor(c) {
   const ns = selNodes();
-  if (!ns.length) return;
+  if (!ns.length || !(COLORS[c] || GRADIENTS[c] || isHex(c))) return;
   checkpoint();
-  ns.forEach(n => { n.color = c; const el = NODE_EL.get(n.id); if (el) el.dataset.c = c; });
+  ns.forEach(n => { n.color = c; const el = NODE_EL.get(n.id); if (el) paintNode(el, n); });
   renderLayers(); renderInspector(); queueMinimap(); changed();
+}
+/* shape ('round' is the default) and colour style ('top' for notes and titles, 'left' for sub-notes) */
+function setNodeLook(key, v) {
+  const ns = selNodes();
+  if (!ns.length) return;
+  endEdit(); checkpoint();
+  ns.forEach(n => {
+    if (key === 'shape') { if (v === 'round') delete n.shape; else n.shape = v; }
+    else if (v === (n.type === 'sub' ? 'left' : 'top')) delete n.accent; else n.accent = v;
+    const el = NODE_EL.get(n.id);
+    if (el) paintNode(el, n);
+  });
+  drawEdges(); drawFrames(); renderInspector(); queueMinimap(); changed();
 }
 function reorder(front) {
   const e = env(), sel = e.nodes.filter(n => S.sel.has(n.id));
@@ -1821,7 +1834,9 @@ function nodeMenu(x, y) {
     { head: 'Turn into' },
     ...['title', 'note', 'sub'].map(t => ({ label: NODE_LABEL[t], icon: t, check: cur === t, fn: () => setType(t) })),
     { head: 'Colour' },
-    { swatches: true, value: multi ? null : n.color, fn: setColor },
+    { swatches: true, value: multi ? null : n.color, keys: [...SOLID_KEYS, ...PASTEL_KEYS, ...Object.keys(GRADIENTS)], fn: setColor },
+    { head: 'Shape' },
+    { shapes: true, value: multi ? null : n.shape || 'round', fn: v => setNodeLook('shape', v) },
     '-',
     multi && { label: 'Group', icon: 'group', kbd: MOD + 'G', fn: groupSel },
     inGroup && { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: ungroupSel },
@@ -2400,6 +2415,13 @@ $('#layer-filter').addEventListener('keydown', e => {
 });
 
 /* inspector */
+/* custom colour: preview while picking, save when the picker closes */
+$('#inspector').addEventListener('input', e => {
+  if (!e.target.matches('[data-cc]')) return;
+  const v = e.target.value;
+  selNodes().forEach(n => { const el = NODE_EL.get(n.id); if (el) paintNode(el, Object.assign({}, n, { color: v })); });
+});
+$('#inspector').addEventListener('change', e => { if (e.target.matches('[data-cc]')) setColor(e.target.value.toLowerCase()); });
 $('#inspector').addEventListener('click', e => {
   const et = e.target.closest('[data-etype]');
   if (et) { setEdgeType(S.edgeSel, et.dataset.etype); return; }
@@ -2411,6 +2433,8 @@ $('#inspector').addEventListener('click', e => {
   if (!b) return;
   const id = S.edgeSel, ed = id && env().edges.find(x => x.id === id);
   switch (b.dataset.ia) {
+    case 'shape': setNodeLook('shape', b.dataset.v); break;
+    case 'accent': setNodeLook('accent', b.dataset.v); break;
     case 'plook': if (sp) setPanelLook(sp.id, b.dataset.v); break;
     case 'prename': if (sp) renameFrame('p', sp.id); break;
     case 'pfold': if (sp) toggleFold(sp.id); break;

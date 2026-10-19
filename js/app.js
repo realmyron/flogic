@@ -387,7 +387,7 @@ function createNode(type, wx, wy, o = {}) {
   const n = addNodeRaw(type, x, y);
   S.sel = new Set([n.id]); S.edgeSel = null;
   structureChanged(); refreshSel(); popIn([n.id]);
-  bgPulse(x + n.w / 2, y + 48, colorOf(n.color).c1, 1);
+  bgPulse(x + n.w / 2, y + 48, colorOf(n.color).c1, 0.6, 0.62);
   if (o.edit !== false) editField(n.id, 'title');
   return n;
 }
@@ -648,7 +648,7 @@ function pasteData(data, at) {
   S.sel = new Set(added); S.edgeSel = null;
   structureChanged(); refreshSel(); popIn(added, true);
   const pb = bboxOf(added.map(nodeById), true);
-  bgPulse(pb.x + pb.w / 2, pb.y + pb.h / 2, null, 1.25);
+  bgPulse(pb.x + pb.w / 2, pb.y + pb.h / 2, null, 0.9, 0.65);
 }
 function duplicateSel() { if (S.sel.size) pasteData(selData(), null); }
 
@@ -2305,7 +2305,8 @@ gridCv.id = 'grid-fx';
 gridCv.setAttribute('aria-hidden', 'true');
 vp.insertBefore(gridCv, vp.firstChild);
 const gx = gridCv.getContext('2d');
-const GF = { waves: [], raf: 0, last: 0, px: -1e4, py: -1e4, sp: 0, spot: 0, moved: 0, pal: null, dpr: 1 };
+const GF = { waves: [], trail: [], raf: 0, last: 0, px: -1e4, py: -1e4, sp: 0, spot: 0, moved: 0, pal: null, dpr: 1 };
+const TRAIL = 0.9;   // seconds a lit spot along the pointer's path stays before it has faded
 function fxMode() { const m = CFG.bgFx || 'grid'; return m === 'off' || RM.matches || FOC.touch ? 'off' : m; }
 /* '#rrggbb' or 'rgba(r,g,b,a)' -> [r, g, b] */
 function toRgb(v) {
@@ -2329,9 +2330,10 @@ function gridSize() {
 window.addEventListener('resize', gridSize);
 function gridKick() { if (!GF.raf && fxMode() !== 'off') { GF.last = performance.now(); GF.raf = requestAnimationFrame(gridFrame); } }
 /* a wave of light through the dots, from a point on the board (world coordinates) */
-function bgPulse(wx, wy, color, size = 1) {
+/* size: how far it spreads (1 = about 350px); strength: how bright (1 = full) */
+function bgPulse(wx, wy, color, size = 1, strength = 1) {
   if (fxMode() === 'off') return;
-  GF.waves.push({ wx, wy, c: toRgb(color || '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('')), t: 0, life: 0.7 + 0.3 * size, R: 120 + 230 * size, k: 0.55 + 0.45 * Math.min(1, size) });
+  GF.waves.push({ wx, wy, c: toRgb(color || '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('')), t: 0, life: 0.7 + 0.3 * size, R: 120 + 230 * size, k: (0.55 + 0.45 * Math.min(1, size)) * strength });
   if (GF.waves.length > 12) GF.waves.shift();
   gridKick();
 }
@@ -2362,13 +2364,22 @@ function gridFrame(now) {
   if (m === 'off') { GF.waves = []; GF.spot = 0; return; }
   const P = gridPal(), W = vp.clientWidth, H = vp.clientHeight;
   let busy = false;
-  /* the pointer: brighter the faster it moves, gone soon after it stops */
+  /* the pointer leaves a trail: each spot along its path is brighter the faster it moved, then fades
+     (and narrows) over TRAIL seconds, so a short tail of lit dots follows it */
   if (m === 'grid') {
-    const target = now - GF.moved < 120 ? clamp(GF.sp / 22, 0.18, 1) : 0;
-    GF.spot += (target - GF.spot) * (target > GF.spot ? 0.25 : 0.06);
-    if (GF.spot > 0.01) {
-      const R = 120 + 70 * GF.spot, px = GF.px, py = GF.py, s = GF.spot * 0.75;
-      gridDots(px - R, py - R, px + R, py + R, P.sel, (x, y) => { const d = Math.hypot(x - px, y - py) / R; return d >= 1 ? 0 : s * Math.pow(1 - d, 1.8); });
+    const pts = GF.trail.map(q => {
+      const life = 1 - (now - q.at) / (TRAIL * 1000);
+      return life <= 0 ? null : { x: V.x + q.wx * V.z, y: V.y + q.wy * V.z, r: (95 + 55 * q.s) * (0.7 + 0.3 * life), a: q.s * Math.pow(life, 1.4) };
+    }).filter(Boolean);
+    GF.trail = GF.trail.filter(q => now - q.at < TRAIL * 1000);
+    if (pts.length) {
+      const x1 = Math.min(...pts.map(q => q.x - q.r)), y1 = Math.min(...pts.map(q => q.y - q.r)), x2 = Math.max(...pts.map(q => q.x + q.r)), y2 = Math.max(...pts.map(q => q.y + q.r));
+      /* each dot takes the brightest spot near it, so overlapping spots don't add up */
+      gridDots(x1, y1, x2, y2, P.sel, (x, y) => {
+        let best = 0;
+        for (const q of pts) { const d = Math.hypot(x - q.x, y - q.y) / q.r; if (d < 1) best = Math.max(best, q.a * Math.pow(1 - d, 1.8)); }
+        return best;
+      });
       busy = true;
     }
     /* nodes being dragged light the ground under them in their own colour */
@@ -2405,9 +2416,13 @@ window.addEventListener('pointermove', e => {
   const d = GF.px > -1e3 ? Math.hypot(x - GF.px, y - GF.py) : 0;
   GF.sp = GF.sp * 0.7 + Math.min(d, 80) * 0.3;
   GF.px = x; GF.py = y; GF.moved = performance.now();
+  /* a new spot every 10px along the path; in between, the newest one keeps up with the pointer */
+  const w = toWorld(e.clientX, e.clientY), s = clamp(GF.sp / 22, 0.18, 1) * 0.75, last = GF.trail[GF.trail.length - 1];
+  if (last && Math.hypot((w.x - last.wx) * V.z, (w.y - last.wy) * V.z) < 10) Object.assign(last, { wx: w.x, wy: w.y, at: GF.moved, s: Math.max(last.s, s) });
+  else { GF.trail.push({ wx: w.x, wy: w.y, at: GF.moved, s }); if (GF.trail.length > 90) GF.trail.shift(); }
   gridKick();
 }, { passive: true });
-function setBgFx(m) { CFG.bgFx = m; saveCfg(); GF.waves = []; GF.spot = 0; gridKick(); applyFocusLevel(); }
+function setBgFx(m) { CFG.bgFx = m; saveCfg(); GF.waves = []; GF.trail = []; gridKick(); applyFocusLevel(); }
 function fxApply() { gridSize(); }
 
 /* ---- reading glow: over a node's text, a soft, round light follows the pointer beneath the words, like
@@ -3061,7 +3076,9 @@ vp.addEventListener('dblclick', e => {
   const eg = t.closest('[data-e]');
   if (eg) { editEdgeLabel(eg.dataset.e); return; }
   const pl = t.closest('.plabel');
-  if (pl && S.canEdit && !t.closest('[data-pfold]')) renameFrame('p', pl.dataset.p);
+  if (pl && S.canEdit && !t.closest('[data-pfold]')) { renameFrame('p', pl.dataset.p); return; }
+  /* double-click on empty board: a wave through the dots, just for fun */
+  if (!t.closest('.node, .pframe, .elabel, .gout, [data-e]')) { const w = toWorld(e.clientX, e.clientY); bgPulse(w.x, w.y, null, 0.8, 0.85); }
 });
 
 /* ===================== theme, help, share, preview ===================== */

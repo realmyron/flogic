@@ -911,6 +911,8 @@ function landed(n, i) {
 function addBlock(n, kind, idx) {
   endEdit(); checkpoint();
   const b = makeBlock(kind);
+  /* in a shape node an icon goes above the label, everything else below it */
+  if (isShapeNode(n) && (kind === 'icon' || (idx != null && n.blocks[idx] && n.blocks[idx].above))) b.above = true;
   if (idx == null) n.blocks.push(b); else n.blocks.splice(idx, 0, b);
   if (kind === 'scenarios') S.open[b.items[0].id] = true;
   renderNode(n); changed(); renderLayers();
@@ -918,6 +920,7 @@ function addBlock(n, kind, idx) {
   landed(n, i);
   if (FIRST_FIELD[kind]) editField(n.id, `blocks.${i}.${FIRST_FIELD[kind]}`);
   if (kind === 'sources') openSourceForm(n.id, i);
+  if (kind === 'icon') openIconPicker(n.id, b.id);
 }
 function moveBlock(n, from, to) {
   if (to < 0 || to >= n.blocks.length || from === to) return;
@@ -1024,6 +1027,8 @@ nodesWrap.addEventListener('click', e => {
     case 'add-src': openSourceForm(n.id, bi); break;
     case 'del-src': mut(() => b.items.splice(si, 1)); break;
     case 'pick-img': pickImage(n.id, b.id); break;
+    case 'pick-icon': openIconPicker(n.id, b.id); break;
+    case 'icon-size': if (b.size !== a.dataset.v) mut(() => { b.size = a.dataset.v; }); break;
   }
 });
 nodesWrap.addEventListener('dblclick', e => {
@@ -1074,6 +1079,83 @@ async function fileToDataUrl(file) {
     if (!out.startsWith('data:image/webp')) out = file.type === 'image/png' ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.86);
     return out.length < raw.length ? out : raw;
   } catch (e) { return raw; }
+}
+/* ===================== icons =====================
+   The owner's icons are uploaded once and saved with the board (DOC.icons), so every node in every
+   environment can use them. Like images, they become files in data/assets/ when published. */
+async function iconDataUrl(file) {
+  let raw = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+  /* some systems give .svg files no type */
+  if (/\.svg$/i.test(file.name) && !raw.startsWith('data:image/svg+xml')) raw = 'data:image/svg+xml;base64,' + raw.split(',')[1];
+  if (/svg|gif/.test(file.type) || /\.svg$/i.test(file.name)) return raw;
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = raw; });
+    const s = Math.min(1, 256 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const out = c.toDataURL('image/png');
+    return out.length < raw.length ? out : raw;
+  } catch (e) { return raw; }
+}
+function openIconPicker(nodeId, blockId) {
+  if (!S.canEdit) return;
+  const block = () => { const n = nodeById(nodeId); return n && n.blocks.find(x => x.id === blockId); };
+  const cur = (block() || {}).icon;
+  const m = openModal(`<div class="mhead"><h3>Choose an icon</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div>
+    <div class="mbody ipick">
+      <div class="ip-head"><b>Your icons</b><button class="btn sm" id="ip-up">${ic('upload', 13)} Upload icons…</button></div>
+      <div class="ipgrid" id="ip-mine"></div>
+      <div class="ip-head"><b>Built-in</b><small>drawn in the node's colour</small></div>
+      <div class="ipgrid">${BUILTIN_ICONS.filter(k => ICONS[k]).map(k => `<button class="ipi${cur === 'b:' + k ? ' on' : ''}" data-icon="b:${k}" title="${k}">${ic(k, 22)}</button>`).join('')}</div>
+    </div>`);
+  const mine = $('#ip-mine', m.el);
+  const draw = () => {
+    const list = DOC.icons || [];
+    mine.innerHTML = list.length
+      ? list.map(x => `<button class="ipi${cur === 'u:' + x.id ? ' on' : ''}" data-icon="u:${x.id}" title="${esc(x.name)} · right-click to remove"><img src="${esc(imgSrc(x.src))}" alt="${esc(x.name)}"></button>`).join('')
+      : '<div class="ip-empty">Upload PNG or SVG icons you made. They are saved with your board, so you can use them in any node and any environment.</div>';
+  };
+  draw();
+  m.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-icon]');
+    if (!b) return;
+    const bl = block();
+    m.close();
+    if (!bl || bl.icon === b.dataset.icon) return;
+    checkpoint(); bl.icon = b.dataset.icon; renderNode(nodeById(nodeId)); changed();
+  });
+  /* right-click one of your icons to remove it from the set */
+  mine.addEventListener('contextmenu', e => {
+    const b = e.target.closest('[data-icon]');
+    if (!b) return;
+    e.preventDefault();
+    const id = b.dataset.icon.slice(2), x = DOC.icons.find(q => q.id === id);
+    const used = DOC.envs.reduce((k, en) => k + en.nodes.reduce((j, n) => j + n.blocks.filter(bb => bb.icon === 'u:' + id).length, 0), 0);
+    openMenu(e.clientX, e.clientY, [
+      { head: x.name },
+      { label: used ? `Remove (used ${used} time${used > 1 ? 's' : ''})` : 'Remove from your icons', icon: 'trash', danger: true, fn: () => {
+        checkpoint(); DOC.icons = DOC.icons.filter(q => q.id !== id); changed(); draw();
+        DOC.envs.forEach(en => en.nodes.forEach(n => { if (en === env() && n.blocks.some(bb => bb.icon === 'u:' + id)) renderNode(n); }));
+      } },
+    ]);
+  });
+  $('#ip-up', m.el).addEventListener('click', () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*,.svg'; inp.multiple = true;
+    inp.addEventListener('change', async () => {
+      const files = Array.from(inp.files || []).filter(f => f.type.startsWith('image/') || /\.svg$/i.test(f.name));
+      if (!files.length) return;
+      checkpoint();
+      for (const f of files) {
+        const src = await iconDataUrl(f);
+        (DOC.icons = DOC.icons || []).push({ id: uid('ic'), name: f.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'Icon', src });
+      }
+      changed(); draw();
+      toast(`Added ${files.length} icon${files.length > 1 ? 's' : ''} to your set`);
+    });
+    inp.click();
+  });
 }
 async function addImageFiles(files, at, target) {
   for (const f of files) {
@@ -1581,16 +1663,29 @@ function moveBlockDrag(e) {
   d.ghost.style.transform = `translate(${e.clientX - d.offx - 12 * V.z}px,${e.clientY - d.offy - 10 * V.z}px) scale(${V.z}) rotate(${clamp(d.vx * 0.5, -6, 6).toFixed(2)}deg)`;
   const hit = document.elementFromPoint(e.clientX, e.clientY), tn = hit && hit.closest && hit.closest('.node');
   clearDropHL();
-  if (tn) {
-    const blocks = $$(':scope > .blocks > .blk', tn), cont = tn.querySelector('.blocks');
-    let idx = blocks.length;
-    for (let i = 0; i < blocks.length; i++) { const r = blocks[i].getBoundingClientRect(); if (e.clientY < r.top + r.height / 2) { idx = i; break; } }
-    d.target = { n: nodeById(tn.dataset.id), idx };
+  const tnode = tn && nodeById(tn.dataset.id);
+  /* shape nodes only take icons, images and text */
+  if (tnode && isShapeNode(tnode) && !SHAPE_KINDS.includes(d.b.kind)) {
+    d.target = null;
+    d.ghost.classList.remove('to-canvas');
+  } else if (tn) {
+    const blocks = $$(':scope > .blocks > .blk', tn), cont = tn.querySelector(':scope > .blocks');
+    let k = blocks.length;
+    for (let i = 0; i < blocks.length; i++) { const r = blocks[i].getBoundingClientRect(); if (e.clientY < r.top + r.height / 2) { k = i; break; } }
+    /* shown blocks map to positions in the node's list (a shape node may keep some blocks hidden) */
+    const idx = k < blocks.length ? +blocks[k].dataset.i : blocks.length ? +blocks[blocks.length - 1].dataset.i + 1 : tnode.blocks.length;
+    /* in a shape node, dropping above the label puts the block above it */
+    let above = false;
+    if (isShapeNode(tnode)) {
+      const lab = tn.querySelector('.sn-title'), lr = lab && lab.getBoundingClientRect();
+      above = lr && lr.height ? e.clientY < lr.top + lr.height / 2 : k < blocks.length && !!tnode.blocks[idx].above;
+    }
+    d.target = { n: tnode, idx, above };
     tn.classList.add('drop-target');
     const cr = cont.getBoundingClientRect(), gap = parseFloat(getComputedStyle(cont).rowGap) || 12;
     let y;
     if (!blocks.length) y = 0;
-    else if (idx < blocks.length) y = (blocks[idx].getBoundingClientRect().top - cr.top) / V.z - gap / 2;
+    else if (k < blocks.length) y = (blocks[k].getBoundingClientRect().top - cr.top) / V.z - gap / 2;
     else y = (blocks[blocks.length - 1].getBoundingClientRect().bottom - cr.top) / V.z + gap / 2;
     DROPLINE = document.createElement('div');
     DROPLINE.className = 'dropline';
@@ -1626,10 +1721,11 @@ function endBlockDrag(e) {
     structureChanged(); refreshSel(); popIn([s.id]);
     return;
   }
-  const tn = d.target.n;
+  const tn = d.target.n, above = !!d.target.above;
   let to = d.target.idx;
-  if (tn === d.n) { if (to === d.bi || to === d.bi + 1) return; if (to > d.bi) to--; }
+  if (tn === d.n) { if ((to === d.bi || to === d.bi + 1) && above === !!d.b.above) return; if (to > d.bi) to--; }
   checkpoint();
+  if (above) d.b.above = true; else delete d.b.above;
   d.n.blocks.splice(d.bi, 1);
   tn.blocks.splice(to, 0, d.b);
   renderNode(d.n);
@@ -1844,9 +1940,8 @@ function nodeMenu(x, y) {
   const inGroup = ns.some(m => groupOf(m.id));
   const cur = ns.every(m => m.type === n.type) ? n.type : null;
   return [
-    !multi && !isShapeNode(n) && { label: 'Add block…', icon: 'plus', fn: () => openBlockMenu({ x, y }, n) },
+    !multi && { label: isShapeNode(n) ? 'Add icon, image or text…' : 'Add block…', icon: 'plus', fn: () => openBlockMenu({ x, y }, n) },
     !multi && { label: isShapeNode(n) ? 'Edit label' : 'Edit title', icon: 'edit', kbd: '↵', fn: () => editField(n.id, 'title', true) },
-    !multi && isShapeNode(n) && { label: 'Edit details', icon: 'text2', fn: () => editField(n.id, 'subtitle') },
     { label: 'Duplicate', icon: 'copy', kbd: MOD + 'D', fn: duplicateSel },
     { label: 'Copy', icon: 'copy', kbd: MOD + 'C', fn: () => copySel() },
     { label: multi ? `Copy text of ${ns.length} nodes` : 'Copy text', icon: 'text2', kbd: MOD + '⌥C', fn: copyText },
@@ -1871,9 +1966,15 @@ function nodeMenu(x, y) {
   ];
 }
 function blockMenu(n, i, x, y) {
+  const b = n.blocks[i], shape = isShapeNode(n);
+  const set = fn => () => { endEdit(); checkpoint(); fn(); renderNode(n); changed(); };
   return [
-    { head: BLOCKS.find(b => b[0] === n.blocks[i].kind)[1] + ' block' },
-    { label: 'Insert block above…', icon: 'plus', fn: () => openBlockMenu({ x, y }, n, i) },
+    { head: BLOCKS.find(k => k[0] === b.kind)[1] + ' block' },
+    b.kind === 'icon' && { label: 'Change icon…', icon: 'shape', fn: () => openIconPicker(n.id, b.id) },
+    ...(b.kind === 'icon' ? [['s', 'Small'], ['m', 'Medium'], ['l', 'Large']].map(([k, name]) => ({ label: name + ' icon', icon: 'image', check: (b.size || 'm') === k, fn: set(() => { b.size = k; }) })) : []),
+    shape && { label: b.above ? 'Put below the label' : 'Put above the label', icon: 'swap', fn: set(() => { if (b.above) delete b.above; else b.above = true; }) },
+    b.kind === 'icon' || shape ? '-' : null,
+    { label: shape ? 'Insert above…' : 'Insert block above…', icon: 'plus', fn: () => openBlockMenu({ x, y }, n, i) },
     { label: 'Duplicate block', icon: 'copy', fn: () => duplicateBlock(n, i) },
     { label: 'Move up', icon: 'chev', disabled: i === 0, fn: () => moveBlock(n, i, i - 1) },
     { label: 'Move down', icon: 'chev', disabled: i === n.blocks.length - 1, fn: () => moveBlock(n, i, i + 1) },
@@ -1917,7 +2018,8 @@ function edgeMenu(id) {
 }
 function openBlockMenu(anchor, n, idx) {
   const r = anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : { right: anchor.x, top: anchor.y };
-  const html = `<div class="bm-grid">${BLOCKS.map(([k, name, desc]) => `<button class="bm" data-k="${k}"><span class="bm-ic">${ic(k, 17)}</span><span><b>${name}</b><small>${desc}</small></span></button>`).join('')}</div>`;
+  const list = isShapeNode(n) ? BLOCKS.filter(b => SHAPE_KINDS.includes(b[0])) : BLOCKS;
+  const html = `<div class="bm-grid${isShapeNode(n) ? ' bm-few' : ''}">${list.map(([k, name, desc]) => `<button class="bm" data-k="${k}"><span class="bm-ic">${ic(k, 17)}</span><span><b>${name}</b><small>${desc}</small></span></button>`).join('')}</div>`;
   openMenu(r.right + 8, r.top - 6, [{ html }], {
     cls: 'bmenu',
     onClick: e => { const b = e.target.closest('[data-k]'); if (b) { closeMenu(); addBlock(n, b.dataset.k, idx); } return false; },

@@ -387,6 +387,7 @@ function createNode(type, wx, wy, o = {}) {
   const n = addNodeRaw(type, x, y);
   S.sel = new Set([n.id]); S.edgeSel = null;
   structureChanged(); refreshSel(); popIn([n.id]);
+  bgPulse(x + n.w / 2, y + 48, colorOf(n.color).c1, 1);
   if (o.edit !== false) editField(n.id, 'title');
   return n;
 }
@@ -646,6 +647,8 @@ function pasteData(data, at) {
   tmp.edges.forEach(x => { if (map[x.from] && map[x.to]) e.edges.push(Object.assign(x, { id: uid('l'), from: map[x.from], to: map[x.to] })); });
   S.sel = new Set(added); S.edgeSel = null;
   structureChanged(); refreshSel(); popIn(added, true);
+  const pb = bboxOf(added.map(nodeById), true);
+  bgPulse(pb.x + pb.w / 2, pb.y + pb.h / 2, null, 1.25);
 }
 function duplicateSel() { if (S.sel.size) pasteData(selData(), null); }
 
@@ -1560,6 +1563,7 @@ function endDrag(aborted) {
     else if (free.length) moved = setPanel(free, null, false);
   }
   syncZ();
+  if (!aborted) { const db = bboxOf(d.ids.map(nodeById).filter(Boolean), true), ln = nodeById(d.lead); if (db) bgPulse(db.x + db.w / 2, db.y + db.h / 2, ln && colorOf(ln.color).c1, 0.35); }
   if (moved) {
     structureChanged(); refreshSel();
     const p = target && panelById(target);
@@ -1736,6 +1740,7 @@ function endConnect(e) {
     const ok = d && d.reverse ? addEdge(c.target.id, c.target.side, c.from, c.side) : addEdge(c.from, c.side, c.target.id, c.target.side);
     if (ok && d) { const es = env().edges, ne = es[es.length - 1]; Object.assign(ne, { label: d.label, arrow: d.arrow, dashed: d.dashed }); if (d.style) ne.style = d.style; if (d.bend) ne.bend = d.bend; }
     if (ok || d) { drawEdges(); renderInspector(); changed(); }
+    if (ok) bgPulse(c.target.p.x, c.target.p.y, null, 0.6);
     if (!ok && d) toast('Connection removed', { actions: [{ label: 'Undo', fn: undo }] });
     return;
   }
@@ -2254,8 +2259,7 @@ const veil = $('#focus-veil');
 const FOC = { touch: false };
 /* the comfort defaults changed (focus became a vignette at 3%): move older saved settings over once */
 if ((CFG.comfortV || 0) < 2) { CFG.focus = 3; CFG.focusLast = 3; if (CFG.readGlow == null) CFG.readGlow = true; }
-/* the particle trails were replaced by the living background (Drift by default) */
-if ((CFG.comfortV || 0) < 3) { CFG.bgFx = 'drift'; CFG.comfortV = 3; saveCfg(); }
+
 function focusLevel() { return clamp(+CFG.focus || 0, 0, 100) / 100; }
 function applyFocusLevel() {
   const f = focusLevel(), btn = $('[data-cmd="focus"]');
@@ -2281,60 +2285,130 @@ function toggleFocus() {
   toast(CFG.focus > 0 ? `Focus vignette on (${CFG.focus}%)` : 'Focus vignette off');
 }
 
-/* ---- living background: the board's own soft background light (the two faint glows in its corners)
-   gently responds to you. Nothing new appears: the same light just leans, follows or slowly shifts,
-   so it reads as part of the page, not as an effect on top of it.
-     Drift (default): the glows lean a little toward the pointer, very slowly.
-     Follow: one more, very faint glow trails the pointer at a long delay.
-     Breathe: the glows slowly wander on their own (about a minute per cycle).
-     Off: the glows stay still, as they always were. */
-const FX_MODES = [['off', 'Off'], ['drift', 'Drift'], ['follow', 'Follow'], ['breathe', 'Breathe']];
-if (!FX_MODES.some(m => m[0] === CFG.bgFx)) CFG.bgFx = 'drift';
+/* ---- reactive grid: the board's dot grid answers what you do. Only the dots themselves light up (no
+   glows or shapes on top), so it stays clean:
+     - moving the pointer lights the dots around it; the faster you move, the more it shows, and it fades
+       out shortly after you stop
+     - adding, connecting, dropping or pasting nodes sends a soft wave of light through the dots
+     - a node being dragged lights the dots underneath it in its own colour
+   Grid: all of it. Pulses: just the waves. Off: a still grid. */
+const FX_MODES = [['off', 'Off'], ['grid', 'Grid'], ['pulse', 'Pulses only']];
+if ((CFG.comfortV || 0) < 4) { CFG.bgFx = 'grid'; CFG.comfortV = 4; saveCfg(); }
+if (!FX_MODES.some(m => m[0] === CFG.bgFx)) CFG.bgFx = 'grid';
 const amb = document.createElement('div');
 amb.id = 'amb';
 amb.setAttribute('aria-hidden', 'true');
-amb.innerHTML = '<i class="ab1"></i><i class="ab2"></i><i class="ab3"></i>';
+amb.innerHTML = '<i class="ab1"></i><i class="ab2"></i>';
 $('#stage').prepend(amb);
-const [ab1, ab2, ab3] = amb.children;
-const AMB = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5, fx: 0, fy: 0, ftx: 0, fty: 0, raf: 0, seen: false };
-/* still when the device asks for reduced motion, and on touch screens (no pointer to follow) */
-function fxMode() { const m = CFG.bgFx || 'drift'; return m === 'off' || RM.matches || FOC.touch ? 'off' : m; }
-function fxApply() {
-  const m = fxMode();
-  amb.className = m;
-  if (m !== 'drift') { ab1.style.transform = ab2.style.transform = ''; }
-  if (m !== 'follow') ab3.classList.remove('on');
-  AMB.seen = false;
+const gridCv = document.createElement('canvas');
+gridCv.id = 'grid-fx';
+gridCv.setAttribute('aria-hidden', 'true');
+vp.insertBefore(gridCv, vp.firstChild);
+const gx = gridCv.getContext('2d');
+const GF = { waves: [], raf: 0, last: 0, px: -1e4, py: -1e4, sp: 0, spot: 0, moved: 0, pal: null, dpr: 1 };
+function fxMode() { const m = CFG.bgFx || 'grid'; return m === 'off' || RM.matches || FOC.touch ? 'off' : m; }
+/* '#rrggbb' or 'rgba(r,g,b,a)' -> [r, g, b] */
+function toRgb(v) {
+  const s = String(v).trim();
+  if (/^#[0-9a-f]{6}$/i.test(s)) return [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16));
+  return (s.match(/[\d.]+/g) || [123, 147, 255]).slice(0, 3).map(Number);
 }
-function ambFrame() {
-  AMB.raf = 0;
-  const m = fxMode(), W = VR.width, H = VR.height;
-  if (m === 'drift') {
-    /* about 1.5 s to catch up, and at most a few percent of the screen */
-    AMB.x += (AMB.tx - AMB.x) * 0.02; AMB.y += (AMB.ty - AMB.y) * 0.02;
-    const dx = (AMB.x - 0.5) * W, dy = (AMB.y - 0.5) * H;
-    ab1.style.transform = `translate(${(dx * 0.07).toFixed(1)}px,${(dy * 0.07).toFixed(1)}px)`;
-    ab2.style.transform = `translate(${(-dx * 0.05).toFixed(1)}px,${(-dy * 0.05).toFixed(1)}px)`;
-    if (Math.abs(AMB.tx - AMB.x) + Math.abs(AMB.ty - AMB.y) > 0.0005) AMB.raf = requestAnimationFrame(ambFrame);
-  } else if (m === 'follow') {
-    AMB.fx += (AMB.ftx - AMB.fx) * 0.035; AMB.fy += (AMB.fty - AMB.fy) * 0.035;
-    ab3.style.transform = `translate(${AMB.fx.toFixed(1)}px,${AMB.fy.toFixed(1)}px)`;
-    if (Math.abs(AMB.ftx - AMB.fx) + Math.abs(AMB.fty - AMB.fy) > 0.3) AMB.raf = requestAnimationFrame(ambFrame);
+function gridPal() {
+  if (GF.pal) return GF.pal;
+  const cs = getComputedStyle(document.documentElement), bg = toRgb(cs.getPropertyValue('--bg'));
+  GF.pal = { dark: bg[0] * 0.3 + bg[1] * 0.59 + bg[2] * 0.11 < 100, sel: toRgb(cs.getPropertyValue('--sel')) };
+  return GF.pal;
+}
+new MutationObserver(() => { GF.pal = null; }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { GF.pal = null; });
+function gridSize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = vp.clientWidth, h = vp.clientHeight;
+  if (gridCv.width !== Math.round(w * dpr) || gridCv.height !== Math.round(h * dpr)) { gridCv.width = Math.round(w * dpr); gridCv.height = Math.round(h * dpr); }
+  GF.dpr = dpr;
+}
+window.addEventListener('resize', gridSize);
+function gridKick() { if (!GF.raf && fxMode() !== 'off') { GF.last = performance.now(); GF.raf = requestAnimationFrame(gridFrame); } }
+/* a wave of light through the dots, from a point on the board (world coordinates) */
+function bgPulse(wx, wy, color, size = 1) {
+  if (fxMode() === 'off') return;
+  GF.waves.push({ wx, wy, c: toRgb(color || '#' + gridPal().sel.map(v => v.toString(16).padStart(2, '0')).join('')), t: 0, life: 0.7 + 0.3 * size, R: 120 + 230 * size, k: 0.55 + 0.45 * Math.min(1, size) });
+  if (GF.waves.length > 12) GF.waves.shift();
+  gridKick();
+}
+/* light the dots in a box (screen px) with intensity f(x, y) in 0..1 */
+function gridDots(x1, y1, x2, y2, c, f) {
+  let g = GRID * V.z;
+  while (g < 14) g *= 4;
+  const P = gridPal(), base = P.dark ? 0.9 : 0.8;
+  const i1 = Math.ceil((x1 - V.x) / g), i2 = Math.floor((x2 - V.x) / g), j1 = Math.ceil((y1 - V.y) / g), j2 = Math.floor((y2 - V.y) / g);
+  if ((i2 - i1) * (j2 - j1) > 9000) return;
+  gx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+  for (let i = i1; i <= i2; i++) for (let j = j1; j <= j2; j++) {
+    const x = V.x + i * g, y = V.y + j * g, a = f(x, y);
+    if (a < 0.02) continue;
+    gx.globalAlpha = Math.min(1, a) * base;
+    const r = 1.15 + 1.05 * Math.min(1, a);
+    gx.beginPath(); gx.arc(x, y, r, 0, Math.PI * 2); gx.fill();
   }
+  gx.globalAlpha = 1;
+}
+function gridFrame(now) {
+  GF.raf = 0;
+  const dt = Math.min(0.05, (now - GF.last) / 1000), m = fxMode();
+  GF.last = now;
+  gridSize();
+  gx.setTransform(GF.dpr, 0, 0, GF.dpr, 0, 0);
+  gx.clearRect(0, 0, gridCv.width, gridCv.height);
+  if (m === 'off') { GF.waves = []; GF.spot = 0; return; }
+  const P = gridPal(), W = vp.clientWidth, H = vp.clientHeight;
+  let busy = false;
+  /* the pointer: brighter the faster it moves, gone soon after it stops */
+  if (m === 'grid') {
+    const target = now - GF.moved < 120 ? clamp(GF.sp / 22, 0.18, 1) : 0;
+    GF.spot += (target - GF.spot) * (target > GF.spot ? 0.25 : 0.06);
+    if (GF.spot > 0.01) {
+      const R = 120 + 70 * GF.spot, px = GF.px, py = GF.py, s = GF.spot * 0.75;
+      gridDots(px - R, py - R, px + R, py + R, P.sel, (x, y) => { const d = Math.hypot(x - px, y - py) / R; return d >= 1 ? 0 : s * Math.pow(1 - d, 1.8); });
+      busy = true;
+    }
+    /* nodes being dragged light the ground under them in their own colour */
+    if (DRAG && DRAG.moved) {
+      DRAG.ids.slice(0, 40).forEach(id => {
+        const n = nodeById(id); if (!n) return;
+        const r = rectOf(n), x1 = V.x + r.x * V.z, y1 = V.y + r.y * V.z, x2 = x1 + r.w * V.z, y2 = y1 + r.h * V.z, pad = 34;
+        gridDots(x1 - pad, y1 - pad, x2 + pad, y2 + pad, toRgb(colorOf(n.color).c1), (x, y) => {
+          const dx = Math.max(x1 - x, 0, x - x2), dy = Math.max(y1 - y, 0, y - y2), d = Math.hypot(dx, dy) / pad;
+          return d >= 1 ? 0 : 0.55 * Math.pow(1 - d, 1.4);
+        });
+      });
+      busy = true;
+    }
+  }
+  /* waves: a soft ring that eases outward and fades */
+  for (const w of GF.waves) {
+    w.t += dt / w.life;
+    const t = Math.min(1, w.t), e = 1 - Math.pow(1 - t, 3), cx = V.x + w.wx * V.z, cy = V.y + w.wy * V.z;
+    const rad = 10 + w.R * e, band = 34 + 26 * e, fade = w.k * Math.pow(1 - t, 1.5);
+    const box = rad + band;
+    if (cx + box < 0 || cy + box < 0 || cx - box > W || cy - box > H) continue;
+    gridDots(cx - box, cy - box, cx + box, cy + box, w.c, (x, y) => { const d = (Math.hypot(x - cx, y - cy) - rad) / band; return fade * Math.exp(-d * d * 2.2); });
+  }
+  GF.waves = GF.waves.filter(w => w.t < 1);
+  if (GF.waves.length) busy = true;
+  if (busy) GF.raf = requestAnimationFrame(gridFrame);
+  else gx.clearRect(0, 0, gridCv.width, gridCv.height);
 }
 window.addEventListener('pointermove', e => {
-  const m = fxMode();
-  if ((m !== 'drift' && m !== 'follow') || e.pointerType === 'touch' || !pointerInVp()) return;
+  if (e.pointerType === 'touch' || fxMode() !== 'grid') return;
   const x = e.clientX - VR.left, y = e.clientY - VR.top;
-  AMB.tx = x / VR.width; AMB.ty = y / VR.height;
-  AMB.ftx = x; AMB.fty = y;
-  if (!AMB.seen) { AMB.seen = true; AMB.fx = x; AMB.fy = y; }
-  if (m === 'follow') ab3.classList.add('on');
-  if (!AMB.raf) AMB.raf = requestAnimationFrame(ambFrame);
+  if (!pointerInVp()) { GF.sp = 0; return; }
+  const d = GF.px > -1e3 ? Math.hypot(x - GF.px, y - GF.py) : 0;
+  GF.sp = GF.sp * 0.7 + Math.min(d, 80) * 0.3;
+  GF.px = x; GF.py = y; GF.moved = performance.now();
+  gridKick();
 }, { passive: true });
-document.documentElement.addEventListener('pointerleave', () => ab3.classList.remove('on'));
-function setBgFx(m) { CFG.bgFx = m; saveCfg(); fxApply(); applyFocusLevel(); }
-function fxResize() {}
+function setBgFx(m) { CFG.bgFx = m; saveCfg(); GF.waves = []; GF.spot = 0; gridKick(); applyFocusLevel(); }
+function fxApply() { gridSize(); }
 
 /* ---- reading glow: over a node's text, a soft, round light follows the pointer beneath the words, like
    the faintest highlighter. It lives inside the node (so it never spills past its edges), sits under the
@@ -2390,9 +2464,9 @@ function comfortHTML() {
     <div class="fm-lab"><span>Focus vignette</span><b class="fm-val">${v ? v + '%' : 'Off'}</b></div>
     <input type="range" class="fm-range" min="0" max="100" step="1" value="${v}" aria-label="Focus vignette strength">
     <p class="fm-hint">Softens the edges of the board so your eyes settle on the middle. A few percent is enough. F switches it on or off.</p>
-    <div class="fm-lab"><span>Living background</span></div>
-    <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'drift') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
-    <p class="fm-hint">The board's soft background light leans toward your pointer (Drift), follows it (Follow), or slowly shifts on its own (Breathe).${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
+    <div class="fm-lab"><span>Reactive grid</span></div>
+    <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'grid') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
+    <p class="fm-hint">The dot grid lights up around the pointer as you move, and a soft wave runs through it when you add, connect, drop or paste nodes.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
     <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
   </div>`;
 }

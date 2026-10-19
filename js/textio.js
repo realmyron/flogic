@@ -520,7 +520,7 @@ function applyImport(plan, opts = {}) {
   structureChanged();
   const all = plan.items.map(x => x.node.id), made = plan.items.filter(x => x.created).map(x => x.node.id);
   S.sel = new Set(all); S.edgeSel = null; refreshSel();
-  if (made.length) { popIn(made, true); zoomToNodes(all); const bb = bboxOf(made.map(nodeById), true); bgPulse(bb.x + bb.w / 2, bb.y + bb.h / 2, null, 0.9, 0.6); }
+  if (made.length) { popIn(made, true); zoomToNodes(all); const bb = bboxOf(made.map(nodeById), true); bgPulse(bb.x + bb.w / 2, bb.y + bb.h / 2, null, 0.7, 0.5, true); }
   const parts = [plan.updates && `${plan.updates} updated`, made.length && `${made.length} new`, added && `${added} connection${added > 1 ? 's' : ''} added`, dropped && `${dropped} removed`].filter(Boolean);
   toast(parts.length ? 'Imported: ' + parts.join(', ') : 'Imported (nothing changed)', { actions: [{ label: 'Undo', fn: undo }] });
 }

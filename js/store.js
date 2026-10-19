@@ -8,7 +8,40 @@ const LS = { doc: 'flogic.doc', meta: 'flogic.meta', cfg: 'flogic.cfg', ui: 'flo
 const NODE_W = { title: 480, note: 336, sub: 216 };
 const NODE_LIMIT = 1000;   // per environment; Settings → "Remove the node limit" lifts it
 const NODE_LABEL = { title: 'Title', note: 'Note', sub: 'Sub-note' };
-const COLORS = { default: '#7b93ff', sky: '#3fb2ec', violet: '#a98bfa', pink: '#ee6eae', amber: '#e9a43a', green: '#36c08c', red: '#ef6a6a', slate: '#8f9bb3' };
+/* Colours: the main set, a pastel set, two-tone gradients, or any custom '#rrggbb'. */
+const COLORS = {
+  default: '#7b93ff', sky: '#3fb2ec', violet: '#a98bfa', pink: '#ee6eae', amber: '#e9a43a', green: '#36c08c', red: '#ef6a6a', slate: '#8f9bb3',
+  teal: '#2bb5a2', orange: '#f0844f', lime: '#9cc23c', indigo: '#6574f2', rose: '#e85d84', cyan: '#1fc2d6', gold: '#d6b13a', brown: '#b0835a',
+  'p-blue': '#a8c1ff', 'p-lilac': '#cbb7ff', 'p-pink': '#ffb6d5', 'p-peach': '#ffc4a3', 'p-butter': '#f5df8a', 'p-mint': '#a6e3c8', 'p-sky': '#a3dcf2', 'p-coral': '#ffaaa8',
+};
+const COLOR_NAMES = { 'p-blue': 'Pastel blue', 'p-lilac': 'Pastel lilac', 'p-pink': 'Pastel pink', 'p-peach': 'Pastel peach', 'p-butter': 'Pastel yellow', 'p-mint': 'Pastel mint', 'p-sky': 'Pastel sky', 'p-coral': 'Pastel coral' };
+const GRADIENTS = {
+  'g-ocean': ['#3fb2ec', '#7b93ff'], 'g-dusk': ['#6574f2', '#c08bff'], 'g-grape': ['#a98bfa', '#ee6eae'], 'g-sunset': ['#ff8a5c', '#ee6eae'],
+  'g-fire': ['#ef6a6a', '#e9a43a'], 'g-citrus': ['#e9a43a', '#9cc23c'], 'g-aurora': ['#36c08c', '#3fb2ec'], 'g-candy': ['#a6e3c8', '#cbb7ff'],
+};
+const SOLID_KEYS = Object.keys(COLORS).filter(k => !k.startsWith('p-')), PASTEL_KEYS = Object.keys(COLORS).filter(k => k.startsWith('p-'));
+const isHex = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+/* { c1, c2 }: c2 is set for gradients */
+function colorOf(c) {
+  if (COLORS[c]) return { c1: COLORS[c], c2: null };
+  if (GRADIENTS[c]) return { c1: GRADIENTS[c][0], c2: GRADIENTS[c][1] };
+  if (isHex(c)) return { c1: c, c2: null };
+  return { c1: COLORS.default, c2: null };
+}
+function colorName(c) {
+  if (COLOR_NAMES[c]) return COLOR_NAMES[c];
+  if (GRADIENTS[c]) return c.slice(2)[0].toUpperCase() + c.slice(3) + ' gradient';
+  if (isHex(c)) return 'Custom ' + c;
+  return c[0].toUpperCase() + c.slice(1);
+}
+function swatchBtn(k, on, attr) {
+  const { c1, c2 } = colorOf(k), bg = c2 ? `linear-gradient(135deg,${c1},${c2})` : c1;
+  return `<button class="sw${on ? ' on' : ''}" data-${attr}="${k}" style="--sw:${bg};--swr:${c1}" title="${esc(colorName(k))}" aria-label="${esc(colorName(k))}"></button>`;
+}
+/* Node shapes. "round" (the default) and "rect" are the node's own box; the others are drawn around the
+   text with an SVG outline (see drawShape). Colour styles: where the node's colour shows. */
+const SHAPES = [['round', 'Rounded'], ['rect', 'Rectangle'], ['pill', 'Pill · start / end'], ['ellipse', 'Ellipse'], ['diamond', 'Diamond · decision'], ['para', 'Parallelogram · input / output'], ['hex', 'Hexagon · preparation'], ['doc', 'Document'], ['cyl', 'Cylinder · database']];
+const ACCENTS = [['top', 'Top line'], ['full', 'Full outline'], ['bottom', 'Bottom line'], ['left', 'Left side'], ['none', 'No outline']];
 /* What a connection means. "Default" (no type) is a plain line. Each type colours the line and its
    arrow and shows a small icon badge in the middle of the line. */
 const EDGE_TYPES = {
@@ -108,7 +141,9 @@ function migrate(doc) {
     e.nodes.forEach(n => {
       if (!NODE_W[n.type]) n.type = 'note';
       n.w = +n.w || NODE_W[n.type]; n.x = +n.x || 0; n.y = +n.y || 0;
-      n.color = COLORS[n.color] ? n.color : 'default';
+      n.color = COLORS[n.color] || GRADIENTS[n.color] || isHex(n.color) ? n.color : 'default';
+      if (!SHAPES.some(s => s[0] === n.shape) || n.shape === 'round') delete n.shape;
+      if (!ACCENTS.some(s => s[0] === n.accent)) delete n.accent;
       if (n.hidden !== true) delete n.hidden;
       n.blocks = Array.isArray(n.blocks) ? n.blocks : [];
       ['tag', 'title', 'subtitle'].forEach(k => { if (typeof n[k] !== 'string') n[k] = ''; });

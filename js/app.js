@@ -535,6 +535,99 @@ function copyText() {
   try { navigator.clipboard.writeText(text).then(done, fallback); } catch (_) { fallback(); }
   return text;
 }
+/* ---------- "Copy as image": the selected nodes (with their connections, and the frames of panels
+   that are fully selected) as a PNG with a see-through background. Visitors can do this too.
+   The nodes are copied into an off-screen stage and drawn with html-to-image, loaded when first used. */
+const H2I_URL = 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js';
+let H2I = null;
+function loadH2I() {
+  if (!H2I) H2I = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = H2I_URL; s.crossOrigin = 'anonymous';
+    s.onload = () => window.htmlToImage ? res(window.htmlToImage) : rej(new Error('image tool missing'));
+    s.onerror = () => { H2I = null; rej(new Error('Could not load the image tool (are you offline?)')); };
+    document.head.appendChild(s);
+  });
+  return H2I;
+}
+async function nodesPng(ids) {
+  endEdit();
+  const e = env(), F = foldMap(), set = new Set(ids.filter(id => { const n = nodeById(id); return n && !n.hidden; }));
+  if (!set.size) throw new Error('Select one or more nodes first');
+  const panels = e.panels.filter(p => { const ms = p.members.filter(id => !nodeById(id).hidden); return ms.length && ms.every(id => set.has(id)); });
+  const shown = [...set].filter(id => !F.has(id)).map(nodeById);
+  const ends = new Set([...shown.map(n => n.id), ...panels.map(p => p.id)]);
+  const edges = e.edges.filter(x => ends.has(F.get(x.from) || x.from) && ends.has(F.get(x.to) || x.to) && EDGE_EL.has(x.id));
+  /* the area to capture */
+  const rs = shown.map(n => rectOf(n, true));
+  panels.forEach(p => { const r = panelRect(p); if (r) rs.push(r, { x: r.x, y: r.y - 32, w: 160, h: 32 }); });
+  edges.forEach(x => { const r = EDGE_EL.get(x.id); try { const b = r.vis.getBBox(); rs.push({ x: b.x, y: b.y, w: b.width, h: b.height }); } catch (_) {} if (r.lab.style.display !== 'none') rs.push({ x: r.mid.x - 60, y: r.mid.y - 14, w: 120, h: 28 }); });
+  const pad = 28, x1 = Math.min(...rs.map(r => r.x)) - pad, y1 = Math.min(...rs.map(r => r.y)) - pad;
+  const W = Math.ceil(Math.max(...rs.map(r => r.x + r.w)) - x1 + pad), Hh = Math.ceil(Math.max(...rs.map(r => r.y + r.h)) - y1 + pad);
+  const lib = await loadH2I();
+  /* the stage: copies of the panel frames, lines, labels and nodes, shifted so the area starts at 0,0 */
+  const stage = document.createElement('div');
+  stage.className = 'snap';
+  /* it has to be on screen to be drawn, so it sits behind the app for the moment it exists */
+  stage.style.cssText = `position:fixed;left:0;top:0;z-index:-1;width:${W}px;height:${Hh}px;overflow:hidden;pointer-events:none`;
+  const layer = () => { const d = document.createElement('div'); d.style.cssText = `position:absolute;left:0;top:0;transform:translate(${-x1}px,${-y1}px)`; stage.appendChild(d); return d; };
+  const pl = layer();
+  panels.forEach(p => { const el = PANEL_EL.get(p.id); if (el) { const c = el.cloneNode(true); c.classList.remove('sel', 'drop', 'conn-target', 'pf-anim'); pl.appendChild(c); } });
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.setAttribute('width', W); svg.setAttribute('height', Hh);
+  svg.style.cssText = 'position:absolute;left:0;top:0;overflow:visible';
+  svg.appendChild($('#edges defs').cloneNode(true));
+  const g = document.createElementNS(SVGNS, 'g');
+  g.setAttribute('transform', `translate(${-x1},${-y1})`);
+  edges.forEach(x => {
+    const r = EDGE_EL.get(x.id), c = r.g.cloneNode(true);
+    $$('.hit, .bend, .bend-hit', c).forEach(k => k.remove());
+    c.classList.remove('sel', 'rel', 'draw');
+    const vis = c.querySelector('.vis');
+    vis.removeAttribute('mask');
+    if (x.arrow) vis.setAttribute('marker-end', EDGE_TYPES[x.type] ? `url(#arrow-t-${x.type})` : 'url(#arrow)'); else vis.removeAttribute('marker-end');
+    g.appendChild(c);
+  });
+  svg.appendChild(g);
+  stage.appendChild(svg);
+  const ll = layer();
+  edges.forEach(x => { const r = EDGE_EL.get(x.id); if (r.lab.style.display !== 'none') { const c = r.lab.cloneNode(true); c.classList.remove('lab-in'); ll.appendChild(c); } });
+  const nl = layer();
+  shown.forEach((n, i) => {
+    const c = NODE_EL.get(n.id).cloneNode(true);
+    c.classList.remove('sel', 'hl', 'lifted', 'pop', 'editing', 'drop-target', 'conn-target', 'leaving');
+    c.style.transform = `translate(${n.x}px,${n.y}px)`;
+    c.style.filter = '';
+    c.style.zIndex = e.nodes.indexOf(n) + 1;
+    nl.appendChild(c);
+  });
+  document.body.appendChild(stage);
+  try {
+    await document.fonts.ready;
+    const ratio = Math.min(2, 8000 / Math.max(W, Hh));
+    return await lib.toBlob(stage, { pixelRatio: ratio, style: { zIndex: 'auto' }, imagePlaceholder: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==' });
+  } finally { stage.remove(); }
+}
+/* copy to the clipboard; where that isn't allowed, save the picture as a file instead */
+function copyAsPng(ids) {
+  const list = [...new Set(ids)];
+  const k = list.length;
+  toast(k > 1 ? `Making an image of ${k} nodes…` : 'Making an image…');
+  const png = nodesPng(list);
+  const save = () => png.then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(env().name || 'flogic').replace(/[^\w\- ]+/g, '').trim() || 'flogic'}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Your browser could not copy images, so it was saved as a file instead');
+  }).catch(err => toast(err.message || 'Could not make the image', { type: 'err' }));
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error('no clipboard');
+    navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+      .then(() => toast(k > 1 ? `Copied ${k} nodes as an image` : 'Copied as an image'), () => png.then(save, err => toast(err.message || 'Could not make the image', { type: 'err' })));
+  } catch (_) { save(); }
+}
 function pasteData(data, at) {
   if (!data || !Array.isArray(data.nodes) || !data.nodes.length) return;
   const tmp = migrate({ envs: [{ id: 'x', name: 'x', nodes: clone(data.nodes), edges: clone(data.edges || []), groups: [] }] }).envs[0];
@@ -687,6 +780,7 @@ function groupMenu(g) {
     { label: 'Rename', icon: 'edit', fn: () => renameFrame('g', g.id) },
     { label: 'Put in a new panel', icon: 'panel', kbd: 'P', fn: () => { selectNodes(g.members); panelFromSel(); } },
     { label: 'Tidy up', icon: 'tidy', fn: () => { selectNodes(g.members); tidySel(); } },
+    { label: 'Copy group as image', icon: 'image', fn: () => copyAsPng(g.members) },
     { label: 'Ungroup', icon: 'group', kbd: MOD + '⇧G', fn: () => { selectNodes(g.members); ungroupSel(); } },
     '-',
     { label: 'Delete group and its nodes', icon: 'trash', danger: true, fn: () => { selectNodes(g.members); deleteSel(); } },
@@ -802,6 +896,7 @@ function panelMenu(p) {
     { swatches: true, value: p.color || 'slate', fn: c => setPanelColor(p.id, c) },
     '-',
     !p.folded && { label: 'Tidy up', icon: 'tidy', fn: () => { selectPanel(p.id); tidySel(); } },
+    { label: 'Copy panel as image', icon: 'image', fn: () => copyAsPng(p.members) },
     { label: 'Remove panel (keep nodes)', icon: 'panel', fn: () => unpanel(p.id) },
     '-',
     { label: 'Delete panel and its nodes', icon: 'trash', danger: true, fn: () => { selectPanel(p.id); deleteSel(); } },
@@ -1296,7 +1391,9 @@ function onDown(e) {
     const id = ne.dataset.id;
     if (t.closest('button, a, input, textarea, select, [data-act], .src-form')) { if (!S.sel.has(id)) selectNodes(groupOrNode(id)); return; }
     if (!S.canEdit) {
-      if (!S.sel.has(id)) selectNodes(groupOrNode(id));
+      /* visitors can select several nodes with Shift (to copy them as text or an image) */
+      if (e.shiftKey) { if (S.sel.has(id)) S.sel.delete(id); else groupOrNode(id).forEach(x => S.sel.add(x)); S.edgeSel = null; refreshSel(); }
+      else if (!S.sel.has(id)) selectNodes(groupOrNode(id));
       if (t.closest('.ed')) return;   /* visitors can select and copy text; drag the node's edge or the board to pan */
       startPan(e); return;
     }
@@ -1897,6 +1994,7 @@ vp.addEventListener('contextmenu', e => {
     openMenu(x, y, [
       vsel && { label: 'Copy', icon: 'copy', kbd: MOD + 'C', fn: () => copyPlain(vsel.text) },
       vn && { label: S.sel.size > 1 ? `Copy text of ${S.sel.size} nodes` : 'Copy node as Markdown', icon: 'text2', fn: copyText },
+      (vn || S.sel.size > 0) && { label: S.sel.size > 1 ? `Copy ${S.sel.size} nodes as image` : 'Copy as image', icon: 'image', fn: () => copyAsPng([...S.sel]) },
       '-',
       target.node
         ? { label: vsel && vsel.node ? 'Suggest a change to this text…' : 'Suggest a change…', icon: 'warn', fn: () => openSuggestForm(target) }
@@ -1962,6 +2060,7 @@ function nodeMenu(x, y) {
     { label: 'Duplicate', icon: 'copy', kbd: MOD + 'D', fn: duplicateSel },
     { label: 'Copy', icon: 'copy', kbd: MOD + 'C', fn: () => copySel() },
     { label: multi ? `Copy text of ${ns.length} nodes` : 'Copy text', icon: 'text2', kbd: MOD + '⌥C', fn: copyText },
+    { label: multi ? `Copy ${ns.length} nodes as image` : 'Copy as image', icon: 'image', fn: () => copyAsPng(ns.map(m => m.id)) },
     '-',
     { head: 'Turn into' },
     ...['title', 'note', 'sub', 'shape'].map(t => ({ label: NODE_LABEL[t], icon: t, check: cur === t, fn: () => setType(t) })),
@@ -1976,8 +2075,10 @@ function nodeMenu(x, y) {
     ...panelMenuItems(ns.map(m => m.id)),
     '-',
     { label: 'Hide', icon: 'eyeoff', kbd: MOD + '⇧H', fn: () => toggleHidden(ns.map(m => m.id)) },
-    { label: 'Bring to front', icon: 'front', fn: () => reorder(true) },
-    { label: 'Send to back', icon: 'back', fn: () => reorder(false) },
+    { label: 'Bring to front', icon: 'front', kbd: MOD + '⇧]', fn: () => reorder(true) },
+    { label: 'Bring forward', icon: 'front', kbd: MOD + ']', fn: () => stepZ(1) },
+    { label: 'Send backward', icon: 'back', kbd: MOD + '[', fn: () => stepZ(-1) },
+    { label: 'Send to back', icon: 'back', kbd: MOD + '⇧[', fn: () => reorder(false) },
     '-',
     { label: multi ? `Delete ${ns.length} nodes` : 'Delete', icon: 'trash', kbd: 'Del', danger: true, fn: deleteSel },
   ];
@@ -2085,6 +2186,7 @@ window.addEventListener('keydown', e => {
   if (mod && k === 'd') { e.preventDefault(); duplicateSel(); return; }
   if (mod && e.shiftKey && k === 'h') { e.preventDefault(); toggleHidden([...S.sel]); return; }
   if (mod && k === 'g') { e.preventDefault(); e.shiftKey ? ungroupSel() : groupSel(); return; }
+  if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft')) { e.preventDefault(); const up = e.code === 'BracketRight'; if (e.shiftKey) reorder(up); else stepZ(up ? 1 : -1); return; }
   if (k === 'p' && !mod && !e.altKey) { e.preventDefault(); panelFromSel(); return; }
   if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSel(); return; }
   if (e.key.startsWith('Arrow')) {
@@ -2154,8 +2256,10 @@ function applyFocusLevel() {
   const f = focusLevel(), btn = $('[data-cmd="focus"]');
   if (btn) btn.classList.toggle('on', f > 0);
   FOC.on = f > 0;
-  if (!f) { veil.style.display = 'none'; return; }
-  const blur = 0.5 + 7.5 * Math.pow(f, 1.4), sat = 1 - 0.45 * Math.pow(f, 1.5), dim = 42 * Math.pow(f, 1.6);
+  /* everything grows from zero: about 0.25px of blur at 10% (only there if you look for it), 8px at 100%.
+     Below about 3% there is nothing to see, so the veil is left off (it costs a little to draw). */
+  const blur = 8 * Math.pow(f, 1.5), sat = 1 - 0.45 * Math.pow(f, 2), dim = 40 * Math.pow(f, 2.2);
+  if (blur < 0.04) { veil.style.display = 'none'; FOC.on = false; return; }
   veil.style.display = 'block';
   veil.style.backdropFilter = veil.style.webkitBackdropFilter = `blur(${blur.toFixed(2)}px) saturate(${sat.toFixed(2)})`;
   veil.style.background = `color-mix(in srgb,var(--bg) ${dim.toFixed(1)}%,transparent)`;
@@ -2175,7 +2279,7 @@ function focusTarget() {
 function focusMask() {
   const f = focusLevel();
   if (!f) return;
-  const big = Math.max(VR.width, VR.height), r = big * 0.62 + (150 - big * 0.62) * Math.pow(f, 0.6), inner = r * (0.5 - 0.12 * f);
+  const big = Math.max(VR.width, VR.height), r = big * 0.85 + (150 - big * 0.85) * Math.pow(f, 0.75), inner = r * (0.55 - 0.15 * f);
   /* a smooth (smoothstep) falloff from sharp to fully soft */
   const at = k => (inner + (r - inner) * k).toFixed(1) + 'px';
   const m = `radial-gradient(circle at ${FOC.x.toFixed(1)}px ${FOC.y.toFixed(1)}px,transparent ${inner.toFixed(1)}px,rgba(0,0,0,.12) ${at(0.22)},rgba(0,0,0,.43) ${at(0.45)},rgba(0,0,0,.78) ${at(0.7)},#000 ${at(1)})`;
@@ -2218,7 +2322,56 @@ function openFocusMenu(btn) {
 }
 setTimeout(applyFocusLevel, 50);
 
-/* environments */function switchEnv(id) {
+/* environments *//* Change the icon of an environment or a category: a built-in icon, one of your icons, or any emoji or
+   symbol typed in. The preview at the top shows the row as it will look. */
+const EMOJIS = ['📁', '📂', '🗂️', '📌', '📍', '⭐', '✨', '🔥', '💡', '🧠', '🎯', '🚀', '🧪', '🔬', '🧬', '⚗️', '📐', '📊', '📈', '🗺️', '🌍', '🏛️', '⚖️', '💬',
+  '📝', '📚', '🎨', '🎵', '🎮', '🛠️', '⚙️', '🔒', '🔑', '💰', '❤️', '✅', '❓', '❗', '⚠️', '🌱', '🌙', '☀️', '⚡', '🧩', '🏁', '👀', '🤖', '🐙',
+  '◆', '●', '■', '▲', '★', '✦', '◎', '§', '¶', '∑', 'π', 'Ω', 'λ', '∞', '→', '#'];
+function openNavIconPicker(kind, id) {
+  if (!S.canEdit) return;
+  const item = kind === 'env' ? DOC.envs.find(x => x.id === id) : (DOC.folders || []).find(x => x.id === id);
+  if (!item) return;
+  const fallback = kind === 'env' ? 'board' : 'folder';
+  let pick = item.icon || '';
+  const m = openModal(`<div class="mhead"><h3>Icon for “${esc(item.name)}”</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div>
+    <div class="mbody ipick">
+      <div class="ni-prev ${kind === 'env' ? 'env active' : 'efold open'}" id="ni-prev"></div>
+      <div class="ip-head"><b>Emoji or symbol</b><small>type, paste, or press Win + . (Mac: Ctrl + Cmd + Space)</small></div>
+      <div class="ni-row"><input id="ni-text" maxlength="16" placeholder="Type an emoji or symbol…" autocomplete="off" value="${esc(pick.startsWith('t:') ? pick.slice(2) : '')}"><button class="btn sm" id="ni-emo" title="Pick an emoji" aria-label="Pick an emoji">😊</button></div>
+      <div class="ni-emojis" id="ni-emojis" hidden>${EMOJIS.map(x => `<button class="ipi" data-icon="t:${esc(x)}">${esc(x)}</button>`).join('')}</div>
+      <div class="ip-head"><b>Icons</b></div>
+      <div class="ipgrid">${BUILTIN_ICONS.concat(['folder', 'folderopen', 'board']).filter((k, i, a) => ICONS[k] && a.indexOf(k) === i).map(k => `<button class="ipi" data-icon="b:${k}" title="${k}">${ic(k, 20)}</button>`).join('')}</div>
+      ${(DOC.icons || []).length ? `<div class="ip-head"><b>Your icons</b></div><div class="ipgrid">${DOC.icons.map(x => `<button class="ipi" data-icon="u:${x.id}" title="${esc(x.name)}"><img src="${esc(imgSrc(x.src))}" alt="${esc(x.name)}"></button>`).join('')}</div>` : ''}
+      <div class="mrow"><button class="btn" id="ni-reset">Default icon</button><span class="grow"></span><button class="btn" data-close>Cancel</button><button class="btn primary" id="ni-ok">Use this icon</button></div>
+    </div>`);
+  const prev = $('#ni-prev', m.el), txt = $('#ni-text', m.el);
+  const show = () => {
+    prev.innerHTML = `<span class="eic">${navIcon(pick, fallback, kind === 'env' ? 15 : 13)}</span><span class="nm">${esc(item.name)}</span>`;
+    $$('[data-icon]', m.el).forEach(b => b.classList.toggle('on', b.dataset.icon === pick));
+  };
+  show();
+  const save = v => {
+    m.close();
+    if ((item.icon || '') === v) return;
+    checkpoint();
+    if (v) item.icon = v; else delete item.icon;
+    changed(); renderEnvs();
+  };
+  txt.addEventListener('input', () => { const v = txt.value.trim(); pick = v ? 't:' + v : ''; show(); });
+  txt.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') save(pick); });
+  $('#ni-emo', m.el).addEventListener('click', () => { const g = $('#ni-emojis', m.el); g.hidden = !g.hidden; });
+  m.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-icon]');
+    if (!b) return;
+    pick = b.dataset.icon;
+    txt.value = pick.startsWith('t:') ? pick.slice(2) : '';
+    show();
+  });
+  m.el.addEventListener('dblclick', e => { const b = e.target.closest('[data-icon]'); if (b) save(b.dataset.icon); });
+  $('#ni-ok', m.el).addEventListener('click', () => save(pick));
+  $('#ni-reset', m.el).addEventListener('click', () => save(''));
+  setTimeout(() => txt.focus(), 30);
+}function switchEnv(id) {
   endEdit();
   if (!DOC.envs.some(e => e.id === id)) id = DOC.envs[0].id;
   S.envId = id; UI.envId = id;
@@ -2396,6 +2549,7 @@ envList.addEventListener('contextmenu', e => {
     openMenu(e.clientX, e.clientY, [
       { label: 'New environment here', icon: 'plus', fn: () => addEnv(id) },
       { label: 'Rename category', icon: 'edit', fn: () => renameFolderInline(id) },
+      { label: 'Change icon…', icon: 'shape', fn: () => openNavIconPicker('fold', id) },
       { label: 'Move up', icon: 'chev', disabled: i === 0, fn: () => moveFolder(id, -1) },
       { label: 'Move down', icon: 'chev', disabled: i === DOC.folders.length - 1, fn: () => moveFolder(id, 1) },
       '-',
@@ -2406,6 +2560,7 @@ envList.addEventListener('contextmenu', e => {
   const id = row.dataset.env, env0 = DOC.envs.find(x => x.id === id), folders = DOC.folders || [];
   openMenu(e.clientX, e.clientY, [
     { label: 'Rename', icon: 'edit', fn: () => renameEnvInline(id) },
+    { label: 'Change icon…', icon: 'shape', fn: () => openNavIconPicker('env', id) },
     { label: 'Duplicate', icon: 'copy', fn: () => duplicateEnv(id) },
     { label: 'Move up', icon: 'chev', disabled: !envNeighbour(id, -1), fn: () => moveEnv(id, -1) },
     { label: 'Move down', icon: 'chev', disabled: !envNeighbour(id, 1), fn: () => moveEnv(id, 1) },
@@ -2420,7 +2575,16 @@ envList.addEventListener('contextmenu', e => {
 /* drag environments: onto a category to file them, between rows to reorder, onto blank space to un-file */
 let ENV_DRAG = null;
 const clearEnvDrop = () => $$('.drop-in, .drop-before, .drop-after', envList).forEach(x => x.classList.remove('drop-in', 'drop-before', 'drop-after'));
+let FOLD_DRAG = null;   // a category being dragged to reorder the categories
 envList.addEventListener('dragstart', e => {
+  const fold = e.target.closest('.efold[draggable]');
+  if (fold) {
+    FOLD_DRAG = fold.dataset.fold;
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', fold.querySelector('.nm').textContent); } catch (_) {}
+    requestAnimationFrame(() => fold.classList.add('dragging'));
+    return;
+  }
   const row = e.target.closest('.env[draggable]');
   if (!row) return;
   ENV_DRAG = row.dataset.env;
@@ -2428,7 +2592,16 @@ envList.addEventListener('dragstart', e => {
   try { e.dataTransfer.setData('text/plain', row.querySelector('.nm').textContent); } catch (_) {}
   requestAnimationFrame(() => row.classList.add('dragging'));
 });
-envList.addEventListener('dragend', () => { ENV_DRAG = null; clearEnvDrop(); $$('.env.dragging', envList).forEach(x => x.classList.remove('dragging')); });
+envList.addEventListener('dragend', () => { ENV_DRAG = FOLD_DRAG = null; clearEnvDrop(); $$('.dragging', envList).forEach(x => x.classList.remove('dragging')); });
+/* where a dragged category would go: above or below another category */
+function foldDropTarget(e) {
+  const host = e.target.closest('.efold, [data-fold-items]');
+  if (!host) return null;
+  const head = host.classList.contains('efold') ? host : host.previousElementSibling;
+  if (!head || head.dataset.fold === FOLD_DRAG) return null;
+  const r = head.getBoundingClientRect(), after = host !== head || e.clientY > r.top + r.height / 2;
+  return { fold: head.dataset.fold, el: head, mode: after ? 'after' : 'before' };
+}
 function envDropTarget(e) {
   const fold = e.target.closest('.efold, .efold-empty');
   if (fold) return { folder: fold.closest('[data-fold-items]') ? fold.closest('[data-fold-items]').dataset.foldItems : fold.dataset.fold, el: fold.classList.contains('efold') ? fold : fold.closest('[data-fold-items]').previousElementSibling, mode: 'in' };
@@ -2441,14 +2614,25 @@ function envDropTarget(e) {
   return null;
 }
 envList.addEventListener('dragover', e => {
-  if (!ENV_DRAG) return;
+  if (!ENV_DRAG && !FOLD_DRAG) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   clearEnvDrop();
-  const t = envDropTarget(e);
+  const t = FOLD_DRAG ? foldDropTarget(e) : envDropTarget(e);
   if (t && t.el) t.el.classList.add('drop-' + t.mode);
 });
 envList.addEventListener('drop', e => {
+  if (FOLD_DRAG) {
+    e.preventDefault();
+    const t = foldDropTarget(e), fs = DOC.folders, f = fs.find(x => x.id === FOLD_DRAG);
+    clearEnvDrop();
+    if (!t || !f) return;
+    checkpoint();
+    fs.splice(fs.indexOf(f), 1);
+    fs.splice(fs.findIndex(x => x.id === t.fold) + (t.mode === 'after' ? 1 : 0), 0, f);
+    changed(); renderEnvs();
+    return;
+  }
   if (!ENV_DRAG) return;
   e.preventDefault();
   const t = envDropTarget(e), id = ENV_DRAG;
@@ -2520,31 +2704,39 @@ layersEl.addEventListener('contextmenu', e => {
   if (!S.sel.has(row.dataset.id)) selectNodes([row.dataset.id]);
   openMenu(e.clientX, e.clientY, nodeMenu(e.clientX, e.clientY));
 });
-/* Drag rows in Layers: onto a panel (or anything inside it) to move them into that panel, onto a group
-   (or a node in it) to add nodes to that group, onto a loose row or empty space to take them out. */
+/* Drag rows in Layers to change what is drawn on top (rows higher up are in front) and where things
+   live: drop between rows to place them there (joining the panel or group those rows are in), onto a
+   panel or group row to put them inside it, or onto the empty space below to send them to the back,
+   outside any panel or group. */
 let LDRAG = null;
-const clearLDrop = () => { $$('.ldrop', layersEl).forEach(x => x.classList.remove('ldrop')); layersEl.classList.remove('ldrop-out'); };
+const clearLDrop = () => { $$('.ldrop, .ldrop-before, .ldrop-after', layersEl).forEach(x => x.classList.remove('ldrop', 'ldrop-before', 'ldrop-after')); layersEl.classList.remove('ldrop-out'); };
 layersEl.addEventListener('dragstart', e => {
   const row = e.target.closest('.layer[draggable]');
   if (!row || !S.canEdit) return;
   let ids = rowNodes(row);
   if (row.dataset.id && S.sel.has(row.dataset.id) && S.sel.size > 1) ids = [...S.sel];
-  LDRAG = { ids, group: row.dataset.g || null };
+  LDRAG = { ids, group: row.dataset.g || null, panel: row.dataset.p || null };
   e.dataTransfer.effectAllowed = 'move';
   try { e.dataTransfer.setData('text/plain', row.querySelector('.nm').textContent); } catch (_) {}
   requestAnimationFrame(() => row.classList.add('dragging'));
 });
 layersEl.addEventListener('dragend', () => { LDRAG = null; clearLDrop(); $$('.layer.dragging', layersEl).forEach(x => x.classList.remove('dragging')); });
+/* { panel, group: where the nodes end up; anchor + front: in front of / behind which nodes; el + mark: what to highlight } */
 function layerDropTarget(e) {
-  const row = e.target.closest('.layer');
-  if (!row) return { panel: null, group: null, el: null };
-  if (row.dataset.p) return { panel: row.dataset.p, group: null, el: row };
-  const first = rowNodes(row)[0], p = first && panelOf(first);
-  const g = row.dataset.g ? groupById(row.dataset.g) : first && groupOf(first);
-  /* a dragged group can only go into a panel, so it ignores the group it is dropped on */
-  const useG = g && !LDRAG.group ? g : null;
-  const el = useG ? layersEl.querySelector(`.layer[data-g="${useG.id}"]`) : p ? layersEl.querySelector(`.layer[data-p="${p.id}"]`) : null;
-  return { panel: p ? p.id : null, group: useG ? useG.id : null, el };
+  const d = LDRAG, row = e.target.closest('.layer');
+  if (!row) return { panel: null, group: null, anchor: env().nodes.map(n => n.id), front: false, el: null, mark: 'out' };
+  const r = row.getBoundingClientRect(), y = (e.clientY - r.top) / r.height;
+  if (row.dataset.p || row.dataset.g) {
+    const box = row.dataset.p ? panelById(row.dataset.p) : groupById(row.dataset.g), members = box ? box.members.slice() : [];
+    const home = row.dataset.g && members.length ? panelOf(members[0]) : null;
+    /* the top of a panel or group row places things in front of it; the rest puts them inside it
+       (a dragged group or panel can't go inside a group, and a panel can't go inside anything) */
+    const inside = !(d.panel || (d.group && row.dataset.g)) && y > 0.3;
+    if (inside) return { panel: row.dataset.p || (home && home.id) || null, group: row.dataset.g || null, anchor: members, front: true, el: row, mark: 'in' };
+    return { panel: row.dataset.p ? null : home ? home.id : null, group: null, anchor: members, front: y <= 0.5, el: row, mark: y <= 0.5 ? 'before' : 'after' };
+  }
+  const id = row.dataset.id, p = panelOf(id), g = groupOf(id), before = y <= 0.5;
+  return { panel: p ? p.id : null, group: g && !d.group && !d.panel ? g.id : null, anchor: [id], front: before, el: row, mark: before ? 'before' : 'after' };
 }
 layersEl.addEventListener('dragover', e => {
   if (!LDRAG) return;
@@ -2552,9 +2744,19 @@ layersEl.addEventListener('dragover', e => {
   e.dataTransfer.dropEffect = 'move';
   clearLDrop();
   const t = layerDropTarget(e);
-  if (t.el) t.el.classList.add('ldrop'); else layersEl.classList.add('ldrop-out');
+  if (!t.el) layersEl.classList.add('ldrop-out');
+  else t.el.classList.add(t.mark === 'in' ? 'ldrop' : 'ldrop-' + t.mark);
 });
 layersEl.addEventListener('dragleave', e => { if (!layersEl.contains(e.relatedTarget)) clearLDrop(); });
+/* move nodes in the drawing order: just in front of (or behind) the anchor nodes */
+function moveInZ(ids, anchor, front) {
+  const e = env(), set = new Set(ids), moving = e.nodes.filter(n => set.has(n.id)), rest = e.nodes.filter(n => !set.has(n.id));
+  const at = anchor.map(id => rest.findIndex(n => n.id === id)).filter(i => i >= 0);
+  if (!moving.length) return;
+  const i = !at.length ? (front ? rest.length : 0) : front ? Math.max(...at) + 1 : Math.min(...at);
+  rest.splice(i, 0, ...moving);
+  e.nodes = rest;
+}
 layersEl.addEventListener('drop', e => {
   const d = LDRAG;
   if (!d) return;
@@ -2563,18 +2765,28 @@ layersEl.addEventListener('drop', e => {
   clearLDrop();
   const en = env(), ids = d.ids.filter(id => nodeById(id));
   if (!ids.length) return;
-  const g = t.group && groupById(t.group);
-  if (g && ids.every(id => g.members.includes(id))) return;
   endEdit(); checkpoint();
-  setPanel(ids, t.panel, true);
-  if (!d.group) {
-    /* nodes leave the groups they were in, unless they were dropped back into the same group */
-    en.groups.forEach(x => { if (x !== g) x.members = x.members.filter(id => !ids.includes(id)); });
-    if (g) ids.forEach(id => { if (!g.members.includes(id)) g.members.push(id); });
+  if (!d.panel) {
+    setPanel(ids, t.panel, true);
+    const g = t.group && groupById(t.group);
+    if (!d.group) {
+      /* nodes leave the groups they were in, unless they were dropped inside the same group */
+      en.groups.forEach(x => { if (x !== g) x.members = x.members.filter(id => !ids.includes(id)); });
+      if (g) ids.forEach(id => { if (!g.members.includes(id)) g.members.push(id); });
+    }
   }
-  structureChanged(); refreshSel();
+  moveInZ(ids, t.anchor.filter(id => !ids.includes(id)), t.front);
+  syncZ(); structureChanged(); refreshSel();
 });
-
+/* one step forward or back in the drawing order */
+function stepZ(dir) {
+  const e = env(), ns = e.nodes;
+  if (!S.sel.size) return;
+  checkpoint();
+  if (dir > 0) for (let i = ns.length - 2; i >= 0; i--) { if (S.sel.has(ns[i].id) && !S.sel.has(ns[i + 1].id)) [ns[i], ns[i + 1]] = [ns[i + 1], ns[i]]; }
+  else for (let i = 1; i < ns.length; i++) { if (S.sel.has(ns[i].id) && !S.sel.has(ns[i - 1].id)) [ns[i], ns[i - 1]] = [ns[i - 1], ns[i]]; }
+  syncZ(); renderLayers(); changed();
+}
 /* Layers: drag on empty space to box-select rows; click empty space to deselect everything */
 let LMQ = null;
 layersEl.addEventListener('pointerdown', e => {

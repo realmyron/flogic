@@ -372,15 +372,35 @@ function roundedPath(raw, r) {
 }
 /* Two side-dots that are almost level (or almost in line) get the same height (or x), so the line is
    perfectly straight. This also keeps lines straight when a node is a little taller in edit mode
-   (because of its "+ Item" style buttons) than it is for visitors. */
+   (because of its "+ Item" style buttons) than it is for visitors.
+   Only one end moves: `keep` says which stays in the middle of its side (1: the first, -1: the second),
+   and the other slides along its side to meet it. If the end that stays isn't level with the other node,
+   the line is left as it is. See levelKeep for which end that is. */
 const STRAIGHTEN = 40;
-function straighten(p1, s1, ra, p2, s2, rb) {
+function straighten(p1, s1, ra, p2, s2, rb, keep) {
   const h1 = s1 === 'l' || s1 === 'r', h2 = s2 === 'l' || s2 === 'r';
-  if (h1 !== h2) return;
+  if (h1 !== h2 || !keep) return;
   const k = h1 ? 'y' : 'x', pos = h1 ? 'y' : 'x', size = h1 ? 'h' : 'w';
   const lo = Math.max(ra[pos], rb[pos]) + 12, hi = Math.min(ra[pos] + ra[size], rb[pos] + rb[size]) - 12;
-  if (lo > hi || Math.abs(p1[k] - p2[k]) > STRAIGHTEN) return;
-  p1[k] = p2[k] = clamp((p1[k] + p2[k]) / 2, lo, hi);
+  const v = keep > 0 ? p1[k] : p2[k];
+  if (lo > hi || Math.abs(p1[k] - p2[k]) > STRAIGHTEN || v < lo || v > hi) return;
+  p1[k] = p2[k] = v;
+}
+/* the sides of each shape that are straight, so a line can meet them off-centre (elsewhere it has to meet
+   the tip or the curve, so that end never slides) */
+const FLAT_SIDES = { rect: 'tblr', round: 'tblr', pill: 'tb', para: 'tb', hex: 'tb', doc: 'tlr', cyl: 'lr' };
+/* Which end of a nearly level line stays put (1: its start a, -1: its end b, 0: neither may move, so it isn't
+   levelled). A normal node's end never moves for a shape: the shape's end slides to meet it (if that side
+   of the shape is straight), so resizing or swapping a shape never shifts the lines on the node it joins.
+   Between two notes (or two shapes) the node with more lines stays put, and on a tie the line's start. */
+function levelKeep(a, s1, b, s2, deg) {
+  const na = nodeById(a), nb = nodeById(b), sa = isShapeNode(na), sb = isShapeNode(nb);
+  const slides = (n, sh, side) => !sh || (FLAT_SIDES[n.shape || 'rect'] || '').includes(side);
+  const ma = slides(na, sa, s1), mb = slides(nb, sb, s2);
+  if (sa !== sb) return sa ? (ma ? -1 : 0) : (mb ? 1 : 0);
+  if (!ma && !mb) return 0;
+  if (!ma || !mb) return ma ? -1 : 1;
+  return deg.get(b) > deg.get(a) ? -1 : 1;
 }
 function sidePoint(r, side, off) {
   if (side === 't') return { x: r.x + r.w / 2 + off, y: r.y };
@@ -689,11 +709,14 @@ function drawEdges() {
     if (!ra || !rb) continue;
     list.push({ ed, a, b, ra, rb, s1: ed.fs, s2: ed.ts, o1: 0, o2: 0 });
   }
-  /* 2. draw. Lines that meet the same side of a node share its middle point and overlap there. */
+  /* 2. draw. Lines that meet the same side of a node share its middle point and overlap there.
+     A nearly level line is made straight by sliding one of its ends (see levelKeep). */
+  const deg = new Map();
+  for (const it of list) { deg.set(it.a, (deg.get(it.a) || 0) + 1); deg.set(it.b, (deg.get(it.b) || 0) + 1); }
   for (const it of list) {
     const ed = it.ed, style = lineStyle(ed);
     const p1 = shapeAdjust(it.a, it.s1, sidePoint(it.ra, it.s1, it.o1)), p2 = shapeAdjust(it.b, it.s2, sidePoint(it.rb, it.s2, it.o2));
-    if (!ed.bend) straighten(p1, it.s1, it.ra, p2, it.s2, it.rb);
+    if (!ed.bend) straighten(p1, it.s1, it.ra, p2, it.s2, it.rb, levelKeep(it.a, it.s1, it.b, it.s2, deg));
     let avoid = null;
     if (style === 'geometric') {
       /* steer around other nodes, but not around the nodes inside a connected panel */

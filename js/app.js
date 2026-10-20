@@ -2282,37 +2282,20 @@ function bgPulse(wx, wy, color, size = 1, strength = 1, implode = false) {
   gridKick();
 }
 const sstep = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
-/* a small round glow, drawn once per colour and reused */
-const HALOS = new Map();
-function haloSprite(c) {
-  const k = c.join(',');
-  if (HALOS.has(k)) return HALOS.get(k);
-  const cv = document.createElement('canvas'); cv.width = cv.height = 32;
-  const x = cv.getContext('2d'), g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
-  g.addColorStop(0, `rgba(${k},1)`); g.addColorStop(0.35, `rgba(${k},.55)`); g.addColorStop(1, `rgba(${k},0)`);
-  x.fillStyle = g; x.fillRect(0, 0, 32, 32);
-  HALOS.set(k, cv);
-  return cv;
-}
 /* light the dots in a box (screen px) with intensity f(x, y) in 0..1 */
 function gridDots(x1, y1, x2, y2, c, f) {
   let g = GRID * V.z;
   while (g < 14) g *= 4;
-  /* on a light board light doesn't show against the light ground, so the dots there are fuller, a little
-     bigger and sit in a soft wash of their own colour; on a dark board they glow as they are */
-  const P = gridPal(), base = P.dark ? 0.9 : 1, gain = P.dark ? 1 : 1.4, hk = P.dark ? 0.32 : 0.26;
+  /* just the dots, no glow; on a light board they're a little fuller so they still show */
+  const P = gridPal(), base = P.dark ? 0.9 : 1, gain = P.dark ? 1 : 1.25;
   const i1 = Math.ceil((x1 - V.x) / g), i2 = Math.floor((x2 - V.x) / g), j1 = Math.ceil((y1 - V.y) / g), j2 = Math.floor((y2 - V.y) / g);
   if ((i2 - i1) * (j2 - j1) > 9000) return;
   gx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
-  const halo = haloSprite(c);
   for (let i = i1; i <= i2; i++) for (let j = j1; j <= j2; j++) {
     const x = V.x + i * g, y = V.y + j * g, a = Math.min(1, f(x, y) * gain);
     if (a < 0.02) continue;
-    const hr = P.dark ? 5 + 4 * a : 6 + 6 * a;
-    gx.globalAlpha = a * hk;
-    gx.drawImage(halo, x - hr, y - hr, hr * 2, hr * 2);
     gx.globalAlpha = a * base;
-    const r = P.dark ? 1.15 + 1.05 * a : 1.2 + 1.25 * a;
+    const r = 1.15 + 1.05 * a;
     gx.beginPath(); gx.arc(x, y, r, 0, Math.PI * 2); gx.fill();
   }
   gx.globalAlpha = 1;
@@ -2332,7 +2315,7 @@ function gridFrame(now) {
   if (m === 'grid') {
     const pts = GF.trail.map(q => {
       const life = 1 - (now - q.at) / (TRAIL * 1000);
-      return life <= 0 ? null : { x: V.x + q.wx * V.z, y: V.y + q.wy * V.z, r: (80 + 40 * q.s) * (0.7 + 0.3 * life), a: q.s * Math.pow(life, 1.4) };
+      return life <= 0 ? null : { x: V.x + q.wx * V.z, y: V.y + q.wy * V.z, r: (62 + 30 * q.s) * (0.7 + 0.3 * life), a: q.s * Math.pow(life, 1.4) };
     }).filter(Boolean);
     GF.trail = GF.trail.filter(q => now - q.at < TRAIL * 1000);
     if (pts.length) {

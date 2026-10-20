@@ -2,6 +2,15 @@
  "version": 1,
  "envs": [
   {
+   "id": "eiw6bxmnsf",
+   "name": "Environment 3",
+   "nodes": [],
+   "edges": [],
+   "groups": [],
+   "folder": "f6bboigff2",
+   "panels": []
+  },
+  {
    "id": "e9cvptv8o1",
    "name": "Environment 1",
    "nodes": [
@@ -588,16 +597,8 @@
    "groups": [],
    "folder": "f6bboigff2",
    "panels": [],
-   "icon": "b:plus"
-  },
-  {
-   "id": "eiw6bxmnsf",
-   "name": "Environment 3",
-   "nodes": [],
-   "edges": [],
-   "groups": [],
-   "folder": "f6bboigff2",
-   "panels": []
+   "icon": "b:plus",
+   "link": true
   }
  ],
  "lineStyle": "geometric",

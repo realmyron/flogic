@@ -2708,9 +2708,12 @@ function openNavIconPicker(kind, id) {
   $('#ni-ok', m.el).addEventListener('click', () => save(pick));
   $('#ni-reset', m.el).addEventListener('click', () => save(''));
   setTimeout(() => txt.focus(), 30);
-}function switchEnv(id) {
+}
+/* where a visit starts: the first environment this viewer can see (for visitors, a public one) */
+function firstEnvId() { return (DOC.envs.find(envVisible) || DOC.envs[0]).id; }
+function switchEnv(id) {
   endEdit();
-  if (!DOC.envs.some(e => e.id === id)) id = DOC.envs[0].id;
+  if (!DOC.envs.some(e => e.id === id)) id = firstEnvId();
   S.envId = id; UI.envId = id;
   const fe = DOC.envs.find(x => x.id === id);
   if (fe && fe.folder) delete UI.collapsed['fold:' + fe.folder];
@@ -2735,7 +2738,9 @@ function addEnv(folderId) {
   checkpoint();
   let k = DOC.envs.length + 1;
   while (DOC.envs.some(e => e.name === 'Environment ' + k)) k++;
-  const e = makeEnv('Environment ' + k);
+  /* a new environment starts with the welcome board (fresh ids each time), ready to edit or clear */
+  const e = migrate(demoDoc()).envs[0];
+  e.name = 'Environment ' + k;
   if (folderId) { e.folder = folderId; delete UI.collapsed['fold:' + folderId]; }
   DOC.envs.push(e);
   changed();
@@ -2827,10 +2832,29 @@ function duplicateEnv(id) {
   DOC.envs.splice(DOC.envs.indexOf(src) + 1, 0, c);
   changed(); switchEnv(c.id);
 }
+/* who can see an environment: public, link only or private (see envAccess in store.js). Visitors land on
+   a public one, so at least one has to stay public. */
+const onlyListed = e => listedEnv(e) && !DOC.envs.some(x => x !== e && listedEnv(x));
+function setEnvAccess(id, mode) {
+  const e = DOC.envs.find(x => x.id === id);
+  if (!e || envAccess(e) === mode) return;
+  if (mode !== 'public' && onlyListed(e)) return toast('Keep at least one public environment, so visitors have somewhere to land');
+  checkpoint();
+  delete e.private; delete e.link;
+  if (mode !== 'public') e[mode] = true;
+  changed(); renderEnvs();
+  const msg = {
+    public: `“${e.name}” is public again. Publish to show it to visitors.`,
+    link: `“${e.name}” is link only: visitors see it only when they open its link. Publish, then share the link.`,
+    private: `“${e.name}” is private: visitors won't see it, and it stays on this device instead of being published`,
+  }[mode];
+  toast(msg, { ms: 7000, actions: [mode === 'link' && { label: 'Copy link', fn: () => share(id) }, { label: 'Undo', fn: undo }].filter(Boolean) });
+}
 function deleteEnv(id) {
   if (DOC.envs.length < 2) return toast('You need at least one environment');
   const e = DOC.envs.find(x => x.id === id);
   if (!e) return;
+  if (onlyListed(e)) return toast('This is your only public environment. Make another one public first.');
   const k = e.nodes.length;
   const m = openModal(`<div class="mhead"><h3>Delete environment?</h3><button class="icon-btn" data-close aria-label="Close">${ic('x', 16)}</button></div>
     <div class="mbody"><p class="hint" style="margin:0">“<b>${esc(e.name)}</b>” ${k ? `and its <b>${k} node${k > 1 ? 's' : ''}</b> will be removed` : 'will be removed'}. Once you publish, it is gone for visitors too.</p>
@@ -2895,13 +2919,18 @@ envList.addEventListener('contextmenu', e => {
     ]);
     return;
   }
-  const id = row.dataset.env, env0 = DOC.envs.find(x => x.id === id), folders = DOC.folders || [];
+  const id = row.dataset.env, env0 = DOC.envs.find(x => x.id === id), folders = DOC.folders || [], acc = envAccess(env0);
   openMenu(e.clientX, e.clientY, [
     { label: 'Rename', icon: 'edit', fn: () => renameEnvInline(id) },
     { label: 'Change icon…', icon: 'shape', fn: () => openNavIconPicker('env', id) },
     { label: 'Duplicate', icon: 'copy', fn: () => duplicateEnv(id) },
+    { label: 'Copy link', icon: 'link', fn: () => share(id) },
     { label: 'Move up', icon: 'chev', disabled: !envNeighbour(id, -1), fn: () => moveEnv(id, -1) },
     { label: 'Move down', icon: 'chev', disabled: !envNeighbour(id, 1), fn: () => moveEnv(id, 1) },
+    { head: 'Who can see it' },
+    { label: 'Public', icon: 'eye', check: acc === 'public', fn: () => setEnvAccess(id, 'public') },
+    { label: 'Link only', icon: 'link', check: acc === 'link', fn: () => setEnvAccess(id, 'link') },
+    { label: 'Private (only you)', icon: 'lock', check: acc === 'private', fn: () => setEnvAccess(id, 'private') },
     { head: 'Category' },
     ...folders.map(f => ({ label: f.name, icon: 'folder', check: env0.folder === f.id, fn: () => setEnvFolder(id, f.id) })),
     folderOf(env0.folder) && { label: 'No category', icon: 'board', fn: () => setEnvFolder(id, null) },
@@ -2990,7 +3019,7 @@ envList.addEventListener('drop', e => {
 });
 window.addEventListener('hashchange', () => {
   const id = (location.hash.match(/e=([\w-]+)/) || [])[1];
-  if (id && id !== S.envId && DOC.envs.some(e => e.id === id)) switchEnv(id);
+  if (id && id !== S.envId && DOC.envs.some(e => e.id === id)) { S.linked.add(id); switchEnv(id); }
 });
 
 /* layers */
@@ -3281,9 +3310,9 @@ function openHelp() {
     </div></section>
     <section><p class="hint" style="margin:0">Nodes snap to a 24px grid and line up with their neighbours, with pink guides showing the alignment. Pasting an image or a link onto the board makes a node from it.</p></section></div>`);
 }
-function share() {
-  const url = location.origin + location.pathname + '#e=' + S.envId;
-  const ok = () => toast('Link to this environment copied');
+function share(id = S.envId) {
+  const url = location.origin + location.pathname + '#e=' + id, e = DOC.envs.find(x => x.id === id);
+  const ok = () => toast(e && e.private ? 'Link copied. This environment is private, so the link only works for you.' : 'Link to this environment copied');
   try { navigator.clipboard.writeText(url).then(ok, () => prompt('Copy this link', url)); } catch (_) { prompt('Copy this link', url); }
 }
 function goPreview(on) {
@@ -3425,22 +3454,29 @@ async function pullRemote() {
     const f = await GH.getFile(DATA_PATH);
     if (!f) return toast('Nothing published yet');
     checkpoint();
-    DOC = migrate(JSON.parse(f.text));
     META.baseSha = f.sha; META.baseHash = hashStr(f.text); META.dirty = false;
+    DOC = migrate(withPrivate(JSON.parse(f.text), DOC));
     saveLocalNow(); switchEnv(S.envId); renderTop(true);
     toast('Loaded the published board');
   } catch (err) { toast('Could not load: ' + err.message, { type: 'err' }); }
 }
-async function publish() {
+async function publish(auto) {
   if (!S.canEdit) return;
   if (!S.connected) { openSettings(); toast('Connect GitHub to publish'); return; }
   if (S.publishing) return;
   endEdit();
+  if (!DOC.envs.some(listedEnv)) { toast('No environment is public, so visitors would have nowhere to land. Make one public first.', { type: 'err' }); return; }
   S.publishing = true; renderTop();
   const startChg = CHG;
   try {
     await uploadAssets();
-    const text = JSON.stringify(DOC, null, 1);
+    /* private environments are left out (see publicDoc); if only they changed there is nothing to send */
+    const text = JSON.stringify(publicDoc(DOC), null, 1);
+    if (META.baseSha && hashStr(text) === META.baseHash) {
+      META.dirty = CHG !== startChg; saveMeta();
+      if (auto !== true) toast(DOC.envs.some(e => e.private) ? 'Already up to date (private environments are never published)' : 'Already up to date');
+      return;
+    }
     const msg = `Flogic: update board (${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC)`;
     let sha;
     try { sha = await GH.putFile(DATA_PATH, utf8ToB64(text), META.baseSha, msg); }
@@ -3465,7 +3501,7 @@ async function publish() {
 const autoPub = debounce(() => {
   if (!CFG.autoPublish || !S.connected || !META.dirty) return;
   if (S.editing || DRAG || BD) return autoPub();
-  publish();
+  publish(true);
 }, 20000);
 function scheduleAuto() { if (CFG.autoPublish && S.connected) autoPub(); }
 
@@ -3494,14 +3530,15 @@ async function loadDoc() {
     DOC = draft;
     if (pub && pubSha && META.baseSha && pubSha !== META.baseSha) {
       toast('GitHub has a newer version than your unpublished draft.', { ms: 12000, actions: [{ label: 'Load GitHub version', fn: () => {
-        checkpoint(); DOC = migrate(pub); META.baseSha = pubSha; META.baseHash = hashStr(pubText); META.dirty = false;
+        checkpoint(); META.baseSha = pubSha; META.baseHash = hashStr(pubText); META.dirty = false;
+        DOC = migrate(withPrivate(pub, DOC));
         saveLocalNow(); switchEnv(S.envId); renderTop(true);
       } }] });
     }
   } else if (pub) {
-    DOC = pub;
     if (pubSha) { META.baseSha = pubSha; META.baseHash = hashStr(pubText); }
     META.dirty = false;
+    DOC = withPrivate(pub, draft);   // the owner's private environments are only in this browser's copy
   } else if (draft) DOC = draft;
   else { DOC = demoDoc(); META.dirty = S.connected; }
   DOC = migrate(DOC);
@@ -3530,7 +3567,8 @@ async function boot() {
   document.body.classList.add(S.canEdit ? 'editor' : 'viewer');
   await loadDoc();
   const hashEnv = (location.hash.match(/e=([\w-]+)/) || [])[1];
-  const first = [hashEnv, UI.envId].find(id => id && DOC.envs.some(e => e.id === id)) || DOC.envs[0].id;
+  if (hashEnv) S.linked.add(hashEnv);   // a link-only environment opens (and is listed) for whoever has its link
+  const first = [hashEnv, UI.envId].find(id => id && DOC.envs.some(e => e.id === id && envVisible(e))) || firstEnvId();
   switchEnv(first);
   if (S.canEdit && S.connected) fetchSuggestions();
   setTool('select');

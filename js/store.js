@@ -152,7 +152,7 @@ function migrate(doc) {
   /* icon for an environment or category: 'b:<built-in>', 'u:<your icon>' or 't:<emoji or symbol>' */
   const okIcon = x => typeof x.icon === 'string' && /^(b:[\w-]{1,30}|u:[\w-]{1,40}|t:.{1,16})$/u.test(x.icon);
   doc.folders.forEach(f => { f.name = String(f.name || 'Category'); if (!okIcon(f)) delete f.icon; });
-  doc.envs.forEach(e => { if (!okIcon(e)) delete e.icon; });
+  doc.envs.forEach(e => { if (!okIcon(e)) delete e.icon; if (e.private !== true) delete e.private; if (e.link !== true || e.private) delete e.link; });
   const folderIds = new Set(doc.folders.map(f => f.id));
   doc.envs.forEach(e => { if (e.folder && !folderIds.has(e.folder)) delete e.folder; });
   doc.envs.forEach(e => {
@@ -291,6 +291,7 @@ const S = {
   envId: null, sel: new Set(), edgeSel: null, panelSel: null,
   canEdit: false, connected: false, preview: false, local: false,
   open: {}, editing: null, tool: 'select', space: false, publishing: false,
+  linked: new Set(),   // link-only environments this visitor opened from their link
 };
 let CHG = 0;                     // change counter (detects edits made during a publish)
 const ASSET_CACHE = {};          // repo path -> data URL, for images uploaded this session
@@ -426,10 +427,52 @@ const GH = {
   },
 };
 
-/* Images added in the editor live as data URLs until publish, then become files in data/assets/. */
+/* ---------- who can see an environment ----------
+   public: everyone; it is listed in the sidebar.
+   link only (e.link): published, but not listed: visitors only get to it through its link (#e=<id>).
+     It isn't secret, as it is in the public board file like everything else that's published.
+   private (e.private): only the owner. The published file is public (anyone can open it in the repo),
+     so private environments are never put in it: they live only in this browser's saved copy (and in
+     exports), and are merged back in whenever the board is loaded from GitHub. */
+const envAccess = e => e.private ? 'private' : e.link ? 'link' : 'public';
+const listedEnv = e => !e.private && !e.link;
+/* the owner sees every environment; a visitor sees the listed ones and any link-only one they came in by */
+const envVisible = e => S.canEdit || listedEnv(e) || S.linked.has(e.id);
+/* what visitors get: the board without private environments, or categories that only hold private ones */
+function publicDoc(doc) {
+  const envs = doc.envs.filter(e => !e.private), folders = doc.folders || [];
+  const privOnly = f => doc.envs.some(e => e.folder === f.id) && !envs.some(e => e.folder === f.id);
+  return Object.assign({}, doc, { envs, folders: folders.filter(f => !privOnly(f)) });
+}
+/* put this browser's private environments (and their categories) back into a board loaded from GitHub,
+   each after the one it followed before. If one of them turns up in the published board (published as
+   public from another device), this device's private copy wins and the board is marked to publish again. */
+function withPrivate(pub, local) {
+  const mine = local && Array.isArray(local.envs) ? local.envs.filter(e => e && e.private) : [];
+  if (!mine.length || !pub || !Array.isArray(pub.envs)) return pub;
+  const insert = (list, items, order) => items.forEach(it => {
+    const at = list.findIndex(x => x.id === it.id);
+    if (at > -1) { list[at] = it; return; }
+    const prev = order.slice(0, order.indexOf(it)).reverse().find(p => list.some(x => x.id === p.id));
+    list.splice(prev ? list.findIndex(x => x.id === prev.id) + 1 : 0, 0, it);
+  });
+  const leaked = mine.filter(e => pub.envs.some(x => x.id === e.id));
+  const lf = Array.isArray(local.folders) ? local.folders : [];
+  pub.folders = Array.isArray(pub.folders) ? pub.folders : [];
+  insert(pub.folders, lf.filter(f => mine.some(e => e.folder === f.id) && !pub.folders.some(x => x.id === f.id)), lf);
+  insert(pub.envs, mine, local.envs);
+  if (leaked.length) {
+    META.dirty = true;
+    setTimeout(() => toast(`“${leaked[0].name}”${leaked.length > 1 ? ` and ${leaked.length - 1} more` : ''} is private here but was published from another device. Publish to take it down again.`, { ms: 12000 }), 600);
+  }
+  return pub;
+}
+
+/* Images added in the editor live as data URLs until publish, then become files in data/assets/.
+   Images in private environments stay as they are, so they never reach the public repo. */
 async function uploadAssets() {
   const blocks = (DOC.icons || []).filter(x => x.src.startsWith('data:'));
-  DOC.envs.forEach(e => e.nodes.forEach(n => n.blocks.forEach(b => { if (b.kind === 'image' && b.src && b.src.startsWith('data:')) blocks.push(b); })));
+  DOC.envs.forEach(e => { if (!e.private) e.nodes.forEach(n => n.blocks.forEach(b => { if (b.kind === 'image' && b.src && b.src.startsWith('data:')) blocks.push(b); })); });
   if (!blocks.length) return;
   const extOf = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/avif': 'avif' };
   const done = {};

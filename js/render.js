@@ -978,14 +978,19 @@ function navIcon(ref, fallback, size = 15) {
 }
 const GRIP = () => S.canEdit ? `<span class="rgrip" aria-hidden="true">${ic('grip', 12)}</span>` : '';
 function envRow(e, child) {
-  return `<div class="env${e.id === S.envId ? ' active' : ''}${child ? ' child' : ''}" data-env="${e.id}"${S.canEdit ? ' draggable="true" title="Drag to move · double-click to rename · right-click for more"' : ''}>${GRIP()}<span class="eic">${navIcon(e.icon, 'board')}</span><span class="nm">${esc(e.name)}</span><span class="cnt">${e.nodes.length || ''}</span></div>`;
+  return `<div class="env${e.id === S.envId ? ' active' : ''}${child ? ' child' : ''}" data-env="${e.id}"${S.canEdit ? ' draggable="true" title="Drag to move · double-click to rename · right-click for more"' : ''}>${GRIP()}<span class="eic">${navIcon(e.icon, 'board')}</span><span class="nm">${esc(e.name)}</span>${ENV_BADGE[envAccess(e)] || ''}<span class="cnt">${e.nodes.length || ''}</span></div>`;
 }
+/* a small icon after the name for environments that aren't public */
+const ENV_BADGE = {
+  link: `<span class="elock" title="Link only: visitors need its link to see it">${ic('link', 12)}</span>`,
+  private: `<span class="elock" title="Private: only you can see this">${ic('lock', 12)}</span>`,
+};
 /* environments without a category first, then each category as a section header with its environments */
 function renderEnvs() {
-  const folders = DOC.folders || [], known = new Set(folders.map(f => f.id));
-  let h = DOC.envs.filter(e => !known.has(e.folder)).map(e => envRow(e, false)).join('');
+  const folders = DOC.folders || [], known = new Set(folders.map(f => f.id)), shown = DOC.envs.filter(envVisible);
+  let h = shown.filter(e => !known.has(e.folder)).map(e => envRow(e, false)).join('');
   for (const f of folders) {
-    const items = DOC.envs.filter(e => e.folder === f.id);
+    const items = shown.filter(e => e.folder === f.id);
     if (!S.canEdit && !items.length) continue;
     const open = !UI.collapsed['fold:' + f.id], active = items.some(e => e.id === S.envId);
     h += `<div class="efold${active ? ' has-active' : ''}${open ? ' open' : ''}" data-fold="${f.id}"${S.canEdit ? ' draggable="true" title="Click to open or close · drag to move · right-click for more"' : ''}>${GRIP()}<span class="lchev${open ? ' open' : ''}">${ic('chevr', 11)}</span><span class="eic">${navIcon(f.icon, open ? 'folderopen' : 'folder', 13)}</span><span class="nm">${esc(f.name)}</span><span class="cnt">${items.length || ''}</span></div>`;

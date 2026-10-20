@@ -507,8 +507,9 @@ async function nodesPng(ids) {
   /* the stage: copies of the panel frames, lines, labels and nodes, shifted so the area starts at 0,0 */
   const stage = document.createElement('div');
   stage.className = 'snap';
-  /* it has to be on screen to be drawn, so it sits behind the app for the moment it exists */
-  stage.style.cssText = `position:fixed;left:0;top:0;z-index:-1;width:${W}px;height:${Hh}px;overflow:hidden;pointer-events:none`;
+  /* it has to be on screen to be drawn, so it sits behind the app for the moment it exists. It is see-through
+     there (the sidebars are translucent and would show it as a glow); the picture itself gets it opaque. */
+  stage.style.cssText = `position:fixed;left:0;top:0;z-index:-1;opacity:0;width:${W}px;height:${Hh}px;overflow:hidden;pointer-events:none`;
   const layer = () => { const d = document.createElement('div'); d.style.cssText = `position:absolute;left:0;top:0;transform:translate(${-x1}px,${-y1}px)`; stage.appendChild(d); return d; };
   const pl = layer();
   panels.forEach(p => { const el = PANEL_EL.get(p.id); if (el) { const c = el.cloneNode(true); c.classList.remove('sel', 'drop', 'conn-target', 'pf-anim'); pl.appendChild(c); } });
@@ -544,7 +545,7 @@ async function nodesPng(ids) {
   try {
     await document.fonts.ready;
     const ratio = Math.min(2, 8000 / Math.max(W, Hh));
-    return await lib.toBlob(stage, { pixelRatio: ratio, style: { zIndex: 'auto' }, imagePlaceholder: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==' });
+    return await lib.toBlob(stage, { pixelRatio: ratio, style: { zIndex: 'auto', opacity: '1' }, imagePlaceholder: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==' });
   } finally { stage.remove(); }
 }
 /* copy to the clipboard; where that isn't allowed, save the picture as a file instead */
@@ -1798,8 +1799,12 @@ function endBlockDrag(e) {
   renderLayers(); changed();
 }
 
-/* resize width */
-function startResize(e, id) { RZ = { id, sx: e.clientX, w0: nodeById(id).w, moved: false }; }
+/* resize width. A shape's height follows its width, so it grows and shrinks about its middle: the lines
+   it meets stay where they were instead of sliding up or down with its bottom edge. */
+function startResize(e, id) {
+  const n = nodeById(id), el = NODE_EL.get(id);
+  RZ = { id, sx: e.clientX, w0: n.w, moved: false, cy: n.type === 'shape' && el ? n.y + el.offsetHeight / 2 : null };
+}
 function moveResize(e) {
   const n = nodeById(RZ.id);
   if (!n) return;
@@ -1809,7 +1814,13 @@ function moveResize(e) {
   n.w = clamp(Math.round(w), n.type === 'shape' ? 96 : 168, 1200);
   const el = NODE_EL.get(n.id);
   el.style.width = n.w + 'px';
-  if (n.type === 'shape') paintNode(el, n);
+  if (n.type === 'shape') {
+    paintNode(el, n);
+    if (RZ.cy != null) {
+      n.y = Math.round(RZ.cy - el.offsetHeight / 2);
+      if (!DISP.has(n.id)) el.style.transform = `translate3d(${n.x}px,${n.y}px,0)`;
+    }
+  }
 }
 function endResize() { const r = RZ; RZ = null; document.body.style.cursor = ''; if (r.moved) { changed(); renderInspector(); } }
 

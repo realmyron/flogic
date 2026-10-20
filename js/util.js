@@ -84,6 +84,7 @@ const ICONS = {
   panel: '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M3 9.5h18M7 6.8h4"/>',
   group: '<rect x="3" y="3" width="18" height="18" rx="4.5" stroke-dasharray="3 3"/><rect x="7" y="7" width="5.5" height="5.5" rx="1.4"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.4"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
+  unlock: '<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 7.7-1.6"/>',
   eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
   q: '<path d="M9 9.2a3 3 0 1 1 4.4 2.6c-.9.5-1.4 1.2-1.4 2.1v.4"/><path d="M12 17.8h.01"/>',
   zap: '<path d="M13 2.5 4.5 13.5H11l-1 8 8.5-11H12z"/>',

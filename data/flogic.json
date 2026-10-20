@@ -2,13 +2,318 @@
  "version": 1,
  "envs": [
   {
-   "id": "eiw6bxmnsf",
-   "name": "Environment 3",
-   "nodes": [],
-   "edges": [],
+   "id": "eh9z8nf7wu",
+   "name": "Environment 4",
+   "nodes": [
+    {
+     "id": "n9m7rsy7wu",
+     "type": "title",
+     "x": -240,
+     "y": -456,
+     "w": 480,
+     "color": "default",
+     "tag": "Start here",
+     "title": "Welcome to Flogic",
+     "subtitle": "Flow + logic. Right-click anywhere on the board to add a node, then drag from the dots on its sides to connect ideas.",
+     "blocks": []
+    },
+    {
+     "id": "ne660p97wu",
+     "type": "note",
+     "x": -552,
+     "y": -192,
+     "w": 336,
+     "color": "default",
+     "tag": "Blocks",
+     "title": "Build notes from blocks",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bq0cpwb7wu",
+       "kind": "text",
+       "text": "Every node has a + in its corner. Use it to add text, highlights, categories, scenarios, checklists, images and sources."
+      },
+      {
+       "id": "bqjczfr7wu",
+       "kind": "highlight",
+       "label": "Tip",
+       "text": "Double-click any text to edit it."
+      },
+      {
+       "id": "bwbqtwy7wu",
+       "kind": "category",
+       "label": "Move things",
+       "text": "Grab the 6-dot handle beside a block to reorder it, drop it into another node, or pull it onto the board."
+      },
+      {
+       "id": "bhh5ncs7wu",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
+      }
+     ]
+    },
+    {
+     "id": "n2ys6d57wu",
+     "type": "note",
+     "x": -168,
+     "y": -192,
+     "w": 336,
+     "color": "violet",
+     "tag": "Scenarios",
+     "title": "Unroll a chain of events",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bvhirro7wu",
+       "kind": "text",
+       "text": "Scenarios fold up so a node stays compact. Open one to see how it plays out."
+      },
+      {
+       "id": "bggvwcz7wu",
+       "kind": "scenarios",
+       "label": "What could happen",
+       "items": [
+        {
+         "id": "sj5sila7wu",
+         "title": "The idea holds up",
+         "steps": [
+          {
+           "id": "t02isrh7wu",
+           "label": "First",
+           "text": "You sketch it on the board.",
+           "alt": false
+          },
+          {
+           "id": "tydz3c37wu",
+           "label": "Then",
+           "text": "Connections show how each part leads to the next.",
+           "alt": false
+          },
+          {
+           "id": "tbj43me7wu",
+           "label": "Result",
+           "text": "The argument reads top to bottom.",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "s4oiw5v7wu",
+         "title": "Someone pushes back",
+         "steps": [
+          {
+           "id": "t4xzyaw7wu",
+           "label": "They say",
+           "text": "This step does not follow.",
+           "alt": true
+          },
+          {
+           "id": "t4ud4uq7wu",
+           "label": "You answer",
+           "text": "Add a sub-note with the missing link and a source.",
+           "alt": false
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "niz9xf47wu",
+     "type": "note",
+     "x": 216,
+     "y": 48,
+     "w": 336,
+     "color": "green",
+     "tag": "Controls",
+     "title": "Getting around",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b2azdmu7wu",
+       "kind": "checklist",
+       "label": "Try these",
+       "items": [
+        {
+         "id": "cjttr897wu",
+         "text": "Middle-click and drag to pan",
+         "done": false
+        },
+        {
+         "id": "ch8q17e7wu",
+         "text": "Scroll to zoom",
+         "done": false
+        },
+        {
+         "id": "cvumbr17wu",
+         "text": "Drag on empty space to box-select",
+         "done": false
+        },
+        {
+         "id": "c9l5ozv7wu",
+         "text": "Right-click empty space to add a node",
+         "done": false
+        },
+        {
+         "id": "cv0l70p7wu",
+         "text": "Ctrl+G groups the selection",
+         "done": false
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "nuuyz3e7wu",
+     "type": "sub",
+     "x": -504,
+     "y": 264,
+     "w": 216,
+     "color": "default",
+     "tag": "",
+     "title": "Sources & images",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "btsx3q27wu",
+       "kind": "text",
+       "text": "Attach references so anyone reading can check them."
+      },
+      {
+       "id": "bnnc9bb7wu",
+       "kind": "sources",
+       "label": "Sources",
+       "items": [
+        {
+         "t": "GitHub Pages docs",
+         "u": "https://docs.github.com/en/pages",
+         "id": "r7y9x037wu",
+         "note": ""
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "nyh2ex77wu",
+     "type": "sub",
+     "x": 264,
+     "y": 384,
+     "w": 216,
+     "color": "green",
+     "tag": "",
+     "title": "Publishing",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bfyo5uh7wu",
+       "kind": "text",
+       "text": "Visitors see the published board, read-only. Only you can edit, after connecting GitHub in Settings."
+      }
+     ]
+    },
+    {
+     "id": "navyg7wy7f",
+     "type": "shape",
+     "x": 312,
+     "y": -264,
+     "w": 144,
+     "color": "violet",
+     "tag": "",
+     "title": "Shape",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b793jijhej",
+       "kind": "text",
+       "text": "node"
+      }
+     ],
+     "shape": "round",
+     "accent": "top"
+    }
+   ],
+   "edges": [
+    {
+     "id": "lnbrizl7wu",
+     "from": "n9m7rsy7wu",
+     "fs": "b",
+     "to": "ne660p97wu",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l8o3ver7wu",
+     "from": "n9m7rsy7wu",
+     "fs": "b",
+     "to": "n2ys6d57wu",
+     "ts": "t",
+     "label": "for example",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lscgvgo7wu",
+     "from": "ne660p97wu",
+     "fs": "b",
+     "to": "nuuyz3e7wu",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l6ykxt17wu",
+     "from": "niz9xf47wu",
+     "fs": "b",
+     "to": "nyh2ex77wu",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lvohiar5ly",
+     "from": "navyg7wy7f",
+     "fs": "b",
+     "to": "niz9xf47wu",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lmdznuraa6",
+     "from": "n9m7rsy7wu",
+     "fs": "b",
+     "to": "navyg7wy7f",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l3atl8zatp",
+     "from": "navyg7wy7f",
+     "fs": "t",
+     "to": "niz9xf47wu",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "bend": {
+      "dx": -222,
+      "dy": 50
+     }
+    }
+   ],
    "groups": [],
-   "folder": "f6bboigff2",
-   "panels": []
+   "panels": [],
+   "folder": "f6bboigff2"
   }
  ],
  "lineStyle": "geometric",

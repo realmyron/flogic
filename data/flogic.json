@@ -2,320 +2,6 @@
  "version": 1,
  "envs": [
   {
-   "id": "eh9z8nf7wu",
-   "name": "Environment 4",
-   "nodes": [
-    {
-     "id": "n9m7rsy7wu",
-     "type": "title",
-     "x": -240,
-     "y": -456,
-     "w": 480,
-     "color": "default",
-     "tag": "Start here",
-     "title": "Welcome to Flogic",
-     "subtitle": "Flow + logic. Right-click anywhere on the board to add a node, then drag from the dots on its sides to connect ideas.",
-     "blocks": []
-    },
-    {
-     "id": "ne660p97wu",
-     "type": "note",
-     "x": -552,
-     "y": -192,
-     "w": 336,
-     "color": "default",
-     "tag": "Blocks",
-     "title": "Build notes from blocks",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "bq0cpwb7wu",
-       "kind": "text",
-       "text": "Every node has a + in its corner. Use it to add text, highlights, categories, scenarios, checklists, images and sources."
-      },
-      {
-       "id": "bqjczfr7wu",
-       "kind": "highlight",
-       "label": "Tip",
-       "text": "Double-click any text to edit it."
-      },
-      {
-       "id": "bwbqtwy7wu",
-       "kind": "category",
-       "label": "Move things",
-       "text": "Grab the 6-dot handle beside a block to reorder it, drop it into another node, or pull it onto the board."
-      },
-      {
-       "id": "bhh5ncs7wu",
-       "kind": "conclusion",
-       "label": "Conclusion",
-       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
-      }
-     ]
-    },
-    {
-     "id": "n2ys6d57wu",
-     "type": "note",
-     "x": -168,
-     "y": -192,
-     "w": 336,
-     "color": "violet",
-     "tag": "Scenarios",
-     "title": "Unroll a chain of events",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "bvhirro7wu",
-       "kind": "text",
-       "text": "Scenarios fold up so a node stays compact. Open one to see how it plays out."
-      },
-      {
-       "id": "bggvwcz7wu",
-       "kind": "scenarios",
-       "label": "What could happen",
-       "items": [
-        {
-         "id": "sj5sila7wu",
-         "title": "The idea holds up",
-         "steps": [
-          {
-           "id": "t02isrh7wu",
-           "label": "First",
-           "text": "You sketch it on the board.",
-           "alt": false
-          },
-          {
-           "id": "tydz3c37wu",
-           "label": "Then",
-           "text": "Connections show how each part leads to the next.",
-           "alt": false
-          },
-          {
-           "id": "tbj43me7wu",
-           "label": "Result",
-           "text": "The argument reads top to bottom.",
-           "alt": false
-          }
-         ]
-        },
-        {
-         "id": "s4oiw5v7wu",
-         "title": "Someone pushes back",
-         "steps": [
-          {
-           "id": "t4xzyaw7wu",
-           "label": "They say",
-           "text": "This step does not follow.",
-           "alt": true
-          },
-          {
-           "id": "t4ud4uq7wu",
-           "label": "You answer",
-           "text": "Add a sub-note with the missing link and a source.",
-           "alt": false
-          }
-         ]
-        }
-       ]
-      }
-     ]
-    },
-    {
-     "id": "niz9xf47wu",
-     "type": "note",
-     "x": 216,
-     "y": 48,
-     "w": 336,
-     "color": "green",
-     "tag": "Controls",
-     "title": "Getting around",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "b2azdmu7wu",
-       "kind": "checklist",
-       "label": "Try these",
-       "items": [
-        {
-         "id": "cjttr897wu",
-         "text": "Middle-click and drag to pan",
-         "done": false
-        },
-        {
-         "id": "ch8q17e7wu",
-         "text": "Scroll to zoom",
-         "done": false
-        },
-        {
-         "id": "cvumbr17wu",
-         "text": "Drag on empty space to box-select",
-         "done": false
-        },
-        {
-         "id": "c9l5ozv7wu",
-         "text": "Right-click empty space to add a node",
-         "done": false
-        },
-        {
-         "id": "cv0l70p7wu",
-         "text": "Ctrl+G groups the selection",
-         "done": false
-        }
-       ]
-      }
-     ]
-    },
-    {
-     "id": "nuuyz3e7wu",
-     "type": "sub",
-     "x": -504,
-     "y": 264,
-     "w": 216,
-     "color": "default",
-     "tag": "",
-     "title": "Sources & images",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "btsx3q27wu",
-       "kind": "text",
-       "text": "Attach references so anyone reading can check them."
-      },
-      {
-       "id": "bnnc9bb7wu",
-       "kind": "sources",
-       "label": "Sources",
-       "items": [
-        {
-         "t": "GitHub Pages docs",
-         "u": "https://docs.github.com/en/pages",
-         "id": "r7y9x037wu",
-         "note": ""
-        }
-       ]
-      }
-     ]
-    },
-    {
-     "id": "nyh2ex77wu",
-     "type": "sub",
-     "x": 264,
-     "y": 384,
-     "w": 216,
-     "color": "green",
-     "tag": "",
-     "title": "Publishing",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "bfyo5uh7wu",
-       "kind": "text",
-       "text": "Visitors see the published board, read-only. Only you can edit, after connecting GitHub in Settings."
-      }
-     ]
-    },
-    {
-     "id": "navyg7wy7f",
-     "type": "shape",
-     "x": 312,
-     "y": -264,
-     "w": 144,
-     "color": "violet",
-     "tag": "",
-     "title": "Shape",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "b793jijhej",
-       "kind": "text",
-       "text": "node"
-      }
-     ],
-     "shape": "hex",
-     "accent": "top"
-    }
-   ],
-   "edges": [
-    {
-     "id": "lnbrizl7wu",
-     "from": "n9m7rsy7wu",
-     "fs": "b",
-     "to": "ne660p97wu",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "l8o3ver7wu",
-     "from": "n9m7rsy7wu",
-     "fs": "b",
-     "to": "n2ys6d57wu",
-     "ts": "t",
-     "label": "for example",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lscgvgo7wu",
-     "from": "ne660p97wu",
-     "fs": "b",
-     "to": "nuuyz3e7wu",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "l6ykxt17wu",
-     "from": "niz9xf47wu",
-     "fs": "b",
-     "to": "nyh2ex77wu",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lvohiar5ly",
-     "from": "navyg7wy7f",
-     "fs": "b",
-     "to": "niz9xf47wu",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lmdznuraa6",
-     "from": "n9m7rsy7wu",
-     "fs": "b",
-     "to": "navyg7wy7f",
-     "ts": "l",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "l3atl8zatp",
-     "from": "navyg7wy7f",
-     "fs": "t",
-     "to": "niz9xf47wu",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false,
-     "bend": {
-      "dx": -222,
-      "dy": 50
-     }
-    }
-   ],
-   "groups": [],
-   "panels": [],
-   "folder": "f6bboigff2"
-  },
-  {
    "id": "e9cvptv8o1",
    "name": "Environment 1",
    "nodes": [
@@ -464,8 +150,8 @@
     {
      "id": "n8d9hjd6ra",
      "type": "note",
-     "x": 504,
-     "y": -364,
+     "x": 600,
+     "y": -302,
      "w": 336,
      "color": "default",
      "tag": "ROOT",
@@ -544,8 +230,8 @@
     {
      "id": "npqtkwfq7l",
      "type": "sub",
-     "x": -732,
-     "y": 90,
+     "x": -936,
+     "y": 545,
      "w": 336,
      "color": "pink",
      "tag": "",
@@ -748,7 +434,7 @@
     {
      "id": "nvivrd8px2",
      "type": "note",
-     "x": 432,
+     "x": 504,
      "y": 660,
      "w": 480,
      "color": "p-coral",
@@ -781,6 +467,92 @@
        "text": "Homosexuality is only possible if redefined into a non reproductive, non biological, societal definition."
       }
      ]
+    },
+    {
+     "id": "na3q2o3lab",
+     "type": "note",
+     "x": -912,
+     "y": 238,
+     "w": 336,
+     "color": "p-butter",
+     "tag": "BASE",
+     "title": "Aristotelian-Thomistic Teleology",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b4gzebclab",
+       "kind": "text",
+       "text": "I argue that physiological structures and appetites possess an objective telos (an intrinsic purpose or final cause)."
+      }
+     ]
+    },
+    {
+     "id": "n4h611nava",
+     "type": "note",
+     "x": 1080,
+     "y": -302,
+     "w": 336,
+     "color": "gold",
+     "tag": "ESSENTIALISM",
+     "title": "Ontological Foundations",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b3a7fr0ava",
+       "kind": "category",
+       "label": "FORM AND MATTER",
+       "text": "The human body is not a machine or a collection of parts, but a form-matter composite with an inherent purpose (telos). The sexual faculty is intrinsically ordered toward the unitive and procreative good."
+      },
+      {
+       "id": "ba2ea7sava",
+       "kind": "category",
+       "label": "THE CONCEPT OF PRIVATION",
+       "text": "Evil or disorder is not a positive reality, but a privation—a lack of a good that should be present. Homosexual acts are not a different \"kind\" of sexual act; they are a total absence of the sexual faculty's proper form and end. They are the act of sex stripped of its essential nature."
+      },
+      {
+       "id": "bv9xb5yava",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "To call homosexual behavior \"sex\" is to confuse the accidental appearance of an act with its essential nature. It is like calling a dead body a \"man\"—it possesses the material shape, but lacks the animating principle (the *telos*) that defines the reality."
+      }
+     ]
+    },
+    {
+     "id": "n4v95qjava",
+     "type": "note",
+     "x": 1560,
+     "y": -368,
+     "w": 336,
+     "color": "indigo",
+     "tag": "CRITIQUE",
+     "title": "Anticipating Counter-Attacks",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bo441gpava",
+       "kind": "category",
+       "label": "THE NATURALISTIC FALLACY",
+       "text": "- **Attack:** You are confusing \"is\" (biology) with \"ought\" (morality).\n- **Response:** This is not a fallacy. We are defining the *what*. If the *what* is a reproductive act, then the *is* is inherently moral in its orientation. We are not saying \"because it is biological, it is good,\" we are saying \"it is biological, therefore it has a definition.\""
+      },
+      {
+       "id": "bpsic0java",
+       "kind": "category",
+       "label": "THE \"PLEASURE\" ARGUMENT",
+       "text": "- **Attack:** Sex is for intimacy/pleasure, not just procreation.\n- **Response:** This separates the unitive and procreative goods. The unitive good is only possible *within* the procreative act. Outside that, it is merely mutual masturbation."
+      },
+      {
+       "id": "bmqfb6zava",
+       "kind": "category",
+       "label": "THE \"SPECTRUM\" ARGUMENT",
+       "text": "- **Attack:** Sexual orientation is a continuum.\n- **Response:** This is a reduction of human psychology to raw sensation. A continuum of sensations does not negate a hard line of objective biological reality."
+      },
+      {
+       "id": "bu88ai0ava",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "These attacks all fail because they reject the *telos* of human life and reduce the person to a subject of their own whims."
+      }
+     ]
     }
    ],
    "edges": [
@@ -793,20 +565,6 @@
      "label": "",
      "arrow": true,
      "dashed": false
-    },
-    {
-     "id": "l7fv46mx1m",
-     "from": "nbnt5jgf28",
-     "fs": "l",
-     "to": "npqtkwfq7l",
-     "ts": "r",
-     "label": "",
-     "arrow": true,
-     "dashed": false,
-     "bend": {
-      "dx": 12,
-      "dy": 45
-     }
     },
     {
      "id": "l5qwhu9m48",
@@ -827,16 +585,6 @@
      "from": "nbn4b018o1",
      "fs": "b",
      "to": "nq5ngovwel",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lr17usur78",
-     "from": "nbn4b018o1",
-     "fs": "b",
-     "to": "nuvef0ypz",
      "ts": "t",
      "label": "",
      "arrow": true,
@@ -897,12 +645,255 @@
      "label": "",
      "arrow": true,
      "dashed": false
+    },
+    {
+     "id": "lsvof7n4fy",
+     "from": "na3q2o3lab",
+     "fs": "b",
+     "to": "npqtkwfq7l",
+     "ts": "r",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "bend": {
+      "dx": 12,
+      "dy": 45
+     }
+    },
+    {
+     "id": "l1w89hla85",
+     "from": "nbn4b018o1",
+     "fs": "b",
+     "to": "nuvef0ypz",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l6anpblflv",
+     "from": "na3q2o3lab",
+     "fs": "l",
+     "to": "nbnt5jgf28",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lbl0pzbh61",
+     "from": "n4h611nava",
+     "fs": "l",
+     "to": "n8d9hjd6ra",
+     "ts": "r",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lglec4xw1y",
+     "from": "n4v95qjava",
+     "fs": "l",
+     "to": "n4h611nava",
+     "ts": "r",
+     "label": "",
+     "arrow": true,
+     "dashed": false
     }
    ],
    "groups": [],
    "folder": "f6bboigff2",
    "panels": [],
    "icon": "b:plus"
+  },
+  {
+   "id": "e4v241waly",
+   "name": "GDL",
+   "nodes": [
+    {
+     "id": "n8l7ftfi6",
+     "type": "title",
+     "x": -864,
+     "y": 336,
+     "w": 576,
+     "color": "default",
+     "tag": "ENDONYM",
+     "title": "Belarusian identification as Litvins",
+     "subtitle": "Analyzing the idea of \"Litvin\" being the original endonym of Belarusians.",
+     "blocks": []
+    },
+    {
+     "id": "nk37ztwaly",
+     "type": "title",
+     "x": -372,
+     "y": -384,
+     "w": 744,
+     "color": "g-aurora",
+     "tag": "THESIS",
+     "title": "Belarus: heir of Grand Duchy of Lithuania",
+     "subtitle": "Full Litvinist breakdown of the history of Grand Duchy of Lithuania. Analyzing all arguments from both sides and using verified information. Non-biased perspective.",
+     "blocks": []
+    },
+    {
+     "id": "n5pz20wxuo",
+     "type": "note",
+     "x": -1320,
+     "y": 576,
+     "w": 456,
+     "color": "default",
+     "tag": "",
+     "title": "Non-statistical Sources",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bp3h5acmgw",
+       "kind": "category",
+       "label": "MYKHAILO MAKSYMOVYCH 1839",
+       "text": "Ukrainian historian writes in his book - *\"Belarusian language or Lithuanian-Rusyn is referred to as \"Lithuanian\" and the speakers \"Litvin\" in the territory of Malorussia (Ukraine). That's why the west part of Chernigov governate whose speakers are Belarusian and descend from Radimovichs is called Lithuania\"*"
+      },
+      {
+       "id": "b9dx7ss7np",
+       "kind": "category",
+       "label": "DICTIONARIES (1828+)",
+       "text": "In a Ukrainian dictionary by Hrinchenko from 1907, Litvin meant both Belarusian and Lithuanian. \n- Lithuania meant Lithuania and Belarusians.\n- Litvinsky (Lithuanian) meant Belarusian.\nThese are sources from Hanna Barvinoks work, born 1828.\n___\nIn a dictionary by Paval Bilecki (1839), it meant \"title used by Ukrainians of Poltava to refer to the people  living on the other side of the Desna river.\n___"
+      },
+      {
+       "id": "bqzeoqgrpm",
+       "kind": "category",
+       "label": "HISTORICAL ANCEDOTES",
+       "text": "In 1846, German historian Friedrich Kruse of the Dorpat University noted: \"The true Lithuanians live in the former Voivodeships of Vilnius and Trakai, Novogrudok, Brest Litovsk, Minsk, Polotsk, Vitebsk, Mstislav and Smolensk\""
+      },
+      {
+       "id": "beo1c0fxuo",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
+      },
+      {
+       "id": "b84ne5wr48",
+       "kind": "sources",
+       "label": "Sources",
+       "items": [
+        {
+         "id": "rsgf9grok",
+         "t": "Hrinchenkos Dictionary 1909",
+         "u": "https://hrinchenko.com/ru/dictionary/word/26394-litvin",
+         "note": ""
+        },
+        {
+         "id": "r99fekztlb",
+         "t": "Mykhailo Maksymovych",
+         "u": "https://upload.wikimedia.org/wikipedia/commons/6/6c/%D0%9C%D0%B0%D0%BA%D1%81%D0%B8%D0%BC%D0%BE%D0%B2%D0%B8%D1%87_%D0%9C._%D0%98%D1%81%D1%82%D0%BE%D1%80%D1%96%D1%8F_%D0%B4%D1%80%D0%B5%D0%B2%D0%BD%D0%B5%D0%B9_%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%BE%D0%B9_%D1%81%D0%BB%D0%BE%D0%B2%D0%B5%D1%81%D0%BD%D0%BE%D1%81%D1%82%D0%B8_%281839%29.pdf",
+         "note": "Page 110"
+        },
+        {
+         "id": "rkpus00fcz",
+         "t": "Friedrich Kruse",
+         "u": "https://en.wikipedia.org/wiki/Litvins_of_Severia#:~:text=In%201846%2C%20German%20historian%20Friedrich%20Kruse%20of%20the%20Dorpat%20University%20noted%3A%20%22The%20true%20Lithuanians%20live%20in%20the%20former%20Voivodeships%20of%20Vilnius%20and%20Trakai%2C%20Novogrudok%2C%20Brest%20Litovsk%2C%20Minsk%2C%20Polotsk%2C%20Vitebsk%2C%20Mstislav%20and%20Smolensk%22",
+         "note": "Kruse, F. (1846). Ur-Geschichte des Esthnischen Volksstammes und der Kaiserlich-Russischen Ostseeprovinzen Liv-, Esth- und Curland überhaupt [Prehistory of the Estonian tribe and the Imperial Russian Baltic provinces...] (in German). Moskau. p. 128."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "nac0e9wbf4",
+     "type": "note",
+     "x": -372,
+     "y": 576,
+     "w": 480,
+     "color": "default",
+     "tag": "",
+     "title": "Statistical Sources",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bxqu9twxy",
+       "kind": "category",
+       "label": "ZAPORIZHIAN HOST RECORDS",
+       "text": "In the Cossack records, Litvin & Litvinenko were the most widespread surnames, with 155 records of it's usage.\n___\nDocuments from the Cossack Hetmanate and the Chernihiv Consistory in 1735, 1761, and 1765 noted that the inhabitants of the Belarusian part of Severia \"speak in the Lithuanian way\" (Russian: говорятъ по литовску)."
+      },
+      {
+       "id": "b95obwl3jw",
+       "kind": "category",
+       "label": "LITVINS OF THE SEVERIA",
+       "text": "In parts Chernigov, Smolensk, Starodub and nearby regions, the common identification was \"Litvin\". Those who identified as such were Belarusian-speaking, but referred to as Lithuanian-speaking back then.\n___\n1920 studies record 120k individuals identified as Litvins in the Novozibovsk area."
+      },
+      {
+       "id": "bngsr8dbf4",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
+      },
+      {
+       "id": "bm0tqty65",
+       "kind": "sources",
+       "label": "Sources",
+       "items": [
+        {
+         "id": "rc5klxiaw1",
+         "t": "Litvins of Severia",
+         "u": "https://en.wikipedia.org/wiki/Litvins_of_Severia",
+         "note": "19:06 Sunday, 1 November 2026 (EET)"
+        },
+        {
+         "id": "r1nkooir6k",
+         "t": "Zaporizhian Host Records",
+         "u": "https://roots.in.ua/en/advanced-search?page=1&last_name_search_type=should&last_name=Litvin&base_type=%5Bf6e3421c-63c0-489a-98c3-ebe9f488f3d8%2Cdec7e5b5-e4c4-4d60-9613-cbbde950b504%2Cf26fd36b-f621-4ac3-9daa-ffe6e4b24e6e%2C1c07b45d-84f5-4349-96a7-76644da798c7%5D",
+         "note": ""
+        },
+        {
+         "id": "rtrzm1fedo",
+         "t": "Chernihov Consistory",
+         "u": "https://en.wikipedia.org/wiki/Litvins_of_Severia#cite_note-7",
+         "note": "Тиханов, Н. Н. (1904). Брянский говор [Bryansk dialect]. Сборник отделения русского языка и словесности Императорской академии наук (in Russian). 76. СПб.: 119."
+        },
+        {
+         "id": "rovtfmnazu",
+         "t": "Novozibovsk",
+         "u": "https://csl.bas-net.by/oir/books/Polevoy_O_Yazyke_Naseleniya_Novozybkovskogo_Uezda_1926.pdf",
+         "note": "page 6"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "id": "lcxj1dys8a",
+     "from": "n8l7ftfi6",
+     "fs": "b",
+     "to": "n5pz20wxuo",
+     "ts": "r",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l2el4gqt5w",
+     "from": "n8l7ftfi6",
+     "fs": "b",
+     "to": "nac0e9wbf4",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "li4kqbghvs",
+     "from": "n8l7ftfi6",
+     "fs": "t",
+     "to": "nk37ztwaly",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    }
+   ],
+   "groups": [],
+   "panels": [],
+   "folder": "f3949hz1g4"
   }
  ],
  "lineStyle": "geometric",
@@ -913,7 +904,7 @@
   },
   {
    "id": "f3949hz1g4",
-   "name": "Category 2"
+   "name": "History"
   }
  ],
  "icons": [

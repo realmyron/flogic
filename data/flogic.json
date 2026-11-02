@@ -799,14 +799,20 @@
     {
      "id": "nac0e9wbf4",
      "type": "note",
-     "x": -372,
-     "y": 576,
-     "w": 480,
+     "x": -336,
+     "y": 552,
+     "w": 576,
      "color": "default",
      "tag": "",
      "title": "Statistical Sources",
      "subtitle": "",
      "blocks": [
+      {
+       "id": "bep7gs12hb",
+       "kind": "category",
+       "label": "PETER VON KOPPEN STUDIES 1860S",
+       "text": "Peter von Koppen is the most dedicated ethnographer of the Russian empire and conducted the highest quality studies of that era. In his studies He mentions that the ethnonym \"Litvin\" was especially widespread in Belarusian-speakers of Grodno, Vawkavysk, Slonim, Slutsk and Vileyka. He says the majority of priests used the phrase \"lithuanians speaking belarusian\""
+      },
       {
        "id": "bxqu9twxy",
        "kind": "category",

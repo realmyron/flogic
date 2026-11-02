@@ -714,7 +714,7 @@
      "id": "n8l7ftfi6",
      "type": "title",
      "x": -864,
-     "y": 336,
+     "y": 288,
      "w": 576,
      "color": "default",
      "tag": "ENDONYM",
@@ -737,14 +737,20 @@
     {
      "id": "n5pz20wxuo",
      "type": "note",
-     "x": -1320,
-     "y": 576,
+     "x": -1368,
+     "y": 696,
      "w": 456,
-     "color": "default",
+     "color": "p-coral",
      "tag": "",
      "title": "Non-statistical Sources",
      "subtitle": "",
      "blocks": [
+      {
+       "id": "bmmm9xy7bq",
+       "kind": "category",
+       "label": "Peter Von Koppen Studies 1860",
+       "text": "Peter von Koppen is the most dedicated ethnographer of the Russian empire and conducted the highest quality studies of that era. In his studies He mentions that the ethnonym \"Litvin\" was especially widespread in Belarusian-speakers of Grodno, Vawkavysk, Slonim, Slutsk and Vileyka. He says the majority of priests used the phrase \"lithuanians speaking belarusian\"."
+      },
       {
        "id": "bp3h5acmgw",
        "kind": "category",
@@ -791,18 +797,25 @@
          "t": "Friedrich Kruse",
          "u": "https://en.wikipedia.org/wiki/Litvins_of_Severia#:~:text=In%201846%2C%20German%20historian%20Friedrich%20Kruse%20of%20the%20Dorpat%20University%20noted%3A%20%22The%20true%20Lithuanians%20live%20in%20the%20former%20Voivodeships%20of%20Vilnius%20and%20Trakai%2C%20Novogrudok%2C%20Brest%20Litovsk%2C%20Minsk%2C%20Polotsk%2C%20Vitebsk%2C%20Mstislav%20and%20Smolensk%22",
          "note": "Kruse, F. (1846). Ur-Geschichte des Esthnischen Volksstammes und der Kaiserlich-Russischen Ostseeprovinzen Liv-, Esth- und Curland überhaupt [Prehistory of the Estonian tribe and the Imperial Russian Baltic provinces...] (in German). Moskau. p. 128."
+        },
+        {
+         "id": "rd96an9jly",
+         "t": "Peter von Koppens studies",
+         "u": "https://cyberleninka.ru/article/n/naselenie-belarusi-na-rubezhe-1850-1860-godov-etnicheskie-sotsialnye-konfessionalnye-i-regionalnye-parametry/viewer",
+         "note": ""
         }
        ]
       }
-     ]
+     ],
+     "accent": "bottom"
     },
     {
      "id": "nac0e9wbf4",
      "type": "note",
-     "x": -336,
+     "x": -408,
      "y": 552,
-     "w": 576,
-     "color": "default",
+     "w": 624,
+     "color": "g-aurora",
      "tag": "",
      "title": "Statistical Sources",
      "subtitle": "",
@@ -810,8 +823,8 @@
       {
        "id": "bep7gs12hb",
        "kind": "category",
-       "label": "PETER VON KOPPEN STUDIES 1860S",
-       "text": "Peter von Koppen is the most dedicated ethnographer of the Russian empire and conducted the highest quality studies of that era. In his studies He mentions that the ethnonym \"Litvin\" was especially widespread in Belarusian-speakers of Grodno, Vawkavysk, Slonim, Slutsk and Vileyka. He says the majority of priests used the phrase \"lithuanians speaking belarusian\"."
+       "label": "PETER VON KOPPEN STUDIES 1860",
+       "text": "On top of his observation, he also conducted many censuses on the self identification of European Russian empire, from the censuses we can see the identification of many cities:\n- Lutsk: 620 belarusians, 2621 lithuanians (litvins)\n- Radomyshyl: 452 belarusians, 32252 lithuanians (litvins)\n- Novograd-Volynsk: 2381 belarusians, 1153 lithuanians (litvins)\n- Ostroh: 1777 lithuanians, Ovruch: 5293 lithuanians\n- Kyiv and Volyn Governates: 40233 belarusians, 49269 lithuanians (litvins)\n--- \n- Brest district: 1205 belarusians, 7210 lithuanians (litvins)\n- Pruzhany district: - belarusians, 27610 lithuanians (litvins)\n- Kobryn district: 2614 belarusians, 22725 yatviags"
       },
       {
        "id": "bxqu9twxy",
@@ -859,10 +872,17 @@
          "t": "Novozibovsk",
          "u": "https://csl.bas-net.by/oir/books/Polevoy_O_Yazyke_Naseleniya_Novozybkovskogo_Uezda_1926.pdf",
          "note": "page 6"
+        },
+        {
+         "id": "ryzgjcmaxn",
+         "t": "Peter von Koppens Studies",
+         "u": "https://cyberleninka.ru/article/n/naselenie-belarusi-na-rubezhe-1850-1860-godov-etnicheskie-sotsialnye-konfessionalnye-i-regionalnye-parametry/viewer",
+         "note": ""
         }
        ]
       }
-     ]
+     ],
+     "accent": "bottom"
     }
    ],
    "edges": [
@@ -887,11 +907,11 @@
      "dashed": false
     },
     {
-     "id": "li4kqbghvs",
-     "from": "n8l7ftfi6",
-     "fs": "t",
-     "to": "nk37ztwaly",
-     "ts": "b",
+     "id": "li2vskz4x",
+     "from": "nk37ztwaly",
+     "fs": "b",
+     "to": "n8l7ftfi6",
+     "ts": "t",
      "label": "",
      "arrow": true,
      "dashed": false

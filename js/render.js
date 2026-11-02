@@ -894,7 +894,7 @@ function drawPanels() {
     fb.title = p.folded ? 'Unfold' : 'Fold';
     el.classList.toggle('sel', sp === p);
     el.classList.toggle('drop', PANEL_DROP === p.id);
-    if (PANEL_BORN.has(p.id)) { PANEL_BORN.delete(p.id); fxPanelIn(el, p, r); }
+    if (PANEL_BORN.has(p.id)) { PANEL_BORN.delete(p.id); fxPanelIn(el); }
     seen.add(p.id);
   }
   /* a panel that's gone breaks apart (switching environments clears them without this) */
@@ -1024,7 +1024,7 @@ function renderEnvs() {
 /* depth: 0 top level, 1 inside a group or panel, 2 inside a group inside a panel */
 function layerRow(n, depth, snip) {
   const icn = n.type;
-  return `<div class="layer${depth ? ' child d' + depth : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"${S.canEdit ? ' draggable="true"' : ''}>${GRIP()}<span class="lic" style="color:${colorOf(n.color).c1}">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
+  return `<div class="layer${depth ? ' child d' + depth : ''}${S.sel.has(n.id) ? ' sel' : ''}${n.hidden ? ' is-hidden' : ''}" data-id="${n.id}"${S.canEdit ? ' draggable="true"' : ''}>${GRIP()}<span class="lic">${ic(icn, 14)}</span><span class="nm">${esc(nodeName(n))}${snip ? `<small>${esc(snip)}</small>` : ''}</span>${eyeBtn(n.hidden)}</div>`;
 }
 function eyeBtn(hidden) {
   if (!S.canEdit) return '';

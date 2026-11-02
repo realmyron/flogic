@@ -387,7 +387,6 @@ function createNode(type, wx, wy, o = {}) {
   const n = addNodeRaw(type, x, y);
   S.sel = new Set([n.id]); S.edgeSel = null;
   structureChanged(); refreshSel(); popIn([n.id]);
-  bgPulse(x + n.w / 2, y + 48, colorOf(n.color).c1, 0.45, 0.5, true);
   if (o.edit !== false) editField(n.id, 'title');
   return n;
 }
@@ -411,7 +410,7 @@ function deleteSel() {
   }
   if (!S.sel.size) return;
   checkpoint();
-  const ids = new Set(S.sel), e0 = new Map(e.nodes.map(n => [n.id, n]));
+  const ids = new Set(S.sel);
   e.nodes = e.nodes.filter(n => !ids.has(n.id));
   e.edges = e.edges.filter(x => !ids.has(x.from) && !ids.has(x.to));
   e.groups.forEach(g => { g.members = g.members.filter(id => !ids.has(id)); });
@@ -420,8 +419,6 @@ function deleteSel() {
     const el = NODE_EL.get(id);
     if (!el) continue;
     NODE_EL.delete(id); RO.unobserve(el); SIZE.delete(id); DISP.delete(id);
-    const n0 = e0.get(id);
-    if (n0 && ids.size <= 24) dyingPulse(n0, el);
     el.classList.add('leaving'); el.style.pointerEvents = 'none';
     setTimeout(() => el.remove(), 360);
   }
@@ -586,8 +583,6 @@ function pasteData(data, at) {
   tmp.edges.forEach(x => { if (map[x.from] && map[x.to]) e.edges.push(Object.assign(x, { id: uid('l'), from: map[x.from], to: map[x.to] })); });
   S.sel = new Set(added); S.edgeSel = null;
   structureChanged(); refreshSel(); popIn(added, true);
-  const pb = bboxOf(added.map(nodeById), true);
-  bgPulse(pb.x + pb.w / 2, pb.y + pb.h / 2, null, 0.7, 0.5, true);
 }
 function duplicateSel() { if (S.sel.size) pasteData(selData(), null); }
 
@@ -2244,17 +2239,12 @@ function toggleFocus() {
    glows or shapes on top), so it stays clean:
      - moving the pointer lights the dots around it; the faster you move, the more it shows, and it fades
        out shortly after you stop
-     - adding, connecting, dropping or pasting nodes sends a soft wave of light through the dots
+     - dropping dragged nodes, or double-clicking empty board, sends a soft wave through the dots
      - a node being dragged lights the dots underneath it in its own colour
    Grid: all of it. Pulses: just the waves. Off: a still grid. */
 const FX_MODES = [['off', 'Off'], ['grid', 'All'], ['pulse', 'Pulses only']];
 if ((CFG.comfortV || 0) < 4) { CFG.bgFx = 'grid'; CFG.comfortV = 4; saveCfg(); }
 if (!FX_MODES.some(m => m[0] === CFG.bgFx)) CFG.bgFx = 'grid';
-const amb = document.createElement('div');
-amb.id = 'amb';
-amb.setAttribute('aria-hidden', 'true');
-amb.innerHTML = '<i class="ab1"></i><i class="ab2"></i>';
-$('#stage').prepend(amb);
 const gridCv = document.createElement('canvas');
 gridCv.id = 'grid-fx';
 gridCv.setAttribute('aria-hidden', 'true');
@@ -2384,12 +2374,10 @@ window.addEventListener('pointermove', e => {
 function setBgFx(m) { CFG.bgFx = m; saveCfg(); GF.waves = []; GF.trail = []; gridKick(); applyFocusLevel(); }
 function fxApply() { gridSize(); }
 
-/* ---- action effects, in the same soft "energy" style as the grid (and off whenever the grid is):
-     connecting: a charge runs along the new line, and a pulse runs round each node's outline from
-       where the line meets it
-     deleting: the node flickers out while the dots around it draw in, like a dying pulse
-     a new panel: dots fly in from around it and settle into its outline
-     a panel going away: holes open up in it and it breaks apart into dots */
+/* ---- action effects: few and short, only where they tell you something happened (off whenever the grid is):
+     connecting: a highlight runs along the new line, then round the node it points to
+     editing: a highlight runs round the edited node
+     a removed line, a new panel, a panel going away: a quick fade */
 const OVL = $('#overlay');
 const fxOn = () => fxMode() !== 'off';
 function svgNew(tag, attrs) { const el = document.createElementNS(SVGNS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
@@ -2451,12 +2439,6 @@ function chargeEdge(edgeId) {
   runPulse(r.vis.getAttribute('d'), color, { dur: 440, len: 0.2, width: 2, peak: 0.9, thin: true });
   outlinePulse(ed.to, r.p2, color, 340);
 }
-/* deleting a node: a soft wave spreads out through the dots from where it was, while it fades (CSS .leaving) */
-function dyingPulse(n, el) {
-  if (!fxOn()) return;
-  const w = el ? el.offsetWidth : n.w, h = el ? el.offsetHeight : 160;
-  bgPulse(n.x + w / 2, n.y + h / 2, colorOf(n.color).c1, 0.5, 0.45);
-}
 /* an edited node: a pulse runs round its outline, starting next to what was changed */
 function editPulse(n, from) {
   if (!fxOn() || !n || !NODE_EL.get(n.id)) return;
@@ -2465,85 +2447,27 @@ function editPulse(n, from) {
   if (from && from.isConnected) { const b = from.getBoundingClientRect(); at = toWorld(b.left + b.width / 2, b.top + b.height / 2); }
   outlinePulse(n.id, at, colorOf(n.color).c1, 0);
 }
-/* points spaced along a rectangle's outline (world coordinates) */
-function rectOutlinePoints(r, n) {
-  const per = 2 * (r.w + r.h), out = [];
-  for (let i = 0; i < n; i++) {
-    let s = (i + Math.random() * 0.6) / n * per;
-    if (s < r.w) out.push([r.x + s, r.y]);
-    else if ((s -= r.w) < r.h) out.push([r.x + r.w, r.y + s]);
-    else if ((s -= r.h) < r.w) out.push([r.x + r.w - s, r.y + r.h]);
-    else out.push([r.x, r.y + r.h - (s - r.w)]);
-  }
-  return out;
-}
-/* dots that travel between scattered spots and an outline (inward: they gather; otherwise they scatter) */
-function flyDots(pts, color, inward, spread = 1) {
-  pts.forEach(([x, y]) => {
-    const ang = Math.random() * Math.PI * 2, dist = (70 + Math.random() * 170) * spread, sx = x + Math.cos(ang) * dist, sy = y + Math.sin(ang) * dist;
-    const c = svgNew('circle', { cx: 0, cy: 0, r: (1.6 + Math.random() * 1.2).toFixed(1), class: 'fx-dot' });
-    c.style.fill = color; c.style.color = color;
-    OVL.appendChild(c);
-    const a = [`translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`, `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`];
-    const delay = Math.random() * (inward ? 180 : 140), dur = 520 + Math.random() * 220;
-    const kf = inward
-      ? [{ transform: a[0], opacity: 0 }, { opacity: 1, offset: 0.35 }, { transform: a[1], opacity: 0.9, offset: 0.88 }, { transform: a[1], opacity: 0 }]
-      : [{ transform: a[1], opacity: 0.9 }, { opacity: 0.8, offset: 0.3 }, { transform: a[0], opacity: 0 }];
-    const an = c.animate(kf, { duration: dur, delay, easing: inward ? 'cubic-bezier(.2,.8,.25,1)' : 'cubic-bezier(.4,0,.8,.6)', fill: 'both' });
-    const done = () => c.remove();
-    an.onfinish = done; setTimeout(done, dur + delay + 400);
-  });
-}
-/* a removed connection breaks into short pieces that fade, and a few dots drift off it */
+/* a removed connection fades out where it was */
 function fxEdgeBreak(d, color) {
   if (!fxOn() || !d) return;
-  const g = svgNew('path', { d, class: 'fx-break', pathLength: '1' });
+  const g = svgNew('path', { d, class: 'fx-break' });
   g.style.stroke = color || 'var(--line)';
   edgeG.appendChild(g);
-  const an = g.animate([
-    { strokeDasharray: '1 0', opacity: 0.9 },
-    { strokeDasharray: '0.07 0.03', opacity: 0.8, offset: 0.3 },
-    { strokeDasharray: '0.012 0.088', opacity: 0 },
-  ], { duration: 560, easing: 'cubic-bezier(.3,.6,.4,1)', fill: 'both' });
+  const an = g.animate([{ opacity: 0.8 }, { opacity: 0 }], { duration: 220, easing: 'ease-out', fill: 'both' });
   const done = () => g.remove();
-  an.onfinish = done; setTimeout(done, 1000);
-  /* dots along the line, drifting a little way off */
-  let L = 0;
-  try { L = g.getTotalLength(); } catch (_) {}
-  if (L > 4) {
-    const k = Math.round(clamp(L / 60, 4, 14)), pts = [];
-    for (let i = 0; i < k; i++) { const q = g.getPointAtLength(L * (i + 0.5) / k); pts.push([q.x, q.y]); }
-    flyDots(pts, color || getComputedStyle(g).stroke, false, 0.22);
-  }
+  an.onfinish = done; setTimeout(done, 600);
 }
-/* a new panel builds itself out of dots, then its frame fades in */
-function fxPanelIn(el, p, r) {
+/* a new panel's frame fades in */
+function fxPanelIn(el) {
   if (!fxOn()) return;
-  flyDots(rectOutlinePoints(r, Math.round(clamp((r.w + r.h) / 22, 26, 70))), COLORS[p.color] || selHex(), true);
   el.classList.remove('pf-born'); void el.offsetWidth; el.classList.add('pf-born');
-  setTimeout(() => el.classList.remove('pf-born'), 1300);
+  setTimeout(() => el.classList.remove('pf-born'), 600);
 }
-/* a panel going away: holes open up in it and it breaks apart into dots */
+/* a panel going away fades out */
 function fxPanelOut(el) {
-  const m = (el.style.transform || '').match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/), w = el.offsetWidth, h = el.offsetHeight;
-  if (!fxOn() || !m || !w) { el.remove(); return; }
-  const x = +m[1], y = +m[2], color = getComputedStyle(el).getPropertyValue('--gc').trim() || selHex();
+  if (!fxOn() || !el.offsetWidth) { el.remove(); return; }
   el.classList.add('dying');
-  const holes = rectOutlinePoints({ x: 0, y: 0, w, h }, 11).map(([hx, hy]) => ({ x: hx, y: hy }))
-    .concat(Array.from({ length: 5 }, () => ({ x: Math.random() * w, y: Math.random() * h })))
-    .map(o => Object.assign(o, { R: (0.16 + Math.random() * 0.22) * Math.max(w, h), at: Math.random() * 260 }));
-  flyDots(rectOutlinePoints({ x, y, w, h }, Math.round(clamp((w + h) / 26, 20, 56))), color, false);
-  const t0 = performance.now(), dur = 520;
-  el.style.webkitMaskComposite = 'source-in'; el.style.maskComposite = 'intersect';
-  const step = now => {
-    if (!el.isConnected) return;
-    const t = now - t0;
-    const layers = holes.map(o => { const k = clamp((t - o.at) / dur, 0, 1), r = o.R * (1 - Math.pow(1 - k, 2)); return `radial-gradient(circle at ${o.x.toFixed(0)}px ${o.y.toFixed(0)}px,transparent ${r.toFixed(1)}px,#000 ${(r + 1.5).toFixed(1)}px)`; });
-    el.style.maskImage = el.style.webkitMaskImage = layers.join(',');
-    if (t < dur + 300) requestAnimationFrame(step); else el.remove();
-  };
-  requestAnimationFrame(step);
-  setTimeout(() => el.remove(), 1400);
+  setTimeout(() => el.remove(), 260);
 }
 
 /* ---- reading glow: over a node's text, a soft, round light follows the pointer beneath the words, like

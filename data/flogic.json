@@ -713,8 +713,8 @@
     {
      "id": "n8l7ftfi6",
      "type": "title",
-     "x": -864,
-     "y": 288,
+     "x": -2448,
+     "y": 336,
      "w": 576,
      "color": "default",
      "tag": "ENDONYM",
@@ -725,8 +725,8 @@
     {
      "id": "nk37ztwaly",
      "type": "title",
-     "x": -372,
-     "y": -384,
+     "x": -384,
+     "y": -480,
      "w": 744,
      "color": "g-aurora",
      "tag": "THESIS",
@@ -737,8 +737,8 @@
     {
      "id": "n5pz20wxuo",
      "type": "note",
-     "x": -1368,
-     "y": 696,
+     "x": -2952,
+     "y": 552,
      "w": 456,
      "color": "p-coral",
      "tag": "",
@@ -768,12 +768,6 @@
        "kind": "category",
        "label": "HISTORICAL ANCEDOTES",
        "text": "In 1846, German historian Friedrich Kruse of the Dorpat University noted: \"The true Lithuanians live in the former Voivodeships of Vilnius and Trakai, Novogrudok, Brest Litovsk, Minsk, Polotsk, Vitebsk, Mstislav and Smolensk\""
-      },
-      {
-       "id": "beo1c0fxuo",
-       "kind": "conclusion",
-       "label": "Conclusion",
-       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
       },
       {
        "id": "b84ne5wr48",
@@ -812,8 +806,8 @@
     {
      "id": "nac0e9wbf4",
      "type": "note",
-     "x": -408,
-     "y": 552,
+     "x": -1992,
+     "y": 600,
      "w": 624,
      "color": "g-aurora",
      "tag": "",
@@ -842,7 +836,7 @@
        "id": "bngsr8dbf4",
        "kind": "conclusion",
        "label": "Conclusion",
-       "text": "Using these statistics, we can conclude litvin was an extremely widespread endonym, that reached into modern day northern Ukraine. Koppen's work comes from mid 19th century, which is over 50 years after the \"belarusian\" endonym was propagated by the Russian empire. Still, in spite of that, the litvin ethnonym remained and was majority in a lot of areas. Unfortunately, data regarding other cities in Belarus is lacking, but we can conclude if the endonym reached northern Ukraine in such quantities, it was  "
+       "text": "Using these statistics, we can conclude litvin was an extremely widespread endonym, that reached into modern day northern Ukraine. Koppen's work comes from mid 19th century, which is over 50 years after the \"belarusian\" endonym was propagated by the Russian empire. Still, in spite of that, the litvin ethnonym remained and was majority in a lot of areas. "
       },
       {
        "id": "bm0tqty65",
@@ -883,6 +877,80 @@
       }
      ],
      "accent": "bottom"
+    },
+    {
+     "id": "n1mlytfphy",
+     "type": "title",
+     "x": 912,
+     "y": -72,
+     "w": 576,
+     "color": "default",
+     "tag": "Region",
+     "title": "Lithuania's and Belarus' old endonyms",
+     "subtitle": "Analyzing what Lithuanian's old endonym was: Litva, Aukstatija, Samogitia, Belarus, or all? ",
+     "blocks": [
+      {
+       "id": "by4964z4s5",
+       "kind": "text",
+       "text": "This analysis relies on historical treaties and maps to determine which regions were considered which."
+      }
+     ]
+    },
+    {
+     "id": "nzcsibdklk",
+     "type": "note",
+     "x": 504,
+     "y": 264,
+     "w": 432,
+     "color": "g-sunset",
+     "tag": "Note",
+     "title": "Treaties",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bxzxdrzg12",
+       "kind": "category",
+       "label": "Treaty of Melno/Konisberg",
+       "text": "Also includes Treaty of Dubysa, Salynas, etc.\nThese treaties ceded Samogitia to the Teutonic Knights. The interesting part is that the treaties say: *\"to cede Samogitia up to that Nevezis river\"*.\nWhen visualizing the treaty, it looks something like this:"
+      },
+      {
+       "id": "bnid07ko44",
+       "kind": "image",
+       "src": "data/assets/d95b03e7e640206e3752e505.webp",
+       "caption": "Over half of modern ethnic Lithuanian land ceded away"
+      },
+      {
+       "id": "bx729fj3kr",
+       "kind": "category",
+       "label": "Category",
+       "text": ""
+      }
+     ]
+    },
+    {
+     "id": "n3yk439xje",
+     "type": "note",
+     "x": 1584,
+     "y": 240,
+     "w": 576,
+     "color": "g-sunset",
+     "tag": "Note",
+     "title": "Maps",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "baisk9xxje",
+       "kind": "category",
+       "label": "Nicolas de Fer",
+       "text": "Nicolas de Fer was a cartographer from France, who made a map of GDL on demand of the Swedish empire in the early 1700s."
+      },
+      {
+       "id": "b3albx8llz",
+       "kind": "image",
+       "src": "data/assets/a27151946e19a085bb8180b9.webp",
+       "caption": "-# This is not the original, I made it easier to see as the original is using an archaic map style. It can be found easily on google with \"Nicolas de Fer Lithuania\""
+      }
+     ]
     }
    ],
    "edges": [
@@ -907,10 +975,40 @@
      "dashed": false
     },
     {
-     "id": "li2vskz4x",
+     "id": "l8ylv46lbi",
      "from": "nk37ztwaly",
      "fs": "b",
      "to": "n8l7ftfi6",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lz600w93wd",
+     "from": "nk37ztwaly",
+     "fs": "b",
+     "to": "n1mlytfphy",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lfajqfnc92",
+     "from": "n1mlytfphy",
+     "fs": "b",
+     "to": "nzcsibdklk",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lt9jjoadld",
+     "from": "n1mlytfphy",
+     "fs": "r",
+     "to": "n3yk439xje",
      "ts": "t",
      "label": "",
      "arrow": true,

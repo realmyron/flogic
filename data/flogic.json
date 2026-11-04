@@ -713,8 +713,8 @@
     {
      "id": "n8l7ftfi6",
      "type": "title",
-     "x": -2448,
-     "y": 336,
+     "x": -1944,
+     "y": -1248,
      "w": 576,
      "color": "default",
      "tag": "ENDONYM",
@@ -725,8 +725,8 @@
     {
      "id": "nk37ztwaly",
      "type": "title",
-     "x": -384,
-     "y": -480,
+     "x": -1008,
+     "y": -1752,
      "w": 744,
      "color": "g-aurora",
      "tag": "THESIS",
@@ -737,8 +737,8 @@
     {
      "id": "n5pz20wxuo",
      "type": "note",
-     "x": -2952,
-     "y": 552,
+     "x": -2520,
+     "y": -984,
      "w": 456,
      "color": "p-coral",
      "tag": "",
@@ -806,8 +806,8 @@
     {
      "id": "nac0e9wbf4",
      "type": "note",
-     "x": -1992,
-     "y": 600,
+     "x": -1512,
+     "y": -984,
      "w": 624,
      "color": "g-aurora",
      "tag": "",
@@ -881,8 +881,8 @@
     {
      "id": "n1mlytfphy",
      "type": "title",
-     "x": 912,
-     "y": -72,
+     "x": 216,
+     "y": -1335,
      "w": 576,
      "color": "default",
      "tag": "Region",
@@ -892,25 +892,25 @@
       {
        "id": "by4964z4s5",
        "kind": "text",
-       "text": "This analysis relies on historical treaties and maps to determine which regions were considered which."
+       "text": "This analysis relies on historical treaties and maps to determine which regions were considered which\nThe litvinist perspective views Belarus as Lithuania, Lithuania as Samogitia and Ruthenia as Ukraine. While the mainstream perspective treats Lithuania as Lithuania and Ruthenia as both Belarus and Ukraine. "
       }
      ]
     },
     {
      "id": "nzcsibdklk",
      "type": "note",
-     "x": 504,
-     "y": 264,
-     "w": 432,
+     "x": 216,
+     "y": -999,
+     "w": 576,
      "color": "g-sunset",
-     "tag": "Note",
-     "title": "Treaties",
+     "tag": "ee",
+     "title": "Samogitia",
      "subtitle": "",
      "blocks": [
       {
        "id": "bxzxdrzg12",
        "kind": "category",
-       "label": "Treaty of Melno/Konisberg",
+       "label": "Treaty of Melno/Konisberg 1400",
        "text": "Also includes Treaty of Dubysa, Salynas, etc.\nThese treaties ceded Samogitia to the Teutonic Knights. The interesting part is that the treaties say: *\"to cede Samogitia up to that Nevezis river\"*.\nWhen visualizing the treaty, it looks something like this:"
       },
       {
@@ -920,28 +920,9 @@
        "caption": "Over half of modern ethnic Lithuanian land ceded away"
       },
       {
-       "id": "bx729fj3kr",
-       "kind": "category",
-       "label": "Category",
-       "text": ""
-      }
-     ]
-    },
-    {
-     "id": "n3yk439xje",
-     "type": "note",
-     "x": 1584,
-     "y": 240,
-     "w": 576,
-     "color": "g-sunset",
-     "tag": "Note",
-     "title": "Maps",
-     "subtitle": "",
-     "blocks": [
-      {
        "id": "baisk9xxje",
        "kind": "category",
-       "label": "Nicolas de Fer",
+       "label": "Nicolas de Fer 1700",
        "text": "Nicolas de Fer was a cartographer from France, who made a map of GDL on demand of the Swedish empire in the early 1700s."
       },
       {
@@ -949,46 +930,78 @@
        "kind": "image",
        "src": "data/assets/a27151946e19a085bb8180b9.webp",
        "caption": "-# This is not the original, I made it easier to see as the original is using an archaic map style. It can be found easily on google with \"Nicolas de Fer Lithuania\""
+      },
+      {
+       "id": "boenz9pk20",
+       "kind": "scenarios",
+       "label": "Scenarios",
+       "items": [
+        {
+         "id": "s6mw4oyk20",
+         "title": "Vytautas Letters 1420s",
+         "steps": [
+          {
+           "id": "t04u9pjk21",
+           "label": "Explanation",
+           "text": "A common argument from the opposing side is bringing up the 1420 Samogitian conference letters, in which under Vytautas name, several things are claimed:\n- Samogitia is an integral part of GDL.\n- Samogitians and Lithuanians speak the same language and are the same people\n- Samogitia is the low land and Lithuania is the high land.\nThis argument essentially debunks the idea that the slavic people of Belarus couldve been Lithuanian",
+           "alt": false
+          },
+          {
+           "id": "tc7r5kxyap",
+           "label": "Counter",
+           "text": "There's many issues with this argument and I will list them separately: \n- There's no original of the letter, there's a print of it in latin by a Polish historian from the 19th century Tytus Dzialynski, whose area of expertise was studying the Polish-Lithuanian historical records. Since it's a print, there's a possibility of author mediation and editing. Checking Dzialynski's history, I found multiple scholarly critiques of his work, claiming mediation of original documents and rewriting, despite him swearing to not do so. Of course, using this alone, doesn't prove the print is illegitimate, as that would be an ad hominem, so I will focus more on the letter itself.",
+           "alt": false
+          },
+          {
+           "id": "thxkqh4f55",
+           "label": "Addition ",
+           "text": "The main critique of the contents letter, is it's extremely out of place terminology and context:\n- The letter makes extremely emotional and strong claims towards Samogitia, in spite of the fact Vytautas had previously given it up easily to the Teutonic Knights. \n- The letter uses terminology of \"Aukstatija\" and the \"lowland/highland\" which have never appeared in any document prior to this nor after this for over 300 years. \n- The letter makes an ethnic argument for the land, something that was extremely unpopular for the period it was written in. ",
+           "alt": false
+          },
+          {
+           "id": "t9f4oav8bq",
+           "label": "Conclusion",
+           "text": "The content of the letter together with the author's history allow me to deny the legitimacy of this letters content. It seems like a heavily mediated version of the original document, with the purpose of mediation to drive Samogitian-Lithuanian nationalism during the spring of nations. If more letters describing this event are presented, it will invalidate this critique. (There is actually another letter, see next scenario).",
+           "alt": false
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "n3yk439xje",
+     "type": "note",
+     "x": 960,
+     "y": -1090,
+     "w": 576,
+     "color": "g-sunset",
+     "tag": "Note",
+     "title": "Lithuania",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bt22038181",
+       "kind": "category",
+       "label": "Treaty of Radnot",
+       "text": ""
+      },
+      {
+       "id": "bytz125rae",
+       "kind": "image",
+       "src": "data/assets/f68aa9f7344f395fa80adf1b.webp",
+       "caption": ""
       }
      ]
     }
    ],
    "edges": [
     {
-     "id": "lcxj1dys8a",
-     "from": "n8l7ftfi6",
-     "fs": "b",
-     "to": "n5pz20wxuo",
-     "ts": "r",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "l2el4gqt5w",
-     "from": "n8l7ftfi6",
-     "fs": "b",
-     "to": "nac0e9wbf4",
-     "ts": "l",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
      "id": "l8ylv46lbi",
      "from": "nk37ztwaly",
      "fs": "b",
      "to": "n8l7ftfi6",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lz600w93wd",
-     "from": "nk37ztwaly",
-     "fs": "b",
-     "to": "n1mlytfphy",
      "ts": "t",
      "label": "",
      "arrow": true,
@@ -1010,6 +1023,36 @@
      "fs": "r",
      "to": "n3yk439xje",
      "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lbbm7dkcea",
+     "from": "nk37ztwaly",
+     "fs": "b",
+     "to": "n1mlytfphy",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l8l4om5ydl",
+     "from": "n8l7ftfi6",
+     "fs": "l",
+     "to": "n5pz20wxuo",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lb14palkii",
+     "from": "n8l7ftfi6",
+     "fs": "b",
+     "to": "nac0e9wbf4",
+     "ts": "l",
      "label": "",
      "arrow": true,
      "dashed": false

@@ -1,7 +1,7 @@
 'use strict';
 /* Flogic: interaction layer (pointer, keyboard, menus, editing, publishing, boot). */
 
-let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null, EG = null, BEND = null;
+let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null, EG = null, BEND = null, INK = null;
 const TOUCH = new Map();
 const pointerInVp = () => PTR.x >= VR.left && PTR.x <= VR.left + VR.width && PTR.y >= VR.top && PTR.y <= VR.top + VR.height;
 const capture = e => { try { vp.setPointerCapture(e.pointerId); } catch (_) {} };
@@ -183,6 +183,7 @@ function endEdit() {
     if (el.dataset.single) v = v.replace(/\s*\n\s*/g, ' ');
     setPath(n, ed.f, v);
     if (v !== ed.before) { changed(); editPulse(n, el); }
+    szMark(n.id);
   }
   el.removeAttribute('contenteditable');
   el.removeAttribute('spellcheck');
@@ -531,8 +532,7 @@ async function nodesPng(ids) {
   edges.forEach(x => { const r = EDGE_EL.get(x.id); if (r.lab.style.display !== 'none') { const c = r.lab.cloneNode(true); c.classList.remove('lab-in'); ll.appendChild(c); } });
   const nl = layer();
   shown.forEach((n, i) => {
-    const c = NODE_EL.get(n.id).cloneNode(true);
-    c.classList.remove('sel', 'hl', 'lifted', 'pop', 'editing', 'drop-target', 'conn-target', 'leaving');
+    const c = cleanNodeClone(NODE_EL.get(n.id));   /* always the full content, whatever the zoom */
     c.style.transform = `translate(${n.x}px,${n.y}px)`;
     c.style.filter = '';
     c.style.zIndex = e.nodes.indexOf(n) + 1;
@@ -1085,6 +1085,8 @@ nodesWrap.addEventListener('click', e => {
 });
 nodesWrap.addEventListener('dblclick', e => {
   e.stopPropagation();
+  /* zoomed out (the readable-zoom labels are showing), a double-click zooms into the node instead of editing it */
+  { const ne = e.target.closest('.node.sz:not(.svgs)'); if (ne) { hidePeek(); closeReader(); zoomToNodes([ne.dataset.id]); return; } }
   const img = e.target.closest('.b-img img');
   if (img) { openLightbox(img.src, img.alt); return; }
   if (!S.canEdit) return;
@@ -1294,6 +1296,7 @@ function onDown(e) {
   if (S.editing && !S.editing.el.contains(t)) endEdit();
   if (S.editing) return;
   if (e.button === 1 || (e.button === 0 && (S.space || S.tool === 'hand'))) { e.preventDefault(); startPan(e); return; }
+  if (e.button === 0 && S.tool === 'draw') { e.preventDefault(); startInk(e); return; }
   if (e.button !== 0) return;
   if (t.closest('.sug-flag, .sug-bubble')) return;   /* suggestion markers handle their own clicks */
   const ae = document.activeElement;
@@ -1336,8 +1339,10 @@ function onDown(e) {
       /* visitors can select several nodes with Shift (to copy them as text or an image) */
       if (e.shiftKey) { if (S.sel.has(id)) S.sel.delete(id); else groupOrNode(id).forEach(x => S.sel.add(x)); S.edgeSel = null; refreshSel(); }
       else if (!S.sel.has(id)) selectNodes(groupOrNode(id));
-      if (t.closest('.ed')) return;   /* visitors can select and copy text; drag the node's edge or the board to pan */
-      startPan(e); return;
+      if (t.closest('.ed') && !ne.classList.contains('sz')) return;   /* visitors can select and copy text; drag the node's edge or the board to pan */
+      startPan(e);
+      if (ne.classList.contains('sz') && !ne.classList.contains('svgs')) PAN.read = id;   /* a click (no drag) opens it in the reader */
+      return;
     }
     if (e.shiftKey) {
       if (S.sel.has(id)) { S.sel.delete(id); refreshSel(); return; }
@@ -1364,6 +1369,7 @@ function onMove(e) {
     if (!PAN.moved) { PAN.moved = true; capture(e); document.body.classList.add('panning'); }
     V.x = PAN.vx + e.clientX - PAN.sx; V.y = PAN.vy + e.clientY - PAN.sy; applyView(); return;
   }
+  if (INK) return moveInk(e);
   if (DRAG) return moveDrag(e);
   if (MQ) return moveMarquee(e);
   if (CONN) return moveConnect(e);
@@ -1379,8 +1385,9 @@ function onUp(e) {
     if (PINCH) { if (TOUCH.size < 2) PINCH = null; return; }
   }
   EG = null;
+  if (INK) endInk();
   if (BEND) endBend();
-  if (PAN) { PAN = null; document.body.classList.remove('panning'); }
+  if (PAN) { const rd = !PAN.moved && PAN.read; PAN = null; document.body.classList.remove('panning'); if (rd) openReader(rd); }
   if (DRAG) endDrag();
   if (MQ) endMarquee();
   if (CONN) endConnect(e);
@@ -1392,6 +1399,7 @@ function onUp(e) {
    hanging (e.g. a half-drawn connection that follows the mouse). End everything cleanly instead. */
 function abortGestures() {
   EG = null;
+  if (INK) endInk();
   if (BEND) endBend();
   if (CONN) cancelConnect();
   if (DRAG) endDrag(true);
@@ -1406,6 +1414,7 @@ window.addEventListener('blur', abortGestures);
 document.addEventListener('visibilitychange', () => { if (document.hidden) abortGestures(); });
 vp.addEventListener('lostpointercapture', e => { if (e.pointerType === 'mouse' && e.buttons === 0 && (CONN || BD || DRAG || MQ || RZ)) abortGestures(); });
 function cancelGestures() {
+  if (INK) endInk(true);
   if (DRAG) endDrag();
   PAN = null;
   if (MQ) { $('#marquee').style.display = 'none'; MQ = null; }
@@ -1486,6 +1495,9 @@ function endDrag(aborted) {
   DRAG = null;
   if (!d.moved) {
     if (aborted) return;
+    /* a card showing its zoomed-out layer opens in the reader when clicked */
+    const le = NODE_EL.get(d.lead);
+    if (le && le.classList.contains('sz') && !le.classList.contains('svgs')) { openReader(d.lead); return; }
     if (d.narrow && S.sel.size > 1) selectNodes([d.lead]);
     /* clicking the text of a node that was already selected starts editing right there */
     else if (d.narrow && d.field && d.field.isConnected) startEdit(d.field, d.sx, d.sy);
@@ -2124,7 +2136,8 @@ window.addEventListener('keydown', e => {
   if (e.shiftKey && e.code === 'Digit1') { e.preventDefault(); fitAll(); return; }
   if (e.shiftKey && e.code === 'Digit2') { e.preventDefault(); if (S.sel.size) zoomToNodes([...S.sel]); return; }
   if (mod && e.altKey && e.code === 'KeyC') { e.preventDefault(); copyText(); return; }
-  if (e.key === 'Escape') { clearSel(); closePanels(); return; }
+  if (e.key === 'Escape') { if (S.tool === 'draw') setTool('select'); closeReader(); clearSel(); closePanels(); return; }
+  if (k === 'a' && !mod && !e.altKey) { setTool(S.tool === 'draw' ? 'select' : 'draw'); return; }
   if (e.key === '?') { openHelp(); return; }
   if (k === 'f' && !mod && !e.altKey) { e.preventDefault(); toggleFocus(); return; }
   if (!S.canEdit) {
@@ -2167,6 +2180,8 @@ function setTool(t) {
   S.tool = t;
   $$('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   document.body.classList.toggle('tool-hand', t === 'hand');
+  document.body.classList.toggle('tool-draw', t === 'draw');
+  if (t === 'draw') { hidePeek(); endEdit(); }
 }
 function closePanels() { document.body.classList.remove('show-left', 'show-right'); }
 $('#toolbar').addEventListener('click', e => {
@@ -2470,6 +2485,77 @@ function fxPanelOut(el) {
   setTimeout(() => el.remove(), 260);
 }
 
+/* ---- annotate: a pencil for pointing things out. Strokes are drawn on the board (they move and zoom with
+   it) but aren't saved and can't be undone: they're for the moment. Each one fades away slowly once you've
+   drawn a few more after it, or once the pointer has been away from it for a little while.
+   Smoothing: the pointer is followed with a little lag (which irons out the jitter of a hand), and the
+   points are joined with curves through their midpoints, so lines come out smooth but still hand-drawn. */
+const INK_KEEP = 3, INK_AWAY = 150, INK_WAIT = 1400, INK_FADE = 1600;
+const inkG = svgNew('g', { id: 'ink-g' });
+OVL.prepend(inkG);
+const INKS = [];   // finished strokes: { el, bb, at, far }
+let inkTimer = 0;
+function inkPath(pts) {
+  if (pts.length < 2) { const p = pts[0]; return `M${f1(p.x)} ${f1(p.y)}l0.01 0`; }
+  let d = `M${f1(pts[0].x)} ${f1(pts[0].y)}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p = pts[i], q = pts[i + 1];
+    d += `Q${f1(p.x)} ${f1(p.y)} ${f1((p.x + q.x) / 2)} ${f1((p.y + q.y) / 2)}`;
+  }
+  const l = pts[pts.length - 1];
+  return d + `L${f1(l.x)} ${f1(l.y)}`;
+}
+function startInk(e) {
+  capture(e);
+  const w = toWorld(e.clientX, e.clientY);
+  const el = svgNew('path', { class: 'ink' });
+  inkG.appendChild(el);
+  INK = { el, pts: [w], s: { x: w.x, y: w.y } };
+  el.setAttribute('d', inkPath(INK.pts));
+}
+function moveInk(e) {
+  const w = toWorld(e.clientX, e.clientY), s = INK.s;
+  /* follow the pointer with a little lag: a light pull smooths the line without making it feel slow */
+  s.x += (w.x - s.x) * 0.5; s.y += (w.y - s.y) * 0.5;
+  const last = INK.pts[INK.pts.length - 1];
+  if (Math.hypot(s.x - last.x, s.y - last.y) * V.z < 2.5) return;
+  INK.pts.push({ x: s.x, y: s.y });
+  INK.el.setAttribute('d', inkPath(INK.pts.concat([w])));
+}
+function endInk(cancel) {
+  const k = INK; INK = null;
+  if (!k) return;
+  if (cancel) { k.el.remove(); return; }
+  const last = k.pts[k.pts.length - 1];
+  if (Math.hypot(k.s.x - last.x, k.s.y - last.y) > 0.5) k.pts.push({ x: k.s.x, y: k.s.y });
+  k.el.setAttribute('d', inkPath(k.pts));
+  const xs = k.pts.map(p => p.x), ys = k.pts.map(p => p.y);
+  INKS.push({ el: k.el, bb: { x1: Math.min(...xs), y1: Math.min(...ys), x2: Math.max(...xs), y2: Math.max(...ys) }, at: performance.now(), far: 0 });
+  /* a few strokes stay; older ones start to go */
+  while (INKS.filter(s => !s.fading).length > INK_KEEP) fadeInk(INKS.find(s => !s.fading));
+  if (!inkTimer) inkTimer = setInterval(inkTick, 200);
+}
+function fadeInk(s) {
+  if (!s || s.fading) return;
+  s.fading = true;
+  s.el.style.transition = `opacity ${INK_FADE}ms ease`;
+  requestAnimationFrame(() => { s.el.style.opacity = '0'; });
+  setTimeout(() => { s.el.remove(); const i = INKS.indexOf(s); if (i > -1) INKS.splice(i, 1); }, INK_FADE + 100);
+}
+/* strokes the pointer has stayed away from (or that are off screen) for a moment fade away */
+function inkTick() {
+  const now = performance.now(), inside = pointerInVp(), p = toWorld(PTR.x, PTR.y), r = INK_AWAY / V.z;
+  for (const s of INKS) {
+    if (s.fading || INK) continue;
+    const dx = Math.max(s.bb.x1 - p.x, 0, p.x - s.bb.x2), dy = Math.max(s.bb.y1 - p.y, 0, p.y - s.bb.y2);
+    const away = !inside || Math.hypot(dx, dy) > r || S.tool !== 'draw';
+    s.far = away ? (s.far || now) : 0;
+    if (s.far && now - s.far > INK_WAIT && now - s.at > INK_WAIT) fadeInk(s);
+  }
+  if (!INKS.length) { clearInterval(inkTimer); inkTimer = 0; }
+}
+function clearInk() { INKS.slice().forEach(s => { s.el.remove(); }); INKS.length = 0; if (INK) endInk(true); }
+
 /* ---- reading glow: over a node's text, a soft, round light follows the pointer beneath the words, like
    the faintest highlighter. It lives inside the node (so it never spills past its edges), sits under the
    text (so the words stay crisp), and is sized to the line you are reading. */
@@ -2528,6 +2614,7 @@ function comfortHTML() {
     <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'grid') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
     <p class="fm-hint">The dot grid lights up behind the pointer and pulses as you add, drop or paste nodes; new connections send a charge along the line; panels build up and break apart. Pulses only leaves out the pointer trail.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
     <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
+    <label class="tog fm-tog"><input type="checkbox" class="fm-zoom"${CFG.readZoom !== false ? ' checked' : ''}><span></span>Readable zoom: zoomed out, notes re-arrange their text so what they show stays readable (the least important goes first). Hover a note to preview it, click to read it, double-click to zoom in</label>
   </div>`;
 }
 function bindComfort(root) {
@@ -2540,7 +2627,88 @@ function bindComfort(root) {
     $$('[data-fx]', root).forEach(x => x.classList.toggle('on', x === b));
   });
   $('.fm-glow', root).addEventListener('change', e => setReadGlow(e.target.checked));
+  $('.fm-zoom', root).addEventListener('change', e => { CFG.readZoom = e.target.checked; saveCfg(); hidePeek(); szView(); });
 }
+
+/* ---- peek: a card that is showing its zoomed-out layer (readable zoom) shows its full content beside it
+   while the pointer rests on it, like a link preview. Click the preview or the card to open it in the
+   reader; double-click the card to zoom into it. */
+const PK = { id: null, el: null, t: 0, hide: 0 };
+const peekOn = () => SZ.on && !S.editing && !DRAG && !CONN && !BD && !MQ && !PAN && !INK && S.tool !== 'draw';
+function hidePeek() {
+  clearTimeout(PK.t); clearTimeout(PK.hide); PK.id = null;
+  const el = PK.el; PK.el = null;
+  if (el) { el.classList.remove('on'); setTimeout(() => el.remove(), 180); }
+}
+function showPeek(id) {
+  const n = nodeById(id), src = NODE_EL.get(id);
+  if (!n || !src) return;
+  if (PK.el) PK.el.remove();
+  const box = document.createElement('div');
+  box.id = 'peek';
+  const c = cleanNodeClone(src);
+  c.style.width = n.w + 'px';
+  box.appendChild(c);
+  box.insertAdjacentHTML('beforeend', '<span class="peek-hint">Click to read · double-click the card to zoom in</span>');
+  box.style.width = src.offsetWidth + 'px';
+  document.body.appendChild(box);
+  /* beside the node: to its right if there's room, else to its left, else over it */
+  const r = src.getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight, m = 12;
+  let x = r.right + m;
+  if (x + bw > innerWidth - 8) x = r.left - m - bw;
+  if (x < 8) x = clamp(r.left + r.width / 2 - bw / 2, 8, innerWidth - bw - 8);
+  box.style.left = x + 'px';
+  box.style.top = clamp(r.top, 8, Math.max(8, innerHeight - bh - 8)) + 'px';
+  box.addEventListener('click', () => { const pid = PK.id; hidePeek(); if (pid) openReader(pid); });
+  box.addEventListener('pointerleave', () => { PK.hide = setTimeout(hidePeek, 160); });
+  box.addEventListener('pointerenter', () => clearTimeout(PK.hide));
+  box.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
+  PK.el = box; PK.id = id;
+  requestAnimationFrame(() => box.classList.add('on'));
+}
+vp.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch' || e.buttons || !peekOn()) { if (PK.id || PK.t) { clearTimeout(PK.t); PK.t = 0; if (!e.buttons && !peekOn()) hidePeek(); } return; }
+  const ne = e.target.closest && e.target.closest('#nodes .node.sz:not(.svgs)'), id = ne && ne.dataset.id;
+  if (id === PK.id) { clearTimeout(PK.hide); return; }
+  clearTimeout(PK.t);
+  if (!id) { if (PK.id) { clearTimeout(PK.hide); PK.hide = setTimeout(hidePeek, 160); } return; }
+  PK.t = setTimeout(() => { if (peekOn()) showPeek(id); }, PK.id ? 120 : 420);
+}, { passive: true });
+vp.addEventListener('wheel', () => { if (PK.id || PK.t) { clearTimeout(PK.t); hidePeek(); } }, { passive: true });
+
+/* ---- the reader: a zoomed-out card opened at full size in a panel beside the board, like opening the
+   article behind a map pin. The board stays as the map; clicking another card switches the article. */
+function openReader(id) {
+  const n = nodeById(id), src = NODE_EL.get(id);
+  if (!n || !src) return;
+  hidePeek();
+  let rd = $('#reader');
+  if (!rd) {
+    rd = document.createElement('aside');
+    rd.id = 'reader'; rd.setAttribute('aria-label', 'Reader');
+    document.body.appendChild(rd);
+    rd.addEventListener('click', e => {
+      if (e.target.closest('[data-rclose]')) { closeReader(); return; }
+      const z = e.target.closest('[data-rzoom]');
+      if (z) { closeReader(); zoomToNodes([z.dataset.rzoom]); return; }
+      const to = e.target.closest('[data-rto]');
+      if (to) { const b = rd.querySelector(`.rd-scroll .blocks>.blk[data-i="${to.dataset.rto}"]`); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+    rd.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
+  }
+  const heads = n.blocks.map((b, i) => b.kind === 'category' && mdPlain(b.label).trim() ? [i, mdPlain(b.label).trim()] : null).filter(Boolean);
+  rd.innerHTML = `<div class="rd-top"><span>Reading</span><span class="grow"></span>` +
+    `<button class="btn sm" data-rzoom="${id}">${ic('fit', 13)} Zoom to it</button>` +
+    `<button class="icon-btn" data-rclose aria-label="Close" title="Close (Esc)">${ic('x', 16)}</button></div>` +
+    `<div class="rd-scroll">${heads.length > 1 ? `<nav class="rd-toc"><b>Contents</b>${heads.map(([i, t]) => `<button data-rto="${i}">${esc(t)}</button>`).join('')}</nav>` : ''}</div>`;
+  const c = cleanNodeClone(src);
+  c.style.width = '';
+  rd.querySelector('.rd-scroll').appendChild(c);
+  rd.dataset.id = id;
+  requestAnimationFrame(() => rd.classList.add('on'));
+}
+function closeReader() { const rd = $('#reader'); if (rd) rd.classList.remove('on'); }
+vp.addEventListener('pointerdown', () => { if (PK.id || PK.t) { clearTimeout(PK.t); hidePeek(); } }, true);
 function openFocusMenu(btn) {
   const b = btn.getBoundingClientRect();
   const m = openMenu(b.left, b.top, [{ head: 'Comfort' }, { html: comfortHTML() }], { cls: 'fmenu' });
@@ -2648,6 +2816,8 @@ function openNavIconPicker(kind, id) {
 function firstEnvId() { return (DOC.envs.find(envVisible) || DOC.envs[0]).id; }
 function switchEnv(id) {
   endEdit();
+  if (typeof clearInk === 'function') clearInk();
+  if (typeof hidePeek === 'function') { hidePeek(); closeReader(); }
   if (!DOC.envs.some(e => e.id === id)) id = firstEnvId();
   S.envId = id; UI.envId = id;
   const fe = DOC.envs.find(x => x.id === id);
@@ -3443,7 +3613,7 @@ function scheduleAuto() { if (CFG.autoPublish && S.connected) autoPub(); }
 /* ===================== boot ===================== */
 function fillIcons() {
   const put = (sel, name, size = 17) => $$(sel).forEach(b => b.insertAdjacentHTML('afterbegin', ic(name, size)));
-  put('[data-tool="select"]', 'cursor'); put('[data-tool="hand"]', 'hand');
+  put('[data-tool="select"]', 'cursor'); put('[data-tool="hand"]', 'hand'); put('[data-tool="draw"]', 'annotate');
   put('[data-new="title"]', 'title'); put('[data-new="note"]', 'note'); put('[data-new="sub"]', 'sub'); put('[data-new="shape"]', 'shape');
   put('[data-cmd="undo"]', 'undo'); put('[data-cmd="redo"]', 'redo');
   put('[data-cmd="zoomout"]', 'minus', 16); put('[data-cmd="zoomin"]', 'plus', 16); put('[data-cmd="fit"]', 'fit', 16); put('[data-cmd="focus"]', 'focus', 16);

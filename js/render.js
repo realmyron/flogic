@@ -444,11 +444,214 @@ function applyView() {
   vp.style.backgroundSize = `${g}px ${g}px`;
   vp.style.backgroundPosition = `${V.x - g / 2}px ${V.y - g / 2}px`;
   $('#zoom-label').textContent = Math.round(V.z * 100) + '%';
+  szView();
   queueMinimap();
   if (S.envId) {
     UI.views[S.envId] = { cx: (VR.width / 2 - V.x) / V.z, cy: (VR.height / 2 - V.y) / V.z, z: V.z };
     saveUI();
   }
+}
+
+/* ---------- readable zoom (semantic zoom) ----------
+   Zoomed out, text inside a card would shrink below readable. Instead, each card re-typesets itself inside
+   its own box (Settings → Comfort → Readable zoom switches this off):
+   - the box never changes size or moves, so the layout, lines and panels stay exactly where they are;
+   - inside it, text is set at a readable size on screen (the SZ_MIN sizes; never smaller than the real
+     size) and the card shows what fits, most important first, in its normal order: the title, the label
+     above it, pictures, the opening lines, section headings, the conclusion, then the start of each
+     section. Zooming out, the least important things go first, so paragraphs shorten, sections close to
+     their headings, the headings go from the bottom up, and finally only the title is left;
+   - when not even the title fits, the card becomes a tile in its colour (panel names carry the overview);
+   - nothing changes above SZ_ENTER (58%); from there to SZ_FLOOR (49%) the text grows in small steps
+     (about every 1% of zoom), easing from its real size to the readable size it has at 49%; below 49%
+     nothing changes any more: the cards just scale down as they are at 49%;
+   - items fade and slide into place at each step, and an item needs a little more room to appear than to
+     stay, so nothing flickers at a boundary;
+   - pictures, shapes and lines are readable small, so they simply scale.
+   The original content stays in the card (hidden), so the box keeps its size, and the card being edited
+   always shows it. Hover a reduced card to see it full size, click it to read it in the reader (app.js). */
+const SZ = { on: false, zb: 1, ze: 1, dirty: new Set(), raf: 0, shown: new Map() };
+const SZ_ENTER = 0.58, SZ_EXIT = 0.6, SZ_FLOOR = 0.49, SZ_STEP = 1.01;
+/* the size a piece of text reaches on screen at SZ_FLOOR */
+const SZ_MIN = { title: 13.5, head: 13, text: 12.5, tag: 11.5 };
+const SZ_TILE_W = 64;   /* narrower than this on screen (at SZ_FLOOR), a card is a tile: not enough width for words */
+const szEnabled = () => typeof CFG === 'undefined' || CFG.readZoom !== false;
+/* how far along the ramp from SZ_ENTER (0) to SZ_FLOOR (1) a zoom step is: even, so every step is equally small */
+function szRamp(ze) { return clamp((SZ_ENTER - ze) / (SZ_ENTER - SZ_FLOOR), 0, 1); }
+/* a text size on the board: its real size, growing along the ramp to what reads as `min` at SZ_FLOOR */
+function szFont(real, min, ze) { const top = Math.max(real, min / SZ_FLOOR); return real + (top - real) * szRamp(ze); }
+/* called whenever the view changes: picks the zoom step and marks cards for re-typesetting */
+function szView() {
+  let zb = SZ.zb, on = false;
+  if (szEnabled()) {
+    if (V.z > zb * 1.012 || V.z < zb / 1.012) zb = Math.pow(SZ_STEP, Math.round(Math.log(V.z) / Math.log(SZ_STEP)));
+    on = SZ.on ? zb < SZ_EXIT : zb < SZ_ENTER;
+  }
+  SZ.zb = zb;
+  /* below SZ_FLOOR every step looks the same, so only steps above it re-typeset */
+  const ze = on ? Math.max(zb, SZ_FLOOR) : 1;
+  if (ze !== SZ.ze || on !== SZ.on) {
+    SZ.ze = ze;
+    if (on !== SZ.on) { SZ.on = on; document.body.classList.toggle('sz-on', on); }
+    world.style.setProperty('--szk', on ? (1 + (1 / SZ_FLOOR - 1) * szRamp(ze)).toFixed(4) : 1);
+    for (const id of NODE_EL.keys()) SZ.dirty.add(id);
+    SZ.edges = true;
+  }
+  if (SZ.dirty.size || SZ.edges) szSchedule();
+}
+function szMark(id) { SZ.dirty.add(id); szSchedule(); }
+function szSchedule() { if (!SZ.raf) SZ.raf = requestAnimationFrame(szFlush); }
+/* plain text for the zoomed-out layer: separate lines (bullets, list items) stay apart with a dot */
+const szPlain = s => mdPlain(String(s || '')).replace(/^\s*(_{3,}|-{3,}|\*{3,})\s*$/gm, '').replace(/^\s*[-•]\s+/gm, '')
+  .split(/\n+/).map(l => l.trim()).filter(Boolean).join(' · ');
+/* the pieces a card can show zoomed out, in document order; p = priority (lower stays longer) */
+function szItems(n, el) {
+  const out = [], T = n.type, add = (k, t, p, x = {}) => { if (k === 'img' || t) out.push(Object.assign({ k, t, p }, x)); };
+  if (T !== 'sub' && n.tag) add('tag', szPlain(n.tag), 2);
+  add('title', nodeName(n), 1);
+  if (T === 'title') add('text', szPlain(n.subtitle), 4);
+  let lead = true;
+  n.blocks.forEach((b, i) => {
+    switch (b.kind) {
+      case 'text': add('text', szPlain(b.text), lead ? 4 : 7); lead = false; break;
+      case 'category': add('head', szPlain(b.label), 5); add('text', szPlain(b.text), 7); break;
+      case 'highlight': add('text', [szPlain(b.label), szPlain(b.text)].filter(Boolean).join(': '), 6); break;
+      case 'conclusion': add('text', szPlain(b.text), 6, { cls: 'concl' }); break;
+      case 'quote': add('text', szPlain(b.text), 7, { cls: 'quote' }); break;
+      case 'checklist': add('text', [szPlain(b.label), b.items.map(x => szPlain(x.text)).filter(Boolean).join(' · ')].filter(Boolean).join(': '), 7.5); break;
+      case 'scenarios': add('text', [szPlain(b.label), b.items.map(x => szPlain(x.title)).filter(Boolean).join(' · ')].filter(Boolean).join(': '), 7.5); break;
+      case 'sources': if (b.items.length) add('text', b.items.length + (b.items.length > 1 ? ' sources' : ' source'), 8, { cls: 'meta' }); break;
+      case 'image': {
+        const img = el.querySelector(`.blocks>.blk[data-i="${i}"] img`);
+        if (b.src && img && img.offsetHeight) add('img', '', 3, { src: img.currentSrc || img.src, w: img.offsetWidth, h: img.offsetHeight });
+        break;
+      }
+    }
+  });
+  return out;
+}
+/* real (full-size) text sizes and line spacing for each kind of piece */
+function szSizes(n, k) {
+  const sub = n.type === 'sub';
+  if (k === 'title') return [n.type === 'title' ? 27 : sub ? 14 : 18, SZ_MIN.title, 1.22];
+  if (k === 'head') return [15, SZ_MIN.head, 1.28];
+  if (k === 'tag') return [12.5, SZ_MIN.tag, 1.3];
+  return [sub ? 13.5 : 14.5, SZ_MIN.text, 1.45];
+}
+function szClear(el) {
+  el.classList.remove('sz', 'sz-tile');
+}
+function szFlush() {
+  SZ.raf = 0;
+  if (!DOC || !S.envId) return;
+  const W = VR.width, H = VR.height, todo = [];
+  for (const id of SZ.dirty) {
+    const el = NODE_EL.get(id), n = nodeById(id);
+    if (!el || !n) { SZ.dirty.delete(id); continue; }
+    if (!SZ.on || isShapeNode(n)) { if (!SZ.on) szClear(el); else el.classList.add('sz'); SZ.dirty.delete(id); continue; }
+    const r = rectOf(n), sx = V.x + r.x * V.z, sy = V.y + r.y * V.z;
+    if (sx > W + 400 || sy > H + 400 || sx + r.w * V.z < -400 || sy + r.h * V.z < -400) continue;   // off screen: done when it comes into view
+    SZ.dirty.delete(id);
+    todo.push({ id, el, n });
+    if (todo.length >= 60) { szSchedule(); break; }   // a big board is done over a few frames
+  }
+  const zb = SZ.ze, ramp = szRamp(zb);   /* the effective step: never below SZ_FLOOR */
+  /* 1. write: (re)build each card's zoomed-out layer at this step's sizes, unclamped, to measure it */
+  for (const t of todo) {
+    const items = szItems(t.n, t.el), sig = JSON.stringify(items.map(i => [i.k, i.t, i.src, i.h, i.cls]));
+    let lay = t.el.querySelector(':scope > .n-sz');
+    if (!lay || lay.dataset.sig !== sig) {
+      if (lay) lay.remove();
+      lay = document.createElement('div');
+      lay.className = 'n-sz'; lay.setAttribute('aria-hidden', 'true'); lay.dataset.sig = sig;
+      lay.innerHTML = items.map(i => i.k === 'img'
+        ? `<div class="sz-i k-img"><img src="${esc(i.src)}" alt="" draggable="false" style="height:${i.h}px"></div>`
+        : `<div class="sz-i k-${i.k}${i.cls ? ' ' + i.cls : ''}"><span>${esc(i.t)}</span></div>`).join('');
+      t.el.appendChild(lay);
+      SZ.shown.delete(t.id);
+    }
+    t.lay = lay; t.items = items; t.els = [...lay.children];
+    t.el.classList.add('sz');   /* the layer has to be in layout to be measured */
+    items.forEach((it, i) => {
+      if (it.k === 'img') return;
+      const [real, min, lh] = szSizes(t.n, it.k), fs = szFont(real, min, zb);
+      it.fs = fs; it.lh = fs * lh; it.gap = fs * (it.k === 'tag' ? 0.2 : it.k === 'head' ? 0.35 : 0.5);
+      const s = t.els[i].firstChild;
+      s.style.fontSize = fs.toFixed(2) + 'px'; s.style.lineHeight = it.lh.toFixed(2) + 'px'; s.style.webkitLineClamp = 'unset';
+    });
+  }
+  /* 2. read: how many lines each piece needs at full length, and the room in the box */
+  for (const t of todo) {
+    /* the card's own padding, easing down to ~3px on screen by the end of the ramp, so short cards keep
+       room for their title */
+    const cs = getComputedStyle(t.el);
+    t.pad = [cs.paddingTop, cs.paddingBottom].map(v => { const p = parseFloat(v); return p + (Math.min(p, 3 / SZ_FLOOR) - p) * ramp; });
+    t.budget = t.el.clientHeight - t.pad[0] - t.pad[1];
+    t.narrow = (t.el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * SZ_FLOOR < SZ_TILE_W;
+    t.items.forEach((it, i) => {
+      if (it.k === 'img') { it.gap = 6 / zb; return; }
+      it.lines = Math.max(1, Math.round(t.els[i].firstChild.scrollHeight / it.lh));
+    });
+  }
+  /* 3. fit and write: most important first; then leftover room lets paragraphs run longer */
+  for (const t of todo) {
+    const { items, els } = t, prev = SZ.shown.get(t.id) || new Set(), take = new Map();
+    let used = 0, tile = t.narrow;
+    const order = items.map((_, i) => i).sort((a, b) => items[a].p - items[b].p || a - b);
+    t.lay.style.paddingTop = t.pad[0].toFixed(2) + 'px'; t.lay.style.paddingBottom = t.pad[1].toFixed(2) + 'px';
+    if (!tile) for (const i of order) {
+      /* a piece needs a little more room to appear than to stay (no flicker); the title only needs its room,
+         since a card without its title is worse than any other trade */
+      const it = items[i], lim = t.budget * (prev.has(i) || it.k === 'title' ? 1 : 0.94);
+      /* the space after a piece only matters if something comes after it, so a piece needs its own height to fit */
+      if (it.k === 'img') {
+        if (it.h * zb < 28 || used + it.h > lim) continue;
+        used += it.h + it.gap; take.set(i, 0); continue;
+      }
+      const cap = it.k === 'title' ? 3 : it.k === 'tag' ? 1 : 2;
+      let lines = Math.min(it.lines, cap);
+      while (lines > 1 && used + lines * it.lh > lim) lines--;
+      if (used + lines * it.lh > lim) { if (it.k === 'title') { tile = true; break; } continue; }
+      used += lines * it.lh + it.gap; take.set(i, lines);
+    }
+    if (!tile) for (const i of order) {
+      const it = items[i];
+      if (it.k !== 'text' || !take.has(i)) continue;
+      const more = Math.min(it.lines - take.get(i), Math.floor((t.budget - used) / it.lh));
+      if (more > 0) { take.set(i, take.get(i) + more); used += more * it.lh; }
+    }
+    items.forEach((it, i) => {
+      const e = els[i], on = !tile && take.has(i);
+      if (it.k === 'img') { e.style.height = on ? it.h + 'px' : '0px'; }
+      else {
+        const ln = take.get(i) || 0;
+        e.firstChild.style.webkitLineClamp = ln ? String(ln) : '1';
+        e.style.height = on ? (ln * it.lh).toFixed(2) + 'px' : '0px';
+      }
+      e.style.marginBottom = on ? it.gap.toFixed(2) + 'px' : '0px';
+      e.classList.toggle('on', on);
+    });
+    SZ.shown.set(t.id, new Set(take.keys()));
+    t.el.classList.add('sz');
+    t.el.classList.toggle('sz-tile', tile);
+  }
+  /* line labels show only where the line is long enough on screen to hold them */
+  if (SZ.edges) {
+    SZ.edges = false;
+    for (const [, r] of EDGE_EL) {
+      if (!r.p1 || r.lab.style.display === 'none') { r.lab.classList.remove('sz-hide'); continue; }
+      const room = Math.hypot(r.p2.x - r.p1.x, r.p2.y - r.p1.y);
+      r.lab.classList.toggle('sz-hide', SZ.on && r.lab.offsetWidth > room * 0.85);
+    }
+  }
+}
+/* a copy of a card for the preview, the reader or a picture: full content, none of the zoomed-out layer */
+function cleanNodeClone(src) {
+  const c = src.cloneNode(true);
+  c.classList.remove('sel', 'hl', 'lifted', 'pop', 'editing', 'drop-target', 'conn-target', 'leaving', 'sz', 'sz-tile');
+  c.querySelectorAll(':scope > .n-sz, .ports, .rz, .n-add, .grip').forEach(x => x.remove());
+  c.querySelectorAll('[contenteditable]').forEach(x => x.removeAttribute('contenteditable'));
+  return c;
 }
 
 /* ---------- text formatting ----------
@@ -646,6 +849,7 @@ const RO = new ResizeObserver(entries => {
       SIZE.set(id, { w, h }); ch = true;
       const n = nodeById(id);
       if (isShapeNode(n)) drawShape(el, n);
+      if (SZ.on) szMark(id);
     }
   }
   if (ch) queueFrame();
@@ -659,6 +863,7 @@ function applyNode(el, n, i) {
   el.classList.toggle('is-hidden', !!n.hidden);
   el.classList.toggle('is-folded', foldMap().has(n.id));
   if (!DISP.has(n.id)) el.style.transform = `translate3d(${n.x}px,${n.y}px,0)`;
+  if (SZ.on) szMark(n.id);   /* its content may have changed: re-typeset its zoomed-out layer */
 }
 function renderNode(n) {
   const el = NODE_EL.get(n.id);
@@ -933,7 +1138,7 @@ function drawGuides(gs) {
 let FQ = 0;
 function queueFrame() {
   if (FQ) return;
-  FQ = requestAnimationFrame(() => { FQ = 0; drawEdges(); drawFrames(); drawMinimap(); });
+  FQ = requestAnimationFrame(() => { FQ = 0; drawEdges(); drawFrames(); drawMinimap(); if (SZ.on) { SZ.edges = true; szSchedule(); } });
 }
 let MQF = 0;
 function queueMinimap() { if (!MQF) MQF = requestAnimationFrame(() => { MQF = 0; drawMinimap(); }); }
@@ -941,6 +1146,7 @@ function queueMinimap() { if (!MQF) MQF = requestAnimationFrame(() => { MQF = 0;
 /* ---------- minimap ---------- */
 let MM = null;
 function drawMinimap() {
+  if (!DOC) return;   /* the view can change (a resize) before the board has loaded */
   const c = $('#minimap');
   if (!c || !c.offsetWidth) return;
   const ns = env().nodes.filter(n => !n.hidden);

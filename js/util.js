@@ -70,6 +70,7 @@ const ICONS = {
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
   cursor: '<path d="M5.5 3.5 19 10l-6.2 1.8L10.4 18z"/>',
+  annotate: '<path d="M3.5 18.5c2.5-4.5 5-8 7-6.5s-1.5 5 .5 5.5 4.5-3.5 6.5-5.5"/><path d="m15.5 4.5 4 4L13 15h-4v-4z"/>',
   hand: '<path d="M18 11.5V7a1.5 1.5 0 0 0-3 0v4"/><path d="M15 10.5V5a1.5 1.5 0 0 0-3 0v5.5"/><path d="M12 10V6a1.5 1.5 0 0 0-3 0v6.5"/><path d="M9 12.5v-1a1.5 1.5 0 0 0-3 0V14a7 7 0 0 0 7 7h.5a6.5 6.5 0 0 0 6.5-6.5v-3a1.5 1.5 0 0 0-3 0"/>',
   title: '<path d="M6 5v14M18 5v14M6 12h12"/>',
   note: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.5 9.5h7M8.5 13.5h4.5"/>',

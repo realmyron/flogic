@@ -277,7 +277,7 @@ body.bending,body.bending *{cursor:move !important}
 #guide-g line{stroke:var(--guide);stroke-width:1;vector-effect:non-scaling-stroke}
 #guide-g line.gap{stroke-dasharray:3 3}
 .elabel{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--r-xs);background:var(--panel-solid);border:1px solid var(--node-b);
-  font-size:11.5px;color:var(--text2);white-space:pre;max-width:280px;cursor:pointer;box-shadow:var(--sh-1);outline:none}
+  font-size:12.5px;color:var(--text2);white-space:pre;max-width:300px;cursor:pointer;box-shadow:var(--sh-1);outline:none}
 .et-tx{min-width:0;overflow:hidden;text-overflow:ellipsis;outline:none}
 .elabel.empty .et-tx:not([contenteditable])::before{content:"Double-click to label";color:var(--faint)}
 .et-tx[contenteditable]{user-select:text;-webkit-user-select:text;cursor:text;text-overflow:clip;min-width:20px}
@@ -334,7 +334,7 @@ body.viewer .elabel{cursor:default}
 .pedge.e-r{top:-10px;bottom:-10px;right:-10px;width:20px}
 body.viewer .pedge,body.viewer .plabel{cursor:pointer}
 .plabel{position:absolute;left:14px;bottom:100%;margin-bottom:6px;display:flex;align-items:center;gap:5px;padding:3px 9px 3px 3px;border-radius:9px;
-  font-size:12px;font-weight:600;color:color-mix(in srgb,var(--gcx) var(--pl-k,65%),var(--text2));pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
+  font-size:13px;font-weight:600;color:color-mix(in srgb,var(--gcx) var(--pl-k,65%),var(--text2));pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
 .plabel>.ic{color:var(--gcx)}
 .pframe[data-look="card"] .plabel{bottom:auto;top:4px;left:8px;margin:0;color:var(--text)}
 .pframe.folded .plabel{bottom:auto;top:50%;left:8px;margin:0;transform:translateY(-50%);color:var(--text)}
@@ -429,16 +429,21 @@ body.editor .node.svgs:not(.acc-on):hover .sh-fill,body.editor .node.svgs[data-a
 .node.svgs.sel .sh-fill,.node.svgs.lifted .sh-fill{stroke:var(--sel) !important;stroke-width:2 !important}
 .node.svgs.conn-target .sh-fill,.node.svgs.drop-target .sh-fill,.node.svgs.hl .sh-fill{stroke:var(--sel) !important;stroke-width:2 !important}
 .node.svgs.lifted .nsh{filter:drop-shadow(0 16px 28px var(--shape-sh2))}
-.node[data-type="sub"] .lab{font-size:9px}
-.node[data-type="sub"] .scn-t{font-size:11.5px}
+.node[data-type="sub"] .lab{font-size:11.5px}
+.node[data-type="sub"] .scn-t{font-size:13px}
+.node[data-type="sub"] .b-text{font-size:13.5px}
 .n-head{position:relative}
 /* same text width for owner and visitors, so text wraps (and nodes size) identically */
 .n-head{padding-right:24px}
 .node[data-type="title"] .n-head{padding:0 24px}
-.n-tag{font-size:11.5px;font-weight:500;color:var(--muted);margin-bottom:4px}
-.n-title{font-size:16px;font-weight:620;line-height:1.3;letter-spacing:-.012em;color:var(--text)}
+.n-tag{font-size:12.5px;font-weight:500;color:var(--muted);margin-bottom:4px}
+/* the label above a title is optional: when it's empty it only shows (as a placeholder) on the selected node */
+.n-tag:empty:not(:focus){display:none}
+.node.sel .n-tag:empty{display:block}
+body.viewer .node .n-tag:empty{display:none}
+.n-title{font-size:18px;font-weight:620;line-height:1.3;letter-spacing:-.012em;color:var(--text)}
 .node[data-type="title"] .n-title{font-size:27px;font-weight:680;letter-spacing:-.025em;line-height:1.18}
-.node[data-type="sub"] .n-title{font-size:12.5px;font-weight:620;line-height:1.3}
+.node[data-type="sub"] .n-title{font-size:14px;font-weight:620;line-height:1.3}
 .n-subtitle{font-size:14px;line-height:1.55;color:var(--muted);margin-top:8px}
 .blocks{position:relative;display:flex;flex-direction:column;gap:12px}
 .blocks:not(:empty){margin-top:12px}
@@ -514,7 +519,7 @@ body.connecting .node,body.connecting #viewport{cursor:crosshair}
 .tb-ghost{position:fixed;left:0;top:0;z-index:9999;pointer-events:none;border-radius:var(--r-m);border:1.5px dashed var(--sel);background:var(--sel-soft);
   display:grid;place-items:center;color:var(--sel);font-weight:600;font-size:13px;transform-origin:0 0}
 
-.b-text{font-size:13px;line-height:1.58;color:var(--text2)}
+.b-text{font-size:14.5px;line-height:1.6;color:var(--text2)}
 .node[data-type="sub"] .b-text{font-size:11.75px;line-height:1.48}
 /* markdown inside text */
 .ed b{font-weight:650;color:var(--text)}
@@ -531,18 +536,20 @@ body.connecting .node,body.connecting #viewport{cursor:crosshair}
 @keyframes ping{0%,40%{box-shadow:0 0 0 6px var(--sel-soft),0 0 0 1px var(--sel),var(--sh-2)}}
 .menu.scroll{max-height:340px;overflow:auto}
 .menu .mi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lab{font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:3px;min-height:0}
+.lab{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:3px;min-height:0}
 .lab:empty{min-height:1.2em}
 /* blocks are set apart by rules and spacing, not by boxes inside the node's box */
 .b-hl{padding:2px 0 2px 12px;border-left:2px solid color-mix(in srgb,var(--c) 45%,var(--node-b2))}
 .b-hl .b-text{color:var(--text)}
-.b-cat{padding-left:12px;border-left:2px solid var(--node-b2);transition:border-color .2s}
-.cat-h{display:flex;align-items:flex-start;gap:6px}
-.cat-h .lab{flex:1;transition:margin .25s var(--ease)}
+/* categories read like the sections of an article: a clear heading with a rule under it, the text below,
+   and more room above each one than between paragraphs (--- inside the text still divides within a section) */
+.blk.k-category:not(:first-child){margin-top:10px}
+.cat-h{display:flex;align-items:center;gap:6px;padding-bottom:5px;margin-bottom:8px;border-bottom:1px solid var(--node-b2);transition:margin .25s var(--ease),border-color .2s}
+.cat-h .lab{flex:1;margin:0;font-size:15px;font-weight:650;line-height:1.3;color:var(--text)}
+.node[data-type="sub"] .cat-h .lab{font-size:13.5px}
 body.viewer .cat-h{cursor:pointer}
-.b-cat .chev{width:18px;height:18px;margin:-3px -4px 0 0}
-.b-cat.closed{border-left-color:color-mix(in srgb,var(--c) 30%,transparent)}
-.b-cat.closed .cat-h .lab{margin-bottom:0}
+.b-cat .chev{width:20px;height:20px;margin:0 -4px 0 0;color:var(--muted)}
+.b-cat.closed .cat-h{margin-bottom:0;border-bottom-color:var(--node-b)}
 .b-cat.closed .cat-h .chev{transform:rotate(-90deg)}
 .fold-b{display:grid;grid-template-rows:1fr;transition:grid-template-rows .28s var(--ease),opacity .2s}
 .fold-bi{overflow:hidden;min-height:0}
@@ -556,10 +563,10 @@ body.viewer .cat-h{cursor:pointer}
 .scn.open{background:var(--inset)}
 .scn-h{display:flex;align-items:flex-start;gap:8px;padding:8px 8px 8px 10px}
 body.viewer .scn-h{cursor:pointer}
-.scn-n{flex:none;width:19px;height:19px;margin-top:-1px;border-radius:var(--r-xs);display:grid;place-items:center;font-size:10.5px;font-weight:600;
+.scn-n{flex:none;width:19px;height:19px;margin-top:-1px;border-radius:var(--r-xs);display:grid;place-items:center;font-size:11.5px;font-weight:600;
   background:var(--inset);border:1px solid var(--node-b);color:var(--muted);cursor:pointer}
-.scn-t{flex:1;font-size:12.5px;font-weight:600;line-height:1.4;color:var(--text)}
-.scn-c{flex:none;font-size:10.5px;color:var(--faint);padding-top:1px;cursor:pointer}
+.scn-t{flex:1;font-size:14px;font-weight:600;line-height:1.4;color:var(--text)}
+.scn-c{flex:none;font-size:11.5px;color:var(--faint);padding-top:1px;cursor:pointer}
 .chev{flex:none;width:20px;height:20px;margin:-2px -2px 0 0;border-radius:6px;display:grid;place-items:center;color:var(--muted);transition:transform .28s var(--spring),background .12s}
 .chev:hover{background:var(--hover);color:var(--text)}
 .scn.open .chev{transform:rotate(180deg)}
@@ -605,7 +612,7 @@ body.editor .dot{cursor:pointer}
 .src-h .chev{width:22px;height:22px;margin:0;transform:rotate(-90deg)}
 .src-it.open .src-h .chev{transform:none}
 .src-dot{width:22px;display:grid;place-items:center;color:var(--c);flex:none}
-.src-h a{flex:1;min-width:0;display:flex;align-items:center;gap:6px;color:var(--c);text-decoration:none;font-size:12px;font-weight:550}
+.src-h a{flex:1;min-width:0;display:flex;align-items:center;gap:6px;color:var(--c);text-decoration:none;font-size:13.5px;font-weight:550}
 .src-h a span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .src-h a .ic{opacity:0;transform:translateX(-3px);transition:opacity .15s,transform .15s}
 .src-h a:hover span{text-decoration:underline}
@@ -613,8 +620,8 @@ body.editor .dot{cursor:pointer}
 .src-it .fold-b{grid-template-rows:0fr;opacity:0}
 .src-it.open .fold-b{grid-template-rows:1fr;opacity:1}
 .src-body{padding:0 10px 9px 30px;display:flex;flex-direction:column;gap:7px}
-.src-body .b-text{font-size:12px}
-.src-meta{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--faint)}
+.src-body .b-text{font-size:13px}
+.src-meta{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--faint)}
 .src-meta span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chip{display:inline-flex;align-items:center;gap:2px;height:25px;padding:0 3px 0 9px;border-radius:var(--r-xs);border:1px solid var(--node-b);background:var(--inset);font-size:11.5px;max-width:100%}
 body.viewer .chip{padding-right:9px}
@@ -635,9 +642,11 @@ body.viewer .chip{padding-right:9px}
 
 /* images */
 .b-img{margin:0}
-.b-img img{display:block;width:100%;height:auto;border-radius:var(--r-s);border:1px solid var(--node-b);background:var(--inset);-webkit-user-drag:none}
+/* an image keeps its own proportions: it fills the node's width only up to its real size and a set height,
+   so widening a note doesn't blow it up */
+.b-img img{display:block;width:auto;max-width:100%;max-height:340px;height:auto;margin:0 auto;object-fit:contain;border-radius:var(--r-s);border:1px solid var(--node-b);background:var(--inset);-webkit-user-drag:none}
 body.viewer .b-img img{cursor:zoom-in}
-.cap{font-size:11.5px;color:var(--muted);margin-top:6px;text-align:center}
+.cap{font-size:12.5px;color:var(--muted);margin-top:6px;text-align:center}
 .img-drop{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:var(--r-s);border:1.5px dashed var(--node-b2);color:var(--muted);transition:border-color .15s,background .15s}
 .img-drop:hover,.img-drop.over{border-color:var(--sel);background:var(--sel-soft)}
 .img-drop .idr{display:flex;align-items:center;gap:10px;cursor:pointer}
@@ -852,7 +861,7 @@ body.sec-dragging,body.sec-dragging *{cursor:grabbing !important;user-select:non
 .node[data-type="shape"][data-shape="cyl"]{padding:26px 18px 14px}
 .node[data-type="shape"] .blocks.sn-body{position:relative;min-width:0;margin-top:0;gap:6px}
 .sn-title{font-size:14px;font-weight:620;line-height:1.3}
-.node[data-type="shape"] .b-text{font-size:12.5px;line-height:1.45;color:var(--muted)}
+.node[data-type="shape"] .b-text{font-size:13.5px;line-height:1.45;color:var(--muted)}
 /* empty details take no room (except on the selected node, to show where to type) */
 /* the label is optional: when empty it takes no room (except on the selected node, to show where to type) */
 .node[data-type="shape"]:not(.sel) .sn-title:empty,body.viewer .node[data-type="shape"] .sn-title:empty{display:none}
@@ -897,7 +906,7 @@ body.dragging-block .bi-size{display:none}
 /* an angular quote mark in the node's colour, drawn like the rest of the interface (no serif glyph) */
 .q-mark{position:absolute;left:0;top:4px;width:20px;height:16px;fill:var(--c);opacity:.7;pointer-events:none}
 .q-text{font-size:14.5px;line-height:1.55;font-weight:500;letter-spacing:-.005em;color:var(--text)}
-.node[data-type="sub"] .q-text{font-size:12.5px}
+.node[data-type="sub"] .q-text{font-size:13.5px}
 .q-by{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-top:6px;font-size:12px;color:var(--muted)}
 .q-author{font-weight:600;color:var(--text2)}
 .q-author:not(:empty)::before{content:"— ";font-weight:400;color:var(--faint)}
@@ -1000,7 +1009,71 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
 #imp-text:focus{border-color:var(--sel)}
 .imp .tog{margin-top:10px}
 
-/* action effects: a glowing charge along a path, flying dots, a panel building up and breaking apart */
+/* readable zoom (szFlush in render.js): zoomed out, a card shows its zoomed-out layer (.n-sz) inside its
+   own box instead of its full content. The full content stays in place but invisible, so the box keeps
+   its size; the two cross-fade. Each piece's height, spacing and text size are set by the script and ease
+   into place, so pieces slide rather than jump when others appear or go. */
+.n-sz{position:absolute;inset:0;z-index:2;padding:inherit;overflow:hidden;display:flex;flex-direction:column;pointer-events:none;
+  opacity:0;transition:opacity .22s ease}
+.node.sz:not(.editing):not(.sz-tile)>.n-sz{opacity:1}
+.node:not(.sz)>.n-sz,.node.editing>.n-sz{display:none}
+.node>.n-head,.node>.blocks{transition:opacity .22s ease}
+.node.sz:not(.editing):not(.svgs)>:is(.n-head,.blocks){opacity:0;pointer-events:none}
+.sz-i{flex:none;overflow:hidden;opacity:0;transition:height .22s var(--ease),margin .22s var(--ease),opacity .18s ease}
+.sz-i.on{opacity:1}
+/* (no transition on the text size: the script measures the text right after setting it) */
+.sz-i span{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:break-word;color:var(--text2)}
+.sz-i.k-title span{font-weight:650;letter-spacing:-.01em;color:var(--text)}
+.node[data-type="title"] .sz-i.k-title span{font-weight:700;text-align:center}
+.node[data-type="title"] .sz-i.k-text span{text-align:center;color:var(--muted)}
+.sz-i.k-tag span{font-weight:500;color:var(--muted)}
+.sz-i.k-head span{font-weight:650;color:var(--text)}
+.sz-i.k-head{border-bottom:1px solid var(--node-b2)}
+.sz-i.concl span{font-weight:600;color:var(--text)}
+.sz-i.quote span{font-style:italic}
+.sz-i.meta span{color:var(--muted)}
+.sz-i.k-img img{display:block;margin:0 auto;max-width:100%;border-radius:var(--r-s)}
+/* far out, a card that can't even hold its title becomes a tile in its colour */
+.node.sz-tile:not(.editing){background:color-mix(in srgb,var(--c) 32%,var(--node))}
+.node.sz-tile:not(.editing)>:is(.n-head,.blocks){opacity:0;pointer-events:none}
+/* shapes keep their layout; their label is set at a readable size, kept inside the shape */
+.sz-on #world .node.svgs .sn-title{font-size:min(max(14px,calc(13px * var(--szk))),calc(var(--w) * .14));max-height:calc(var(--w) * .34);overflow:hidden}
+/* panel names, line labels and lines stay readable too (--szk is 1 / zoom while zoomed out) */
+.sz-on #world .plabel{font-size:max(13px,calc(13px * var(--szk)));transition:font-size .15s ease}
+.sz-on #world .elabel{font-size:max(12.5px,calc(11.5px * var(--szk)));transition:opacity .18s ease}
+.sz-on #world .elabel.sz-hide{opacity:0;pointer-events:none}
+.sz-on #world .edge .vis{stroke-width:max(1.7px,calc(1.3px * var(--szk)))}
+
+/* the reader: a zoomed-out card opened at full size beside the board (app.js) */
+#reader{position:fixed;top:10px;right:10px;bottom:10px;z-index:1400;width:min(500px,calc(100vw - 20px));display:flex;flex-direction:column;
+  background:var(--panel-solid);border:1px solid var(--panel-b);border-radius:var(--r-l);box-shadow:var(--sh-menu);
+  transform:translateX(calc(100% + 20px));transition:transform .28s var(--ease);user-select:text;-webkit-user-select:text}
+#reader.on{transform:none}
+.rd-top{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 16px;border-bottom:1px solid var(--panel-b);font-size:12px;color:var(--muted)}
+.rd-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px 16px 24px}
+.rd-toc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--panel-b);border-radius:var(--r-s);background:var(--inset)}
+.rd-toc b{font-size:12px;color:var(--muted);margin-bottom:2px}
+.rd-toc button{font-size:13px;color:var(--sel);text-align:left;padding:2px 0}
+.rd-toc button:hover{text-decoration:underline}
+#reader .node{position:relative !important;transform:none !important;left:auto;top:auto;width:auto !important;box-shadow:none;border:0;background:none;padding:0}
+#reader .node::before,#reader .node::after,#reader .eo{display:none !important}
+#reader .b-cat.closed .fold-b,#reader .src-it .fold-b,#reader .scn .scn-b{grid-template-rows:1fr;opacity:1}
+
+/* annotate: pencil strokes, a constant width on screen at any zoom, in the warm annotation colour */
+.ink{fill:none;stroke:var(--guide);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none}
+body.tool-draw #viewport,body.tool-draw #viewport *{cursor:crosshair !important}
+body.tool-draw .read-glow{display:none}
+
+/* the peek: a node shown full size while you hover it zoomed out (app.js) */
+#peek{position:fixed;z-index:1500;max-height:min(72vh,640px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--r-m);
+  box-shadow:var(--sh-menu);opacity:0;translate:0 4px;transition:opacity .16s ease,translate .16s ease;pointer-events:auto;scrollbar-width:thin}
+#peek.on{opacity:1;translate:0 0}
+#peek .node{position:relative !important;transform:none !important;left:auto;top:auto;box-shadow:none;margin:0}
+#peek .ports,#peek .rz,#peek .n-add,#peek .grip,#peek .eo{display:none !important}
+#peek .n-sz{display:none}
+#peek .peek-hint{position:sticky;bottom:0;display:block;padding:6px 10px;font-size:11.5px;color:var(--muted);background:var(--panel-solid);border-top:1px solid var(--panel-b);text-align:center}
+
+/* action effects: a short highlight along a path, quick fades for removed lines and panels */
 .fx-pulse{fill:none;stroke-linecap:round;pointer-events:none;filter:var(--fx-glow)}
 .fx-pulse.thin{filter:var(--fx-glow-thin)}
 .pframe.pf-born{animation:pfBorn .25s ease both}

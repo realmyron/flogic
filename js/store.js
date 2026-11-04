@@ -106,7 +106,7 @@ function makeBlock(kind) {
 function makeNode(type) {
   return {
     id: uid('n'), type, x: 0, y: 0, w: NODE_W[type], color: 'default',
-    tag: type === 'title' ? 'Title' : type === 'note' ? 'Note' : '',
+    tag: '',   /* the small label above the title is optional; click above the title of a selected node to add one */
     title: '', subtitle: '',
     blocks: type === 'title' || type === 'shape' ? [] : [makeBlock('text')],
     ...(type === 'shape' ? { shape: 'rect' } : {}),
@@ -284,7 +284,7 @@ function demoDoc() {
 
 /* ---------- state ---------- */
 let DOC = null;
-const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', autoPublish: false, wheel: 'zoom', theme: 'system', snap: true, noLimit: false, focus: 3, focusLast: 3, bgFx: 'grid', readGlow: true }, readLS(LS.cfg) || {});
+const CFG = Object.assign({ owner: '', repo: '', branch: 'main', token: '', autoPublish: false, wheel: 'zoom', theme: 'system', snap: true, noLimit: false, focus: 3, focusLast: 3, bgFx: 'grid', readGlow: true, readZoom: true }, readLS(LS.cfg) || {});
 const META = Object.assign({ dirty: false, baseSha: null, baseHash: null, publishedAt: 0 }, readLS(LS.meta) || {});
 const UI = Object.assign({ envId: null, views: {}, collapsed: {} }, readLS(LS.ui) || {});
 const S = {

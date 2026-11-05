@@ -150,8 +150,8 @@
     {
      "id": "n8d9hjd6ra",
      "type": "note",
-     "x": 600,
-     "y": -302,
+     "x": 576,
+     "y": -355,
      "w": 336,
      "color": "default",
      "tag": "ROOT",
@@ -485,74 +485,6 @@
        "text": "I argue that physiological structures and appetites possess an objective telos (an intrinsic purpose or final cause)."
       }
      ]
-    },
-    {
-     "id": "n4h611nava",
-     "type": "note",
-     "x": 1080,
-     "y": -302,
-     "w": 336,
-     "color": "gold",
-     "tag": "ESSENTIALISM",
-     "title": "Ontological Foundations",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "b3a7fr0ava",
-       "kind": "category",
-       "label": "FORM AND MATTER",
-       "text": "The human body is not a machine or a collection of parts, but a form-matter composite with an inherent purpose (telos). The sexual faculty is intrinsically ordered toward the unitive and procreative good."
-      },
-      {
-       "id": "ba2ea7sava",
-       "kind": "category",
-       "label": "THE CONCEPT OF PRIVATION",
-       "text": "Evil or disorder is not a positive reality, but a privation—a lack of a good that should be present. Homosexual acts are not a different \"kind\" of sexual act; they are a total absence of the sexual faculty's proper form and end. They are the act of sex stripped of its essential nature."
-      },
-      {
-       "id": "bv9xb5yava",
-       "kind": "conclusion",
-       "label": "Conclusion",
-       "text": "To call homosexual behavior \"sex\" is to confuse the accidental appearance of an act with its essential nature. It is like calling a dead body a \"man\"—it possesses the material shape, but lacks the animating principle (the *telos*) that defines the reality."
-      }
-     ]
-    },
-    {
-     "id": "n4v95qjava",
-     "type": "note",
-     "x": 1560,
-     "y": -368,
-     "w": 336,
-     "color": "indigo",
-     "tag": "CRITIQUE",
-     "title": "Anticipating Counter-Attacks",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "bo441gpava",
-       "kind": "category",
-       "label": "THE NATURALISTIC FALLACY",
-       "text": "- **Attack:** You are confusing \"is\" (biology) with \"ought\" (morality).\n- **Response:** This is not a fallacy. We are defining the *what*. If the *what* is a reproductive act, then the *is* is inherently moral in its orientation. We are not saying \"because it is biological, it is good,\" we are saying \"it is biological, therefore it has a definition.\""
-      },
-      {
-       "id": "bpsic0java",
-       "kind": "category",
-       "label": "THE \"PLEASURE\" ARGUMENT",
-       "text": "- **Attack:** Sex is for intimacy/pleasure, not just procreation.\n- **Response:** This separates the unitive and procreative goods. The unitive good is only possible *within* the procreative act. Outside that, it is merely mutual masturbation."
-      },
-      {
-       "id": "bmqfb6zava",
-       "kind": "category",
-       "label": "THE \"SPECTRUM\" ARGUMENT",
-       "text": "- **Attack:** Sexual orientation is a continuum.\n- **Response:** This is a reduction of human psychology to raw sensation. A continuum of sensations does not negate a hard line of objective biological reality."
-      },
-      {
-       "id": "bu88ai0ava",
-       "kind": "conclusion",
-       "label": "Conclusion",
-       "text": "These attacks all fail because they reject the *telos* of human life and reduce the person to a subject of their own whims."
-      }
-     ]
     }
    ],
    "edges": [
@@ -676,26 +608,6 @@
      "fs": "l",
      "to": "nbnt5jgf28",
      "ts": "l",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lbl0pzbh61",
-     "from": "n4h611nava",
-     "fs": "l",
-     "to": "n8d9hjd6ra",
-     "ts": "r",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lglec4xw1y",
-     "from": "n4v95qjava",
-     "fs": "l",
-     "to": "n4h611nava",
-     "ts": "r",
      "label": "",
      "arrow": true,
      "dashed": false
@@ -886,13 +798,13 @@
      "w": 576,
      "color": "default",
      "tag": "Region",
-     "title": "Lithuania's and Belarus' old endonyms",
+     "title": "Lithuania's and Belarus' old state endonyms",
      "subtitle": "Analyzing what Lithuanian's old endonym was: Litva, Aukstatija, Samogitia, Belarus, or all? ",
      "blocks": [
       {
        "id": "by4964z4s5",
        "kind": "text",
-       "text": "This analysis relies on historical treaties and maps to determine which regions were considered which\nThe litvinist perspective views Belarus as Lithuania, Lithuania as Samogitia and Ruthenia as Ukraine. While the mainstream perspective treats Lithuania as Lithuania and Ruthenia as both Belarus and Ukraine. "
+       "text": "This analysis relies on historical treaties and maps to determine which regions were considered which. The state's formal name was \"The Grand Duchy of Lithuanian, Ruthenia and Samogitia.\n\nThe litvinist perspective views Belarus as Lithuania, Lithuania as Samogitia and Ruthenia as Ukraine. While the mainstream perspective treats Lithuania as Lithuania and Ruthenia as both Belarus and Ukraine. "
       }
      ]
     },
@@ -900,7 +812,7 @@
      "id": "nzcsibdklk",
      "type": "note",
      "x": 216,
-     "y": -999,
+     "y": -912,
      "w": 576,
      "color": "g-sunset",
      "tag": "ee",
@@ -911,7 +823,8 @@
        "id": "bxzxdrzg12",
        "kind": "category",
        "label": "Treaty of Melno/Konisberg 1400",
-       "text": "Also includes Treaty of Dubysa, Salynas, etc.\nThese treaties ceded Samogitia to the Teutonic Knights. The interesting part is that the treaties say: *\"to cede Samogitia up to that Nevezis river\"*.\nWhen visualizing the treaty, it looks something like this:"
+       "text": "Also includes Treaty of Dubysa, Salynas, etc.\nThese treaties ceded Samogitia to the Teutonic Knights. The interesting part is that the treaties say: *\"to cede Samogitia up to that Nevezis river\"*.\nWhen visualizing the treaty, it looks something like this:",
+       "closed": true
       },
       {
        "id": "bnid07ko44",
@@ -973,10 +886,10 @@
     {
      "id": "n3yk439xje",
      "type": "note",
-     "x": 960,
-     "y": -1090,
-     "w": 576,
-     "color": "g-sunset",
+     "x": 984,
+     "y": -1104,
+     "w": 552,
+     "color": "teal",
      "tag": "Note",
      "title": "Lithuania",
      "subtitle": "",
@@ -984,14 +897,132 @@
       {
        "id": "bt22038181",
        "kind": "category",
-       "label": "Treaty of Radnot",
-       "text": ""
+       "label": "Treaty of Radnot 1656",
+       "text": "Following the treaty of Kiedenai, in which Lithuania accepts a union with Sweden, comes the Treaty of Radnot, which is a combination of many plans Sweden had for PLC. \nIn the treaty, Sweden takes Samogitia, Kaunas, Livonia, Courland, parts of Dvina and Neris rivers, parts of Polock and Podlachia. It establishes an independent Cossack (Rus) state, and a Lithuanian state, both of which are in union with Sweden. \nThis treaty, visualized below, helps us display what was considered Lithuania and what was Samogitia back then. "
       },
       {
        "id": "bytz125rae",
        "kind": "image",
        "src": "data/assets/f68aa9f7344f395fa80adf1b.webp",
+       "caption": "-# The wikipedia page about the treaty of Kiedenai misinterprets the treaties content, in the treaty Sweden takes parts to itself and the rest it forms a union with, the person who wrote the page interpreted the parts it took for itself as the parts it formed a union with. "
+      },
+      {
+       "id": "b268wawpvd",
+       "kind": "category",
+       "label": "Treaty of Hadyach (Yuri Nemyrych) 1658",
+       "text": "This is Yuri Nemyrychs version of the Treaty of Hadyach, he was an important role in the cossack history, this is considered the original version of the treaty, before cossacks had to make concessions to ratify it. This treaty being maximalist, shows us that the territories of the Rus correlate with the ethnic Ukrainian territories, which at that time identified as Rusyns. This allows us to infere that the lands past the drawn border did not identify as Rusyns, as otherwise they would be written down."
+      },
+      {
+       "id": "b6tyf50199",
+       "kind": "image",
+       "src": "data/assets/9267766fe9102e3c0fc7ee11.webp",
        "caption": ""
+      },
+      {
+       "id": "b5te6bo2l",
+       "kind": "sources",
+       "label": "Sources",
+       "items": [
+        {
+         "id": "rpza7ydrk4",
+         "t": "Treaty of Radnot",
+         "u": "https://en.wikipedia.org/wiki/Treaty_of_Radnot#:~:text=Article%205.%20%27(...)%20ideo,et%20Livoniae%20Ducatus%20(...).%27",
+         "note": "4:47PM 11/05/2026 GMT+3"
+        },
+        {
+         "id": "rrpxvxuq6e",
+         "t": "Treaty of Hadyach",
+         "u": "https://www.encyclopediaofukraine.com/display.asp?linkpath=pages%5CH%5CA%5CHadiachTreatyof.htm",
+         "note": ""
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "nx5bzbn8ii",
+     "type": "title",
+     "x": 240,
+     "y": 480,
+     "w": 480,
+     "color": "default",
+     "tag": "",
+     "title": "Ethnic Distribution",
+     "subtitle": "Now, knowing the borders, we must analyze who actually lived in them, as lines alone dont tell us much.",
+     "blocks": []
+    },
+    {
+     "id": "no42nofzek",
+     "type": "note",
+     "x": 816,
+     "y": 792,
+     "w": 336,
+     "color": "p-butter",
+     "tag": "",
+     "title": "19th centruy",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bkc54w84f4",
+       "kind": "category",
+       "label": "Ethnic map of Duchy of Lithuania",
+       "text": "Using the old borders of the Duchy of Lithuania and visualizing the ethnicities inside. This shows us how multi-ethnic the Lithuania proper region actually was, and how much of the Lithuania proper was Belarusian. "
+      },
+      {
+       "id": "btgcg032ex",
+       "kind": "image",
+       "src": "data/assets/a4773c34980ed0077cb9df3c.webp",
+       "caption": "What's interesting is the correlation of the Treaty of Radnots border and the ethnic distribution of Lithuanians."
+      },
+      {
+       "id": "bj4tcjl4zt",
+       "kind": "sources",
+       "label": "Sources",
+       "items": [
+        {
+         "id": "rbpju4godg",
+         "t": "Map Source (by Me)",
+         "u": "https://www.reddit.com/r/MapPorn/comments/1tyabsg/ethnic_map_of_grand_duchy_of_lithuania_using_19th/",
+         "note": ""
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "nxbt882380",
+     "type": "note",
+     "x": 288,
+     "y": 792,
+     "w": 336,
+     "color": "p-peach",
+     "tag": "",
+     "title": "13th Century",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bhwu6xmhpl",
+       "kind": "category",
+       "label": "Archeological Evidence",
+       "text": "Archeological research in many modern Lithuanian cities helps us reveal the ethnic distribution of them as far back as the 13th century:\n- Vilnius: in around the 1270s, large waves of Ruthenians started arriving in the city, originating from the Kingdom of Galicia-Volhynia (Rus). Founding the cities first settlements - Civitas Ruthenica.\n- Kernave: following Vilnius, a wave of Ruthenians arrived in Kernave too, at around 1290s. \n- Trakai: it is unclear when exactly Ruthenians arrived in Trakai, but they were conti"
+      }
+     ]
+    },
+    {
+     "id": "nl2d6iof98",
+     "type": "note",
+     "x": -144,
+     "y": 600,
+     "w": 336,
+     "color": "orange",
+     "tag": "",
+     "title": "12th Century",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "byls98af98",
+       "kind": "text",
+       "text": ""
       }
      ]
     }
@@ -1053,6 +1084,76 @@
      "fs": "b",
      "to": "nac0e9wbf4",
      "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l283r20fpg",
+     "from": "nzcsibdklk",
+     "fs": "b",
+     "to": "nx5bzbn8ii",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l7qfu9pjrq",
+     "from": "n3yk439xje",
+     "fs": "b",
+     "to": "nx5bzbn8ii",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l3kl2tdq2l",
+     "from": "nx5bzbn8ii",
+     "fs": "r",
+     "to": "no42nofzek",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l6d27awu0g",
+     "from": "nxbt882380",
+     "fs": "b",
+     "to": "no42nofzek",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lci3gdgvuk",
+     "from": "nx5bzbn8ii",
+     "fs": "l",
+     "to": "nl2d6iof98",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "ljh1qydxan",
+     "from": "nl2d6iof98",
+     "fs": "b",
+     "to": "nxbt882380",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lz4yvn12g4",
+     "from": "nx5bzbn8ii",
+     "fs": "b",
+     "to": "nxbt882380",
+     "ts": "t",
      "label": "",
      "arrow": true,
      "dashed": false

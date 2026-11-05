@@ -625,20 +625,21 @@
     {
      "id": "n8l7ftfi6",
      "type": "title",
-     "x": -1728,
-     "y": -1249,
+     "x": -2112,
+     "y": -1992,
      "w": 576,
-     "color": "default",
+     "color": "teal",
      "tag": "ENDONYM",
      "title": "Belarusian identification as Litvins",
      "subtitle": "Analyzing the idea of \"Litvin\" being one of the endonym of Belarusians.",
-     "blocks": []
+     "blocks": [],
+     "accent": "full"
     },
     {
      "id": "nk37ztwaly",
      "type": "title",
-     "x": -1008,
-     "y": -1752,
+     "x": -1056,
+     "y": -2928,
      "w": 744,
      "color": "g-aurora",
      "tag": "THESIS",
@@ -649,8 +650,8 @@
     {
      "id": "n5pz20wxuo",
      "type": "note",
-     "x": -2304,
-     "y": -985,
+     "x": -2424,
+     "y": -1736,
      "w": 456,
      "color": "p-coral",
      "tag": "",
@@ -718,8 +719,8 @@
     {
      "id": "nac0e9wbf4",
      "type": "note",
-     "x": -1296,
-     "y": -985,
+     "x": -1656,
+     "y": -1736,
      "w": 624,
      "color": "g-aurora",
      "tag": "",
@@ -793,10 +794,10 @@
     {
      "id": "n1mlytfphy",
      "type": "title",
-     "x": 216,
-     "y": -1335,
+     "x": -480,
+     "y": -2045,
      "w": 576,
-     "color": "default",
+     "color": "p-mint",
      "tag": "Region",
      "title": "Lithuania's and Belarus' old state endonyms",
      "subtitle": "Analyzing what Lithuanian's old endonym was: Litva, Aukstatija, Samogitia, Belarus, or all? ",
@@ -806,13 +807,14 @@
        "kind": "text",
        "text": "This analysis relies on historical treaties and maps to determine which regions were considered which. The state's formal name was \"The Grand Duchy of Lithuanian, Ruthenia and Samogitia.\n\nThe litvinist perspective views Belarus as Lithuania, Lithuania as Samogitia and Ruthenia as Ukraine. While the mainstream perspective treats Lithuania as Lithuania and Ruthenia as both Belarus and Ukraine. "
       }
-     ]
+     ],
+     "accent": "full"
     },
     {
      "id": "nzcsibdklk",
      "type": "note",
-     "x": 216,
-     "y": -912,
+     "x": -480,
+     "y": -1622,
      "w": 576,
      "color": "g-sunset",
      "tag": "ee",
@@ -886,8 +888,8 @@
     {
      "id": "n3yk439xje",
      "type": "note",
-     "x": 984,
-     "y": -1104,
+     "x": 288,
+     "y": -1814,
      "w": 552,
      "color": "teal",
      "tag": "Note",
@@ -942,20 +944,21 @@
     {
      "id": "nx5bzbn8ii",
      "type": "title",
-     "x": 240,
-     "y": 576,
+     "x": -864,
+     "y": -312,
      "w": 480,
-     "color": "default",
+     "color": "g-aurora",
      "tag": "",
      "title": "Ethnic Distribution",
      "subtitle": "Now, knowing the borders, we must analyze who actually lived in them, as lines alone dont tell us much.",
-     "blocks": []
+     "blocks": [],
+     "accent": "full"
     },
     {
      "id": "no42nofzek",
      "type": "note",
-     "x": 888,
-     "y": 984,
+     "x": -216,
+     "y": 72,
      "w": 336,
      "color": "p-butter",
      "tag": "",
@@ -992,8 +995,8 @@
     {
      "id": "nxbt882380",
      "type": "note",
-     "x": 264,
-     "y": 816,
+     "x": -840,
+     "y": -48,
      "w": 456,
      "color": "p-peach",
      "tag": "",
@@ -1067,8 +1070,8 @@
     {
      "id": "nl2d6iof98",
      "type": "note",
-     "x": -264,
-     "y": 672,
+     "x": -1368,
+     "y": -192,
      "w": 384,
      "color": "orange",
      "tag": "",
@@ -1101,19 +1104,95 @@
        ]
       }
      ]
+    },
+    {
+     "id": "n94baxx9ee",
+     "type": "title",
+     "x": 1800,
+     "y": -2045,
+     "w": 480,
+     "color": "p-butter",
+     "tag": "",
+     "title": "Addressing Counter-Arguments & Mainstream",
+     "subtitle": "We will rely purely on the framework to debunk any arguments and the mainstream perspective.",
+     "blocks": []
+    },
+    {
+     "id": "nbk7wys53i",
+     "type": "shape",
+     "x": -792,
+     "y": -2568,
+     "w": 216,
+     "color": "teal",
+     "tag": "",
+     "title": "Step 1",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bxtv2pybuw",
+       "kind": "text",
+       "text": "Creating the framework of Litvinism."
+      }
+     ],
+     "shape": "rect"
+    },
+    {
+     "id": "nv00q6dux9",
+     "type": "shape",
+     "x": 144,
+     "y": -2910,
+     "w": 288,
+     "color": "teal",
+     "tag": "",
+     "title": "Step 2",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "biegfoxux9",
+       "kind": "text",
+       "text": "Using the framework to address the mainstream historiographical perspective and potential counter arguemnts"
+      }
+     ],
+     "shape": "rect"
+    },
+    {
+     "id": "n2knfc6j4x",
+     "type": "note",
+     "x": 2880,
+     "y": -2013,
+     "w": 336,
+     "color": "teal",
+     "tag": "",
+     "title": "Historical Documents mentioning Lithuania",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bkrsj4zj4x",
+       "kind": "text",
+       "text": ""
+      }
+     ]
+    },
+    {
+     "id": "naatj18aj3",
+     "type": "note",
+     "x": 2376,
+     "y": -1752,
+     "w": 336,
+     "color": "cyan",
+     "tag": "",
+     "title": "Baltic Dynasty",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bpgy30laj3",
+       "kind": "text",
+       "text": ""
+      }
+     ]
     }
    ],
    "edges": [
-    {
-     "id": "l8ylv46lbi",
-     "from": "nk37ztwaly",
-     "fs": "b",
-     "to": "n8l7ftfi6",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
     {
      "id": "lfajqfnc92",
      "from": "n1mlytfphy",
@@ -1130,16 +1209,6 @@
      "fs": "r",
      "to": "n3yk439xje",
      "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lbbm7dkcea",
-     "from": "nk37ztwaly",
-     "fs": "b",
-     "to": "n1mlytfphy",
-     "ts": "l",
      "label": "",
      "arrow": true,
      "dashed": false
@@ -1257,6 +1326,100 @@
       "dx": -30,
       "dy": 211
      }
+    },
+    {
+     "id": "lzcig4tebb",
+     "from": "no42nofzek",
+     "fs": "r",
+     "to": "n94baxx9ee",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "ljdfo2enxg",
+     "from": "nxbt882380",
+     "fs": "b",
+     "to": "n94baxx9ee",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "bend": {
+      "dx": 1374,
+      "dy": 1475
+     }
+    },
+    {
+     "id": "lbel9ntzgd",
+     "from": "nk37ztwaly",
+     "fs": "b",
+     "to": "nbk7wys53i",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lcxirmh2bo",
+     "from": "nbk7wys53i",
+     "fs": "b",
+     "to": "n1mlytfphy",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lmoskh23v0",
+     "from": "nbk7wys53i",
+     "fs": "l",
+     "to": "n8l7ftfi6",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "ligawus5mj",
+     "from": "nk37ztwaly",
+     "fs": "r",
+     "to": "nv00q6dux9",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lcy3ecsj6a",
+     "from": "nv00q6dux9",
+     "fs": "r",
+     "to": "n94baxx9ee",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l2u13uaps0",
+     "from": "n94baxx9ee",
+     "fs": "r",
+     "to": "n2knfc6j4x",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l5n8fyjmn9",
+     "from": "n94baxx9ee",
+     "fs": "b",
+     "to": "naatj18aj3",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
     }
    ],
    "groups": [],

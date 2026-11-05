@@ -1021,6 +1021,7 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
 .node.sz:not(.editing):not(.svgs)>:is(.n-head,.blocks){opacity:0;pointer-events:none}
 .sz-i{flex:none;overflow:hidden;opacity:0;transition:height .22s var(--ease),margin .22s var(--ease),opacity .18s ease}
 .sz-i.on{opacity:1}
+.sz-i.follow{transition:opacity .18s ease}
 /* (no transition on the text size: the script measures the text right after setting it) */
 .sz-i span{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:break-word;color:var(--text2)}
 .sz-i.k-title span{font-weight:650;letter-spacing:-.01em;color:var(--text)}
@@ -1039,7 +1040,7 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
 /* shapes keep their layout; their label is set at a readable size, kept inside the shape */
 .sz-on #world .node.svgs .sn-title{font-size:min(max(14px,calc(13px * var(--szk))),calc(var(--w) * .14));max-height:calc(var(--w) * .34);overflow:hidden}
 /* panel names, line labels and lines stay readable too (--szk is 1 / zoom while zoomed out) */
-.sz-on #world .plabel{font-size:max(13px,calc(13px * var(--szk)));transition:font-size .15s ease}
+.sz-on #world .plabel{font-size:max(13px,calc(13px * var(--szk)))}
 .sz-on #world .elabel{font-size:max(12.5px,calc(11.5px * var(--szk)));transition:opacity .18s ease}
 .sz-on #world .elabel.sz-hide{opacity:0;pointer-events:none}
 .sz-on #world .edge .vis{stroke-width:max(1.7px,calc(1.3px * var(--szk)))}

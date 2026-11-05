@@ -462,34 +462,29 @@ function applyView() {
      section. Zooming out, the least important things go first, so paragraphs shorten, sections close to
      their headings, the headings go from the bottom up, and finally only the title is left;
    - when not even the title fits, the card becomes a tile in its colour (panel names carry the overview);
-   - nothing changes above SZ_ENTER (58%); from there to SZ_FLOOR (49%) the text grows in small steps
-     (about every 1% of zoom), easing from its real size to the readable size it has at 49%; below 49%
-     nothing changes any more: the cards just scale down as they are at 49%;
-   - items fade and slide into place at each step, and an item needs a little more room to appear than to
-     stay, so nothing flickers at a boundary;
+   - nothing changes above SZ_ENTER (58%); from there to SZ_FLOOR (49%) the text grows continuously with
+     the zoom (re-set on every frame of zooming, to 0.1%), easing from its real size to the readable size it
+     has at 49%; below 49% nothing changes any more: the cards just scale down as they are at 49%;
+   - text that only grows follows the zoom directly; a piece that appears, goes or gains/loses a line fades
+     and slides into place, and needs a little more room to appear than to stay, so nothing flickers;
    - pictures, shapes and lines are readable small, so they simply scale.
    The original content stays in the card (hidden), so the box keeps its size, and the card being edited
    always shows it. Hover a reduced card to see it full size, click it to read it in the reader (app.js). */
-const SZ = { on: false, zb: 1, ze: 1, dirty: new Set(), raf: 0, shown: new Map() };
-const SZ_ENTER = 0.58, SZ_EXIT = 0.6, SZ_FLOOR = 0.49, SZ_STEP = 1.01;
+const SZ = { on: false, ze: 1, dirty: new Set(), raf: 0, shown: new Map() };
+const SZ_ENTER = 0.58, SZ_EXIT = 0.6, SZ_FLOOR = 0.49;
 /* the size a piece of text reaches on screen at SZ_FLOOR */
 const SZ_MIN = { title: 13.5, head: 13, text: 12.5, tag: 11.5 };
 const SZ_TILE_W = 64;   /* narrower than this on screen (at SZ_FLOOR), a card is a tile: not enough width for words */
-const szEnabled = () => typeof CFG === 'undefined' || CFG.readZoom !== false;
-/* how far along the ramp from SZ_ENTER (0) to SZ_FLOOR (1) a zoom step is: even, so every step is equally small */
+const szEnabled = () => typeof CFG !== 'undefined' && !!CFG.semZoom;   /* off unless switched on in Settings */
+/* how far along the ramp from SZ_ENTER (0) to SZ_FLOOR (1) a zoom is: linear, so every % changes it equally */
 function szRamp(ze) { return clamp((SZ_ENTER - ze) / (SZ_ENTER - SZ_FLOOR), 0, 1); }
 /* a text size on the board: its real size, growing along the ramp to what reads as `min` at SZ_FLOOR */
 function szFont(real, min, ze) { const top = Math.max(real, min / SZ_FLOOR); return real + (top - real) * szRamp(ze); }
-/* called whenever the view changes: picks the zoom step and marks cards for re-typesetting */
+/* called whenever the view changes: marks cards for re-typesetting when the (continuous) zoom moved */
 function szView() {
-  let zb = SZ.zb, on = false;
-  if (szEnabled()) {
-    if (V.z > zb * 1.012 || V.z < zb / 1.012) zb = Math.pow(SZ_STEP, Math.round(Math.log(V.z) / Math.log(SZ_STEP)));
-    on = SZ.on ? zb < SZ_EXIT : zb < SZ_ENTER;
-  }
-  SZ.zb = zb;
-  /* below SZ_FLOOR every step looks the same, so only steps above it re-typeset */
-  const ze = on ? Math.max(zb, SZ_FLOOR) : 1;
+  const on = szEnabled() && (SZ.on ? V.z < SZ_EXIT : V.z < SZ_ENTER);
+  /* follows the zoom to 0.1%; below SZ_FLOOR everything looks the same, so nothing re-typesets there */
+  const ze = on ? Math.round(clamp(V.z, SZ_FLOOR, SZ_ENTER) * 1000) / 1000 : 1;
   if (ze !== SZ.ze || on !== SZ.on) {
     SZ.ze = ze;
     if (on !== SZ.on) { SZ.on = on; document.body.classList.toggle('sz-on', on); }
@@ -497,10 +492,17 @@ function szView() {
     for (const id of NODE_EL.keys()) SZ.dirty.add(id);
     SZ.edges = true;
   }
-  if (SZ.dirty.size || SZ.edges) szSchedule();
+  if (SZ.dirty.size || SZ.edges) szSoon();
 }
 function szMark(id) { SZ.dirty.add(id); szSchedule(); }
 function szSchedule() { if (!SZ.raf) SZ.raf = requestAnimationFrame(szFlush); }
+/* zooming: re-typeset in the same frame as the zoom (after the current event or animation step, before
+   the frame is drawn), so the text never trails the zoom by a frame */
+function szSoon() {
+  if (SZ.mt) return;
+  SZ.mt = true;
+  queueMicrotask(() => { SZ.mt = false; if (SZ.raf) { cancelAnimationFrame(SZ.raf); SZ.raf = 0; } szFlush(); });
+}
 /* plain text for the zoomed-out layer: separate lines (bullets, list items) stay apart with a dot */
 const szPlain = s => mdPlain(String(s || '')).replace(/^\s*(_{3,}|-{3,}|\*{3,})\s*$/gm, '').replace(/^\s*[-•]\s+/gm, '')
   .split(/\n+/).map(l => l.trim()).filter(Boolean).join(' · ');
@@ -555,7 +557,7 @@ function szFlush() {
     todo.push({ id, el, n });
     if (todo.length >= 60) { szSchedule(); break; }   // a big board is done over a few frames
   }
-  const zb = SZ.ze, ramp = szRamp(zb);   /* the effective step: never below SZ_FLOOR */
+  const zb = SZ.ze, ramp = szRamp(zb);   /* the effective zoom: never below SZ_FLOOR */
   /* 1. write: (re)build each card's zoomed-out layer at this step's sizes, unclamped, to measure it */
   for (const t of todo) {
     const items = szItems(t.n, t.el), sig = JSON.stringify(items.map(i => [i.k, i.t, i.src, i.h, i.cls]));
@@ -593,9 +595,19 @@ function szFlush() {
       it.lines = Math.max(1, Math.round(t.els[i].firstChild.scrollHeight / it.lh));
     });
   }
+  /* line labels show only where the line is long enough on screen to hold them (read here, with the cards,
+     so a frame costs one layout, not two) */
+  let labs = null;
+  if (SZ.edges) {
+    SZ.edges = false; labs = [];
+    for (const [, r] of EDGE_EL) {
+      if (!r.p1 || r.lab.style.display === 'none') { labs.push([r.lab, false]); continue; }
+      labs.push([r.lab, SZ.on && r.lab.offsetWidth > Math.hypot(r.p2.x - r.p1.x, r.p2.y - r.p1.y) * 0.85]);
+    }
+  }
   /* 3. fit and write: most important first; then leftover room lets paragraphs run longer */
   for (const t of todo) {
-    const { items, els } = t, prev = SZ.shown.get(t.id) || new Set(), take = new Map();
+    const { items, els } = t, prev = SZ.shown.get(t.id) || new Map(), take = new Map();
     let used = 0, tile = t.narrow;
     const order = items.map((_, i) => i).sort((a, b) => items[a].p - items[b].p || a - b);
     t.lay.style.paddingTop = t.pad[0].toFixed(2) + 'px'; t.lay.style.paddingBottom = t.pad[1].toFixed(2) + 'px';
@@ -622,6 +634,9 @@ function szFlush() {
     }
     items.forEach((it, i) => {
       const e = els[i], on = !tile && take.has(i);
+      /* a piece that stays as it is (same lines) just follows the zoom, with no lag; one that appears, goes
+         or changes its number of lines slides into place */
+      e.classList.toggle('follow', on && prev.has(i) && prev.get(i) === take.get(i));
       if (it.k === 'img') { e.style.height = on ? it.h + 'px' : '0px'; }
       else {
         const ln = take.get(i) || 0;
@@ -631,19 +646,11 @@ function szFlush() {
       e.style.marginBottom = on ? it.gap.toFixed(2) + 'px' : '0px';
       e.classList.toggle('on', on);
     });
-    SZ.shown.set(t.id, new Set(take.keys()));
+    SZ.shown.set(t.id, tile ? new Map() : take);
     t.el.classList.add('sz');
     t.el.classList.toggle('sz-tile', tile);
   }
-  /* line labels show only where the line is long enough on screen to hold them */
-  if (SZ.edges) {
-    SZ.edges = false;
-    for (const [, r] of EDGE_EL) {
-      if (!r.p1 || r.lab.style.display === 'none') { r.lab.classList.remove('sz-hide'); continue; }
-      const room = Math.hypot(r.p2.x - r.p1.x, r.p2.y - r.p1.y);
-      r.lab.classList.toggle('sz-hide', SZ.on && r.lab.offsetWidth > room * 0.85);
-    }
-  }
+  if (labs) for (const [lab, hide] of labs) lab.classList.toggle('sz-hide', hide);
 }
 /* a copy of a card for the preview, the reader or a picture: full content, none of the zoomed-out layer */
 function cleanNodeClone(src) {

@@ -2614,7 +2614,7 @@ function comfortHTML() {
     <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'grid') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
     <p class="fm-hint">The dot grid lights up behind the pointer and pulses as you add, drop or paste nodes; new connections send a charge along the line; panels build up and break apart. Pulses only leaves out the pointer trail.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
     <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
-    <label class="tog fm-tog"><input type="checkbox" class="fm-zoom"${CFG.readZoom !== false ? ' checked' : ''}><span></span>Readable zoom: zoomed out, notes re-arrange their text so what they show stays readable (the least important goes first). Hover a note to preview it, click to read it, double-click to zoom in</label>
+    <label class="tog fm-tog"><input type="checkbox" class="fm-zoom"${CFG.semZoom ? ' checked' : ''}><span></span>Readable zoom: zoomed out, notes re-arrange their text so what they show stays readable (the least important goes first). Hover a note to preview it, click to read it, double-click to zoom in</label>
   </div>`;
 }
 function bindComfort(root) {
@@ -2627,7 +2627,7 @@ function bindComfort(root) {
     $$('[data-fx]', root).forEach(x => x.classList.toggle('on', x === b));
   });
   $('.fm-glow', root).addEventListener('change', e => setReadGlow(e.target.checked));
-  $('.fm-zoom', root).addEventListener('change', e => { CFG.readZoom = e.target.checked; saveCfg(); hidePeek(); szView(); });
+  $('.fm-zoom', root).addEventListener('change', e => { CFG.semZoom = e.target.checked; saveCfg(); hidePeek(); szView(); });
 }
 
 /* ---- peek: a card that is showing its zoomed-out layer (readable zoom) shows its full content beside it

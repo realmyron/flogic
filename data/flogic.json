@@ -636,7 +636,7 @@
       {
        "id": "bbd5pkoas8",
        "kind": "text",
-       "text": "The reason this is extremely important is because \"Litvin\" is a slavic word that translates to Lithuanian. Meaning any historical document that mentions the exonym Lithuania/n would also refer to the Belarusians. This helps us create a higher level of evidence required from the opposing side: their documents must explicitly write \"Lietuviai\", which was an endonym used by non-slavic speakers of the GDL. It also helps us understand a lot of historical documents from another perspective."
+       "text": "The reason this is extremely important is because \"Litvin\" is a slavic word that translates to Lithuanian. Meaning any historical document that mentions the exonym Lithuania/n would also refer to the Belarusians. This helps us create a higher level of evidence required from the opposing side: their documents must explicitly write \"Lietuviai\", which was an endonym used by non-slavic speakers of the GDL. It also helps us understand a lot of historical documents from another perspective, as we no longer categorize Belarusians as Ruthenians only."
       }
      ],
      "accent": "full"
@@ -956,8 +956,8 @@
     {
      "id": "nx5bzbn8ii",
      "type": "title",
-     "x": -864,
-     "y": -312,
+     "x": -888,
+     "y": -192,
      "w": 480,
      "color": "g-aurora",
      "tag": "",
@@ -969,8 +969,8 @@
     {
      "id": "no42nofzek",
      "type": "note",
-     "x": -216,
-     "y": 72,
+     "x": -240,
+     "y": 192,
      "w": 336,
      "color": "p-butter",
      "tag": "",
@@ -1007,8 +1007,8 @@
     {
      "id": "nxbt882380",
      "type": "note",
-     "x": -840,
-     "y": -48,
+     "x": -864,
+     "y": 72,
      "w": 456,
      "color": "p-peach",
      "tag": "",
@@ -1082,8 +1082,8 @@
     {
      "id": "nl2d6iof98",
      "type": "note",
-     "x": -1368,
-     "y": -192,
+     "x": -1392,
+     "y": -72,
      "w": 384,
      "color": "orange",
      "tag": "",
@@ -1170,26 +1170,33 @@
     {
      "id": "n2knfc6j4x",
      "type": "note",
-     "x": 2880,
-     "y": -2013,
-     "w": 336,
+     "x": 2904,
+     "y": -2127,
+     "w": 480,
      "color": "teal",
      "tag": "",
-     "title": "Historical Documents mentioning Lithuania",
+     "title": "Union of Krewo",
      "subtitle": "",
      "blocks": [
       {
-       "id": "bkrsj4zj4x",
-       "kind": "text",
-       "text": ""
+       "id": "bimhsrqks1",
+       "kind": "category",
+       "label": "Explanation",
+       "text": "This argument uses the historical Union of Krewo to prove that Lithuania could not be a belarusian state, as belarusian slavs were Orthodox. "
+      },
+      {
+       "id": "bgeehxxt23",
+       "kind": "category",
+       "label": "Rebuttal",
+       "text": "This argument can be easily rebutted by the fact Danylo Romanovych (the ruler of Kingdom of Halych-Volhynia) planned to adopt Catholicism. This shows that a confirmed Ruthenian ruler from 1250s also used religion strategically. "
       }
      ]
     },
     {
      "id": "naatj18aj3",
      "type": "note",
-     "x": 2280,
-     "y": -1752,
+     "x": 2232,
+     "y": -1728,
      "w": 528,
      "color": "cyan",
      "tag": "",
@@ -1200,7 +1207,7 @@
        "id": "bd91uopfp2",
        "kind": "category",
        "label": "Explanation",
-       "text": "This is a common argument from the opposing side, they claim the founding figures of the Lithuania state such as Mindaugas, Gediminas and others were of Baltic origin."
+       "text": "This argument claims the founding figures of the Lithuania state such as Mindaugas, Gediminas and others were of Baltic origin."
       },
       {
        "id": "bspbq26g58",

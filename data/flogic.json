@@ -1170,8 +1170,8 @@
     {
      "id": "n2knfc6j4x",
      "type": "note",
-     "x": 2904,
-     "y": -2127,
+     "x": 2520,
+     "y": -2400,
      "w": 480,
      "color": "teal",
      "tag": "",
@@ -1195,8 +1195,8 @@
     {
      "id": "naatj18aj3",
      "type": "note",
-     "x": 2232,
-     "y": -1728,
+     "x": 2328,
+     "y": -1656,
      "w": 528,
      "color": "cyan",
      "tag": "",
@@ -1257,6 +1257,30 @@
          ]
         }
        ]
+      }
+     ]
+    },
+    {
+     "id": "nsnpr7yelf",
+     "type": "note",
+     "x": 3168,
+     "y": -2112,
+     "w": 576,
+     "color": "default",
+     "tag": "",
+     "title": "How to Address Arguments",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b3kb91nelf",
+       "kind": "text",
+       "text": "There's thousands of different arguments that can be made. I attempt to document any argument that requires additional detail that the framework doesn't cover, however any argument that is easily covered by our framework wont be mentioned. I'll explain how to refute them."
+      },
+      {
+       "id": "btggzugdxs",
+       "kind": "category",
+       "label": "Identification",
+       "text": "Identify what type of argument it is, is it some historical document that supposedly refutes our perspective? Is it an attack to one of our core positions from our framework? Is it an attack on our logic?\n\nA lot of arguments you will see go something like this - a document saying \"An orthodox priest in Minsk from 1562 said he doesn't understand Lithuanian\". In this case, you need to point out that Lithuanian could also refer to the Belarusian dialect, and the priest could've been Ruthenian (Ukrainian).  \nCould also be something like \"A church in Vilnius mentioning it supporting both Lithuanians and Ruthenians\". In this case, Lithuanians here could also refer to Belarusians, while Ruthenians to Ukrainians.\n\nSome arguments might attack our core premises, so you must use the sources I link to defend them."
       }
      ]
     }
@@ -1481,7 +1505,7 @@
      "dashed": false
     },
     {
-     "id": "l5n8fyjmn9",
+     "id": "lp6yl2p6uj",
      "from": "n94baxx9ee",
      "fs": "b",
      "to": "naatj18aj3",
@@ -1489,6 +1513,20 @@
      "label": "",
      "arrow": true,
      "dashed": false
+    },
+    {
+     "id": "l1eaqep3rs",
+     "from": "n94baxx9ee",
+     "fs": "r",
+     "to": "nsnpr7yelf",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "bend": {
+      "dx": -324,
+      "dy": -47
+     }
     }
    ],
    "groups": [],

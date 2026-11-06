@@ -921,6 +921,25 @@
        "caption": ""
       },
       {
+       "id": "b3xetf4pa8",
+       "kind": "scenarios",
+       "label": "Scenarios",
+       "items": [
+        {
+         "id": "stbmy7opa8",
+         "title": "Acts of Visitation of Evangelical Reformers in 1669: Borders of White Rus' (BiaŁey Rusy",
+         "steps": [
+          {
+           "id": "t10s172pa8",
+           "label": "Explanation",
+           "text": "This historical document mentions some modern Belarusian cities as part of White Ruthenia, which is used to claim that White Ruthenia is separate from Lithuania. However, it's a non sequitur. White ruthenia is used as a regional name in the document, like Black Ruthenia. For example: Galicia, Podollia, Bavaria. It also mentions these congregates were ruled in Kiedienai.",
+           "alt": false
+          }
+         ]
+        }
+       ]
+      },
+      {
        "id": "b5te6bo2l",
        "kind": "sources",
        "label": "Sources",

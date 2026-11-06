@@ -36,12 +36,12 @@ function tick() {
     d.r += ((h ? clamp(d.ux * V.z * 0.22, -4, 4) : 0) - d.r) * 0.22;
     if (!h && Math.abs(n.x - d.x) < 0.25 && Math.abs(n.y - d.y) < 0.25 && Math.abs(d.ux) < 0.05 && Math.abs(d.uy) < 0.05 && Math.abs(d.s - 1) < 0.002 && Math.abs(d.r) < 0.03) {
       DISP.delete(id);
-      el.style.transform = `translate3d(${n.x}px,${n.y}px,0)`;
+      el.style.transform = nodeMove(n.x, n.y);
       el.style.filter = '';
       continue;
     }
     any = true;
-    el.style.transform = `translate3d(${d.x.toFixed(2)}px,${d.y.toFixed(2)}px,0) rotate(${d.r.toFixed(2)}deg) scale(${d.s.toFixed(4)})`;
+    el.style.transform = `${nodeMove(d.x.toFixed(2), d.y.toFixed(2))} rotate(${d.r.toFixed(2)}deg) scale(${d.s.toFixed(4)})`;
     if (h && (!lead || id === DRAG.lead)) lead = d;
   }
   if (held) {
@@ -1825,7 +1825,7 @@ function moveResize(e) {
     paintNode(el, n);
     if (RZ.cy != null) {
       n.y = Math.round(RZ.cy - el.offsetHeight / 2);
-      if (!DISP.has(n.id)) el.style.transform = `translate3d(${n.x}px,${n.y}px,0)`;
+      if (!DISP.has(n.id)) el.style.transform = nodeMove(n.x, n.y);
     }
   }
 }
@@ -2301,7 +2301,7 @@ const sstep = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k 
 /* light the dots in a box (screen px) with intensity f(x, y) in 0..1 */
 function gridDots(x1, y1, x2, y2, c, f) {
   let g = GRID * V.z;
-  while (g < 14) g *= 4;
+  while (g > 0 && g < 14) g *= 4;
   /* just the dots, no glow; on a light board they're a little fuller so they still show */
   const P = gridPal(), base = P.dark ? 0.9 : 1, gain = P.dark ? 1 : 1.25;
   const i1 = Math.ceil((x1 - V.x) / g), i2 = Math.floor((x2 - V.x) / g), j1 = Math.ceil((y1 - V.y) / g), j2 = Math.floor((y2 - V.y) / g);

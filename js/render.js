@@ -440,7 +440,7 @@ function applyView() {
   world.style.transform = `translate(${V.x}px,${V.y}px) scale(${V.z})`;
   world.style.setProperty('--z', V.z);
   let g = GRID * V.z;
-  while (g < 14) g *= 4;
+  while (g > 0 && g < 14) g *= 4;
   vp.style.backgroundSize = `${g}px ${g}px`;
   vp.style.backgroundPosition = `${V.x - g / 2}px ${V.y - g / 2}px`;
   $('#zoom-label').textContent = Math.round(V.z * 100) + '%';
@@ -869,7 +869,7 @@ function applyNode(el, n, i) {
   el.classList.toggle('sel', S.sel.has(n.id));
   el.classList.toggle('is-hidden', !!n.hidden);
   el.classList.toggle('is-folded', foldMap().has(n.id));
-  if (!DISP.has(n.id)) el.style.transform = `translate3d(${n.x}px,${n.y}px,0)`;
+  if (!DISP.has(n.id)) el.style.transform = nodeMove(n.x, n.y);
   if (SZ.on) szMark(n.id);   /* its content may have changed: re-typeset its zoomed-out layer */
 }
 function renderNode(n) {

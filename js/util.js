@@ -8,6 +8,13 @@ const GRID = 24;          // snap unit (world px)
 const GAP = 48;           // preferred spacing between nodes
 const WORLD = 50000;      // board spans -50k..50k on both axes (100k x 100k)
 const ZMIN = 0.1, ZMAX = 4;
+/* iPhone / iPad (Safari and every other iOS browser, all WebKit): a 3D move gives each note its own GPU
+   layer, and WebKit redraws every layer at zoom × screen density (3× on phones), so pinching in on a board
+   ran the phone out of memory and the page crashed. There, notes move in 2D: the board is drawn as one
+   screen-sized, tiled surface, and memory stays the same at any zoom. Elsewhere the 3D move stays (smoother
+   dragging on desktop). */
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const nodeMove = (x, y) => IOS ? `translate(${x}px,${y}px)` : `translate3d(${x}px,${y}px,0)`;
 const SIDES = ['t', 'r', 'b', 'l'];
 const SVGNS = 'http://www.w3.org/2000/svg';
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);

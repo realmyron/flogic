@@ -565,8 +565,8 @@ function szItems(n, el) {
 /* real (full-size) text sizes and line spacing for each kind of piece */
 function szSizes(n, k) {
   const sub = n.type === 'sub';
-  if (k === 'title') return [n.type === 'title' ? 27 : sub ? 14 : 18, SZ_MIN.title, 1.22];
-  if (k === 'head') return [15, SZ_MIN.head, 1.28];
+  if (k === 'title') return [n.type === 'title' ? 36 : sub ? 15 : 23, SZ_MIN.title, 1.2];
+  if (k === 'head') return [13.5, SZ_MIN.head, 1.3];
   if (k === 'tag') return [10.5, SZ_MIN.tag, 1.3];
   return [sub ? 13.5 : 14.5, SZ_MIN.text, 1.45];
 }
@@ -742,8 +742,10 @@ function nodeHTML(n) {
   h += '<div class="n-head">';
   if (T !== 'sub') h += fld(n, 'tag', 'div', 'n-tag', { ph: 'Label', single: 1 });
   h += fld(n, 'title', 'div', 'n-title', { ph: T === 'title' ? 'Untitled' : T === 'note' ? 'Note title' : 'Sub-note', single: 1 });
+  h += '</div>';
+  /* a hub's subtitle sits under the heading (its plate), not inside it */
   if (T === 'title') h += fld(n, 'subtitle', 'div', 'n-subtitle', { ph: 'Add a subtitle…' });
-  h += `</div><div class="blocks">${n.blocks.map((b, i) => blockHTML(n, b, i)).join('')}</div>`;
+  h += `<div class="blocks">${n.blocks.map((b, i) => blockHTML(n, b, i)).join('')}</div>`;
   return h;
 }
 function blockHTML(n, b, i) {

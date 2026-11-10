@@ -514,7 +514,9 @@ async function nodesPng(ids) {
   const svg = document.createElementNS(SVGNS, 'svg');
   svg.setAttribute('width', W); svg.setAttribute('height', Hh);
   svg.style.cssText = 'position:absolute;left:0;top:0;overflow:visible';
-  svg.appendChild($('#edges defs').cloneNode(true));
+  const defs = $('#edges defs').cloneNode(true);
+  arrowScale(1, defs);   /* the picture is at full size: arrowheads at their normal size, whatever the zoom */
+  svg.appendChild(defs);
   const g = document.createElementNS(SVGNS, 'g');
   g.setAttribute('transform', `translate(${-x1},${-y1})`);
   edges.forEach(x => {

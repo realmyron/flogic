@@ -8,8 +8,8 @@
     {
      "id": "nbn4b018o1",
      "type": "title",
-     "x": -216,
-     "y": -624,
+     "x": -192,
+     "y": -768,
      "w": 480,
      "color": "default",
      "tag": "POSITION",
@@ -51,8 +51,8 @@
     {
      "id": "nbnt5jgf28",
      "type": "note",
-     "x": -348,
-     "y": 96,
+     "x": -372,
+     "y": 379,
      "w": 336,
      "color": "red",
      "tag": "ROOT",
@@ -150,8 +150,8 @@
     {
      "id": "n8d9hjd6ra",
      "type": "note",
-     "x": 576,
-     "y": -355,
+     "x": 792,
+     "y": -350,
      "w": 336,
      "color": "default",
      "tag": "ROOT",
@@ -230,8 +230,8 @@
     {
      "id": "npqtkwfq7l",
      "type": "sub",
-     "x": -936,
-     "y": 545,
+     "x": -1008,
+     "y": 879,
      "w": 336,
      "color": "pink",
      "tag": "",
@@ -305,8 +305,8 @@
     {
      "id": "noso4rr4vz",
      "type": "note",
-     "x": -348,
-     "y": 576,
+     "x": -360,
+     "y": 1027,
      "w": 336,
      "color": "green",
      "tag": "CLARIFICATION",
@@ -343,6 +343,18 @@
            "id": "t16igdc3ub",
            "label": "EXPLANATION",
            "text": "Controlling for horniness, we must also control for every variable that differentiates a female from a male, the anus in both sexes is essentially identical. If we hypothetically put 2 isolated anuses in front of the subject and the only variable are the titles of \"male\" and \"female\", and the subject picks male, then the subjects decision is driven by arbitrary social grooming and has no psycho-physiological backing.",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "s4fpb0hi5n",
+         "title": "",
+         "steps": [
+          {
+           "id": "t683yfdi5n",
+           "label": "Then",
+           "text": "",
            "alt": false
           }
          ]
@@ -434,8 +446,8 @@
     {
      "id": "nvivrd8px2",
      "type": "note",
-     "x": 504,
-     "y": 660,
+     "x": 720,
+     "y": 912,
      "w": 480,
      "color": "p-coral",
      "tag": "CONCLUSION",
@@ -471,8 +483,8 @@
     {
      "id": "na3q2o3lab",
      "type": "note",
-     "x": -912,
-     "y": 238,
+     "x": -984,
+     "y": 514,
      "w": 336,
      "color": "p-butter",
      "tag": "BASE",
@@ -541,7 +553,11 @@
      "label": "",
      "arrow": true,
      "dashed": false,
-     "style": "fluid"
+     "style": "geometric",
+     "bend": {
+      "dx": -12,
+      "dy": 35
+     }
     },
     {
      "id": "led79mdyw6",
@@ -554,45 +570,6 @@
      "dashed": false
     },
     {
-     "id": "l8fr9w6wwk",
-     "from": "nbnt5jgf28",
-     "fs": "r",
-     "to": "n8d9hjd6ra",
-     "ts": "r",
-     "label": "",
-     "arrow": true,
-     "dashed": true,
-     "style": "geometric",
-     "bend": {
-      "dx": 474,
-      "dy": 181
-     }
-    },
-    {
-     "id": "lp4wufvpfc",
-     "from": "n8d9hjd6ra",
-     "fs": "b",
-     "to": "nvivrd8px2",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lsvof7n4fy",
-     "from": "na3q2o3lab",
-     "fs": "b",
-     "to": "npqtkwfq7l",
-     "ts": "r",
-     "label": "",
-     "arrow": true,
-     "dashed": false,
-     "bend": {
-      "dx": 12,
-      "dy": 45
-     }
-    },
-    {
      "id": "l1w89hla85",
      "from": "nbn4b018o1",
      "fs": "b",
@@ -603,11 +580,46 @@
      "dashed": false
     },
     {
-     "id": "l6anpblflv",
+     "id": "l86powvs3e",
+     "from": "nbnt5jgf28",
+     "fs": "r",
+     "to": "n8d9hjd6ra",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": true,
+     "style": "geometric",
+     "bend": {
+      "dx": 306,
+      "dy": 203
+     }
+    },
+    {
+     "id": "lbfskjbd64",
      "from": "na3q2o3lab",
+     "fs": "b",
+     "to": "npqtkwfq7l",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lzmkj44gy1",
+     "from": "nbnt5jgf28",
      "fs": "l",
-     "to": "nbnt5jgf28",
-     "ts": "l",
+     "to": "na3q2o3lab",
+     "ts": "r",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "ln2uosz20x",
+     "from": "n8d9hjd6ra",
+     "fs": "b",
+     "to": "nvivrd8px2",
+     "ts": "t",
      "label": "",
      "arrow": true,
      "dashed": false
@@ -629,7 +641,7 @@
      "y": -2232,
      "w": 576,
      "color": "teal",
-     "tag": "ENDONYM",
+     "tag": "",
      "title": "Belarusian identification as Litvins",
      "subtitle": "Analyzing the idea of \"Litvin\" being one of the endonym of Belarusians. ",
      "blocks": [
@@ -809,7 +821,7 @@
      "y": -2198,
      "w": 576,
      "color": "p-mint",
-     "tag": "Region",
+     "tag": "",
      "title": "Lithuania's and Belarus' old state endonyms",
      "subtitle": "Analyzing what Lithuanian's old endonym was: Litva, Aukstatija, Samogitia, Belarus, or all? ",
      "blocks": [
@@ -1129,7 +1141,7 @@
      "x": 1752,
      "y": -2040,
      "w": 552,
-     "color": "g-fire",
+     "color": "g-citrus",
      "tag": "",
      "title": "Addressing Counter-Arguments & Mainstream",
      "subtitle": "We will rely purely on the framework to debunk any arguments and the mainstream perspective.",

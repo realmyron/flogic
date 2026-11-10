@@ -10,7 +10,8 @@ const NODE_LIMIT = 1000;   // per environment; Settings → "Remove the node lim
 const NODE_LABEL = { title: 'Title', note: 'Note', sub: 'Sub-note', shape: 'Shape' };
 /* Colours: the main set, a pastel set, two-tone gradients, or any custom '#rrggbb'. */
 const COLORS = {
-  default: '#5b84dd', sky: '#3fb2ec', violet: '#a98bfa', pink: '#ee6eae', amber: '#e9a43a', green: '#36c08c', red: '#ef6a6a', slate: '#8f9bb3',
+  /* the default colour is a neutral grey, so the board belongs to the colours you pick */
+  default: '#80868d', sky: '#3fb2ec', violet: '#a98bfa', pink: '#ee6eae', amber: '#e9a43a', green: '#36c08c', red: '#ef6a6a', slate: '#8f9bb3',
   teal: '#2bb5a2', orange: '#f0844f', lime: '#9cc23c', indigo: '#6574f2', rose: '#e85d84', cyan: '#1fc2d6', gold: '#d6b13a', brown: '#b0835a',
   'p-blue': '#a8c1ff', 'p-lilac': '#cbb7ff', 'p-pink': '#ffb6d5', 'p-peach': '#ffc4a3', 'p-butter': '#f5df8a', 'p-mint': '#a6e3c8', 'p-sky': '#a3dcf2', 'p-coral': '#ffaaa8',
 };

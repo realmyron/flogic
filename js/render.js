@@ -439,6 +439,7 @@ function applyView() {
   if (cy > WORLD) V.y = VR.height / 2 - WORLD * V.z;
   world.style.transform = `translate(${V.x}px,${V.y}px) scale(${V.z})`;
   world.style.setProperty('--z', V.z);
+  zkView();
   let g = GRID * V.z;
   while (g > 0 && g < 14) g *= 4;
   vp.style.backgroundSize = `${g}px ${g}px`;
@@ -449,6 +450,35 @@ function applyView() {
   if (S.envId) {
     UI.views[S.envId] = { cx: (VR.width / 2 - V.x) / V.z, cy: (VR.height / 2 - V.y) / V.z, z: V.z };
     saveUI();
+  }
+}
+
+/* ---------- fuller strokes when zoomed out ----------
+   --zk scales lines, arrowheads, node outlines and colour stripes (see the CSS). It is 1 at 100% and
+   above. Zoomed out it grows a little less than the board shrinks (zoom ^ -ZK_P), so on screen these get
+   only slightly thinner instead of shrinking with everything else: at 50% a line keeps ~90% of its weight,
+   at 30% ~83% (without it: 50%, 30%). ZK_MAX caps it below ~12%, so at 10% it keeps ~60%. */
+const ZK_P = 0.85, ZK_MAX = 6;
+let ZK = 1, ZK_T = 0;
+function zkView() {
+  const k = V.z >= 1 ? 1 : Math.min(ZK_MAX, Math.pow(V.z, -ZK_P));
+  if (Math.abs(k - ZK) < 0.004 && (k !== 1 || ZK === 1)) return;
+  ZK = k;
+  world.style.setProperty('--zk', k.toFixed(3));
+  arrowScale(k);
+  /* while the zoom moves, cards drop their transitions, so their outline follows the zoom exactly instead of
+     trailing it (and every card isn't restarting an animation each frame); they come back when it settles */
+  document.body.classList.add('zk-move');
+  clearTimeout(ZK_T);
+  ZK_T = setTimeout(() => document.body.classList.remove('zk-move'), 160);
+}
+/* arrowheads are SVG markers sized in board units, which CSS can't reach: resize them with the lines.
+   `root` is the <defs> holding them (the board's, or a copy made for a picture) */
+function arrowScale(k, root = $('#edges defs')) {
+  for (const m of root.querySelectorAll('marker')) {
+    const base = +(m.dataset.base || (m.dataset.base = m.getAttribute('markerWidth')));
+    const s = (base * k).toFixed(2);
+    m.setAttribute('markerWidth', s); m.setAttribute('markerHeight', s);
   }
 }
 
@@ -537,7 +567,7 @@ function szSizes(n, k) {
   const sub = n.type === 'sub';
   if (k === 'title') return [n.type === 'title' ? 27 : sub ? 14 : 18, SZ_MIN.title, 1.22];
   if (k === 'head') return [15, SZ_MIN.head, 1.28];
-  if (k === 'tag') return [12.5, SZ_MIN.tag, 1.3];
+  if (k === 'tag') return [10.5, SZ_MIN.tag, 1.3];
   return [sub ? 13.5 : 14.5, SZ_MIN.text, 1.45];
 }
 function szClear(el) {
@@ -1179,7 +1209,7 @@ function drawMinimap() {
     ctx.strokeStyle = ctx.fillStyle = COLORS[p.color] || COLORS.slate;
     ctx.globalAlpha = p.folded ? 0.5 : 0.35;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(ox + r.x * s, oy + r.y * s, r.w * s, r.h * s, 3); else ctx.rect(ox + r.x * s, oy + r.y * s, r.w * s, r.h * s);
+    if (ctx.roundRect) ctx.roundRect(ox + r.x * s, oy + r.y * s, r.w * s, r.h * s, 1); else ctx.rect(ox + r.x * s, oy + r.y * s, r.w * s, r.h * s);
     if (p.folded) ctx.fill(); else ctx.stroke();
   });
   ns.filter(n => !foldMap().has(n.id)).forEach(n => {
@@ -1188,7 +1218,7 @@ function drawMinimap() {
     ctx.fillStyle = colorOf(n.color).c1;
     const w = Math.max(2, r.w * s), h = Math.max(2, r.h * s);
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(ox + r.x * s, oy + r.y * s, w, h, Math.min(3, w / 3)); else ctx.rect(ox + r.x * s, oy + r.y * s, w, h);
+    if (ctx.roundRect) ctx.roundRect(ox + r.x * s, oy + r.y * s, w, h, Math.min(1, w / 3)); else ctx.rect(ox + r.x * s, oy + r.y * s, w, h);
     ctx.fill();
   });
   ctx.globalAlpha = 1;

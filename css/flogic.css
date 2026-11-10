@@ -24,13 +24,19 @@
   --panel:#f2f3f3; --panel-solid:#fafafa; --panel-b:#d6d8da;
   --text:#121314; --text2:#2e3033; --muted:#5f6368; --faint:#7a7e84;
   --hover:rgba(18,20,22,.05); --press:rgba(18,20,22,.085);
-  --node:#fbfbfb; --node-top:#fbfbfb; --node-sub:#f3f4f4;
+  --node:#f9fafa; --node-top:#ffffff; --node-sub:#f3f4f4;
   --node-b:#d3d5d8; --node-b2:#bfc2c6; --node-hi:transparent;
-  --band:#f0f1f2;   /* the header band of a note */
+  /* depth inside a card: the header band is a raised plate that casts a short shadow onto the body,
+     section headings are strips across the card, the bottom edge of a slab is shaded */
+  --band:#eaecee; --band-top:#f3f4f5; --band-sh:rgba(18,20,22,.10);
+  --sect:#f1f2f3; --bevel-lo:rgba(18,20,22,.06);
+  /* zoomed out on the dark board, cards lift a little (a white wash that grows with --zk); on the light
+     board white cards on grey already stand apart */
+  --zlift:0;
   --inset:rgba(18,20,22,.035);
   --sel:#16181a; --sel-soft:rgba(22,24,26,.08); --on-sel:#fafafa;
   --accent:#3d6f8a;   /* cold steel blue, chrome only */
-  --line:#7f838a; --guide:#c4553a; --edge-sh:transparent; --shape-f:drop-shadow(0 1px 1px rgba(18,20,22,.07)); --shape-sh2:rgba(18,20,22,.18);
+  --line:#7f838a; --guide:#c4553a; --edge-sh:transparent; --shape-f:drop-shadow(0 2px 0 #c4c7cb) drop-shadow(0 8px 12px rgba(18,20,22,.12)); --shape-sh2:rgba(18,20,22,.18);
   --slab:#c4c7cb;
   --hi:inset 0 1px 0 rgba(255,255,255,.95);
   --sh-1:0 2px 0 var(--slab),0 10px 24px -14px rgba(18,20,22,.28);
@@ -57,13 +63,14 @@
     --panel:#111213; --panel-solid:#151617; --panel-b:#232527;
     --text:#eceef0; --text2:#c5c8cc; --muted:#8c9096; --faint:#6c7076;
     --hover:rgba(235,238,240,.055); --press:rgba(235,238,240,.09);
-    --node:#141516; --node-top:#141516; --node-sub:#121314;
-    --node-b:#2d2f33; --node-b2:#3d4044; --node-hi:transparent;
-    --band:#1a1b1d;
+    --node:#16171a; --node-top:#1a1b1e; --node-sub:#141517;
+    --node-b:#303236; --node-b2:#404347; --node-hi:transparent;
+    --band:#222327; --band-top:#27282c; --band-sh:rgba(0,0,0,.6);
+    --sect:#1c1d20; --bevel-lo:rgba(0,0,0,.5); --zlift:.014;
     --inset:rgba(235,238,240,.03);
     --sel:#e9ebed; --sel-soft:rgba(233,235,237,.1); --on-sel:#0c0d0e;
     --accent:#9cc0d4;
-    --line:#686d73; --guide:#d9694c; --edge-sh:transparent; --shape-f:drop-shadow(0 1px 2px rgba(0,0,0,.35)); --shape-sh2:rgba(0,0,0,.55);
+    --line:#686d73; --guide:#d9694c; --edge-sh:transparent; --shape-f:drop-shadow(0 2px 0 #050506) drop-shadow(0 10px 16px rgba(0,0,0,.5)); --shape-sh2:rgba(0,0,0,.55);
     --slab:#050506;
     --hi:inset 0 1px 0 rgba(255,255,255,.05);
     --sh-1:0 2px 0 var(--slab),0 14px 30px -14px rgba(0,0,0,.75);
@@ -82,13 +89,14 @@
   --panel:#111213; --panel-solid:#151617; --panel-b:#232527;
   --text:#eceef0; --text2:#c5c8cc; --muted:#8c9096; --faint:#6c7076;
   --hover:rgba(235,238,240,.055); --press:rgba(235,238,240,.09);
-  --node:#141516; --node-top:#141516; --node-sub:#121314;
-  --node-b:#2d2f33; --node-b2:#3d4044; --node-hi:transparent;
-  --band:#1a1b1d;
+  --node:#16171a; --node-top:#1a1b1e; --node-sub:#141517;
+  --node-b:#303236; --node-b2:#404347; --node-hi:transparent;
+  --band:#222327; --band-top:#27282c; --band-sh:rgba(0,0,0,.6);
+  --sect:#1c1d20; --bevel-lo:rgba(0,0,0,.5); --zlift:.014;
   --inset:rgba(235,238,240,.03);
   --sel:#e9ebed; --sel-soft:rgba(233,235,237,.1); --on-sel:#0c0d0e;
   --accent:#9cc0d4;
-  --line:#686d73; --guide:#d9694c; --edge-sh:transparent; --shape-f:drop-shadow(0 1px 2px rgba(0,0,0,.35)); --shape-sh2:rgba(0,0,0,.55);
+  --line:#686d73; --guide:#d9694c; --edge-sh:transparent; --shape-f:drop-shadow(0 2px 0 #050506) drop-shadow(0 10px 16px rgba(0,0,0,.5)); --shape-sh2:rgba(0,0,0,.55);
   --slab:#050506;
   --hi:inset 0 1px 0 rgba(255,255,255,.05);
   --sh-1:0 2px 0 var(--slab),0 14px 30px -14px rgba(0,0,0,.75);
@@ -339,7 +347,7 @@ body.bending,body.bending *{cursor:move !important}
 .edge.typed .vis{stroke-width:calc(2px * var(--zk,1))}
 .edge.typed.sel .vis{stroke:var(--ec);stroke-width:calc(3px * var(--zk,1))}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px 5px 4px}
-.tgroup{grid-column:1/-1;font-size:11px;font-weight:600;color:var(--muted);padding:6px 5px 2px}
+.tgroup{grid-column:1/-1;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:8px 5px 3px}
 .tt{display:flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 5px;border-radius:var(--r-s);font-size:12px;color:var(--text2);text-align:left;transition:background .1s}
 .tt:hover{background:var(--hover)}
 .tt.on{background:color-mix(in srgb,var(--ec) 18%,transparent);color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ec) 55%,transparent)}
@@ -349,7 +357,7 @@ body.bending,body.bending *{cursor:move !important}
 .tt-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .emenu{width:300px;max-height:calc(100vh - 16px);overflow:auto}
 .insp .tgrid{padding:0}
-.ihead{font-size:11.5px;font-weight:600;color:var(--muted);margin-top:2px}
+.ihead{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:4px}
 body.viewer .elabel{cursor:default}
 
 /* panels: framed areas around nodes. --gc is the panel's frame colour.
@@ -380,7 +388,7 @@ body.viewer .elabel{cursor:default}
 .pedge.e-r{top:-10px;bottom:-10px;right:-10px;width:20px}
 body.viewer .pedge,body.viewer .plabel{cursor:pointer}
 .plabel{position:absolute;left:14px;bottom:100%;margin-bottom:6px;display:flex;align-items:center;gap:5px;padding:3px 9px 3px 3px;border-radius:var(--r-m);
-  font-size:13px;font-weight:600;color:color-mix(in srgb,var(--gcx) var(--pl-k,65%),var(--text2));pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
+  font-family:var(--cond);font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:color-mix(in srgb,var(--gcx) var(--pl-k,65%),var(--text2));pointer-events:auto;cursor:grab;white-space:nowrap;transition:background .12s,color .12s}
 .plabel>.ic{color:var(--gcx)}
 .pframe[data-look="card"] .plabel{bottom:auto;top:4px;left:8px;margin:0;color:var(--text)}
 .pframe.folded .plabel{bottom:auto;top:50%;left:8px;margin:0;transform:translateY(-50%);color:var(--text)}
@@ -428,8 +436,12 @@ body.viewer .pedge,body.viewer .plabel{cursor:pointer}
    --nb is its outline colour. Zoomed out, the outline is topped up by a ring of (--zk - 1)px around the
    1px border, so it gets fuller without the box changing size (text never re-wraps). */
 .node{--c:#80868d;--nb:var(--node-b);position:absolute;left:0;top:0;border-radius:var(--r-m);padding:16px 18px 16px;
-  background:var(--node);border:1px solid var(--nb);
-  box-shadow:var(--hi),0 0 0 calc((var(--zk,1) - 1) * 1px) var(--nb),var(--sh-1);transform-origin:50% 40%;
+  --lift:rgb(255 255 255 / calc((var(--zk,1) - 1) * var(--zlift,0)));
+  background:linear-gradient(var(--lift),var(--lift)),linear-gradient(180deg,var(--node-top),var(--node) 220px);border:1px solid var(--nb);
+  /* lit along the top edge, shaded along the bottom edge: a slab with a little thickness. Zoomed out, the
+     outline ring also brightens toward --node-b2 so cards keep a clear edge against the dark board */
+  box-shadow:var(--hi),inset 0 -1px 0 var(--bevel-lo),
+    0 0 0 calc((var(--zk,1) - 1) * 1px) color-mix(in srgb,var(--node-b2) min(100%,calc((var(--zk,1) - 1) * 35%)),var(--nb)),var(--sh-1);transform-origin:50% 40%;
   transition:box-shadow .22s var(--ease),border-color .15s}
 /* while zooming, the outline follows the zoom exactly (see zkView in render.js) */
 body.zk-move .node{transition:none}
@@ -437,7 +449,7 @@ body.zk-move .node{transition:none}
    Colour styles (data-acc): a stripe flush along the top (default), bottom or left edge, like paint on the
    slab; a full outline; or none. The stripe covers the border and the zoomed-out ring, and thickens with --zk.
    Both sit above the header band (z-index 1), which would otherwise paint over them. */
-.node::before,.node::after{z-index:1}
+.node::before,.node::after{z-index:2}
 .node::before{content:"";position:absolute;left:calc(var(--zk,1) * -1px);right:calc(var(--zk,1) * -1px);top:calc(var(--zk,1) * -1px);height:calc(2px * var(--zk,1));
   border-top-left-radius:inherit;border-top-right-radius:inherit;background:var(--cg,var(--c));opacity:0;transition:opacity .2s;pointer-events:none}
 .node.acc-on::before{opacity:var(--acc-op,.85)}
@@ -464,7 +476,15 @@ body.editor .node:hover{--nb:var(--node-b2)}
 .node.conn-target{--nb:var(--sel);box-shadow:0 0 0 calc(4px * var(--zk,1)) var(--sel-soft),var(--sh-1)}
 .node.drop-target{--nb:var(--sel);box-shadow:0 0 0 calc(4px * var(--zk,1)) var(--sel-soft),var(--sh-2)}
 
+/* title cards are the hubs of a board: a heavier slab (4px edge, deeper shadow), a thicker colour stripe and
+   a header plate washed in their colour, so they read as landmarks among the notes */
 .node[data-type="title"]{border-radius:var(--r-l);padding:24px 30px 24px;text-align:center}
+/* (selected, lifted, connect and drop states keep their own rings) */
+.node[data-type="title"]:not(.sel,.hl,.lifted,.conn-target,.drop-target){
+  box-shadow:var(--hi),inset 0 -1px 0 var(--bevel-lo),
+    0 0 0 calc((var(--zk,1) - 1) * 1px) color-mix(in srgb,var(--node-b2) min(100%,calc((var(--zk,1) - 1) * 35%)),var(--nb)),
+    0 4px 0 var(--slab),0 26px 50px -18px rgb(0 0 0 / .55)}
+.node[data-type="title"]::before{height:calc(3px * var(--zk,1))}
 .node[data-type="sub"]{border-radius:var(--r-s);padding:9px 12px 10px 14px;background:var(--node-sub)}
 /* shapes: rectangle is the node's own box with sharp corners; the others are drawn as an SVG outline
    (.nsh) around the text, so the node's own background and border step aside */
@@ -484,7 +504,7 @@ body.editor .node.svgs:not(.acc-on):hover .sh-fill,body.editor .node.svgs[data-a
 .node.svgs.sel .sh-fill,.node.svgs.lifted .sh-fill{stroke:var(--sel) !important;stroke-width:calc(2px * var(--zk,1)) !important}
 .node.svgs.conn-target .sh-fill,.node.svgs.drop-target .sh-fill,.node.svgs.hl .sh-fill{stroke:var(--sel) !important;stroke-width:calc(2px * var(--zk,1)) !important}
 .node.svgs.lifted .nsh{filter:drop-shadow(0 16px 28px var(--shape-sh2))}
-.node[data-type="sub"] .lab{font-size:11.5px}
+.node[data-type="sub"] .lab{font-size:10px}
 .node[data-type="sub"] .scn-t{font-size:13px}
 .node[data-type="sub"] .b-text{font-size:13.5px}
 .n-head{position:relative}
@@ -497,23 +517,44 @@ body.editor .node.svgs:not(.acc-on):hover .sh-fill,body.editor .node.svgs[data-a
 .n-tag:empty:not(:focus){display:none}
 .node.sel .n-tag:empty{display:block}
 body.viewer .node .n-tag:empty{display:none}
-/* titles in the condensed cut: taller and more monumental, and never wider than before, so cards never grow */
-.n-title{font-family:var(--cond);font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-.005em;color:var(--text)}
-.node[data-type="title"] .n-title{font-size:27px;font-weight:700;letter-spacing:-.015em;line-height:1.18}
-.node[data-type="sub"] .n-title{font-size:14px;font-weight:600;line-height:1.3}
-.n-subtitle{font-size:14px;line-height:1.55;color:var(--muted);margin-top:8px}
+/* titles in the condensed cut: tall and monumental, and narrow, so they wrap less than the body text.
+   Type scale inside a card, so each level is clearly bigger than the one below it:
+   hub title 36 · note title 23 · sub-note title 15 · body 14.5 · section label 13.5 caps · stencil labels 10.5 caps */
+.n-title{font-family:var(--cond);font-size:23px;font-weight:700;line-height:1.2;letter-spacing:-.01em;color:var(--text)}
+.node[data-type="title"] .n-title{font-size:36px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.node[data-type="sub"] .n-title{font-size:15px;font-weight:650;line-height:1.28}
+/* a hub's subtitle sits under its plate, on the body, like a note's text under its band. It's set at the
+   heading's width (the .ed field has 4px of its own padding), and like the label it's optional: when it's
+   empty it only shows (as a placeholder) on the selected card */
+.ed.n-subtitle{font-size:15px;line-height:1.5;color:var(--muted);margin:10px 20px 0}
+.n-subtitle:empty:not(:focus){display:none}
+.node.sel .n-subtitle:empty{display:block}
+body.viewer .node .n-subtitle:empty{display:none}
 .blocks{position:relative;display:flex;flex-direction:column;gap:12px}
 .blocks:not(:empty){margin-top:12px}
-/* a note with a body gets a header band: its label and title sit on a plate across the top, divided from
-   the body by a seam. The band reaches the card's edges (its padding is the card's), and band padding +
-   seam + gap add up to the usual 12px, so no card changes size */
-.node[data-type="note"]:has(>.blocks:not(:empty))>.n-head{margin:-16px -18px 0;padding:16px 42px 6px 18px;
-  background:var(--band);border-bottom:1px solid var(--node-b);border-radius:var(--r-m) var(--r-m) 0 0}
-.node[data-type="note"]:has(>.blocks:not(:empty))>.blocks{margin-top:5px}
-/* a tinted note gets a tinted band */
-.node.acc-on[data-acc="tint"][data-type="note"]>.n-head{background:color-mix(in srgb,var(--c) 16%,var(--band));border-bottom-color:color-mix(in srgb,var(--c) 30%,var(--node-b))}
-/* the title card keeps a plain seam between its heading and its body */
-.node[data-type="title"]>.blocks:not(:empty)::before{content:"";position:absolute;left:-30px;right:-30px;top:-6px;height:1px;background:var(--node-b);pointer-events:none}
+/* a note with a body gets a header band: its label and title sit on a raised plate across the top, which
+   casts a short shadow onto the body below it. The band reaches the card's edges (its padding is the card's,
+   plus the heading's own room on the right, so the title wraps the same with or without it) */
+.node[data-type="note"]:has(>.blocks:not(:empty))>.n-head{z-index:1;margin:-16px -18px 0;padding:14px 42px 13px 18px;
+  background:linear-gradient(180deg,var(--band-top),var(--band));border-bottom:1px solid var(--node-b);border-radius:var(--r-m) var(--r-m) 0 0;
+  box-shadow:0 7px 10px -8px var(--band-sh)}
+.node[data-type="note"]:has(>.blocks:not(:empty))>.blocks{margin-top:16px}
+/* a hub with anything under its title (a subtitle or a body) gets a bigger version of the same plate: label
+   and title on the plate, a seam, then the subtitle and body below. Same side room as without it (30 + 24),
+   so the title never re-wraps when the plate appears */
+.node[data-type="title"]:has(>.n-subtitle:not(:empty),>.blocks:not(:empty))>.n-head{z-index:1;margin:-24px -30px 0;padding:22px 54px 18px;
+  background:linear-gradient(180deg,var(--band-top),var(--band));
+  border-bottom:1px solid var(--node-b);border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:0 8px 12px -9px var(--band-sh)}
+.node[data-type="title"]:has(>.n-subtitle:not(:empty),>.blocks:not(:empty))>.n-subtitle{margin-top:16px}
+.node[data-type="title"]:has(>.blocks:not(:empty))>.blocks{margin-top:16px}
+/* when the body opens with a section right under the plate, its strip hangs straight off the plate (no empty
+   gap between two lines, which reads as a blank row), and the plate's shadow falls into the recessed strip */
+.node[data-type="note"]:has(>.blocks>.blk.k-category:first-child)>.blocks,
+.node[data-type="title"]:not(:has(>.n-subtitle:not(:empty))):has(>.blocks>.blk.k-category:first-child)>.blocks{margin-top:0}
+.node[data-type="note"]>.blocks>.blk.k-category:first-child .cat-h,
+.node[data-type="title"]:not(:has(>.n-subtitle:not(:empty)))>.blocks>.blk.k-category:first-child .cat-h{border-top:0}
+/* a tinted card gets a tinted plate */
+.node.acc-on[data-acc="tint"]:is([data-type="note"],[data-type="title"])>.n-head{background:color-mix(in srgb,var(--c) 16%,var(--band));border-bottom-color:color-mix(in srgb,var(--c) 30%,var(--node-b))}
 .node[data-type="sub"] .blocks{gap:7px}
 .node[data-type="sub"] .blocks:not(:empty){margin-top:6px}
 .node[data-type="title"] .blocks{text-align:left}
@@ -592,10 +633,11 @@ body.connecting .node,body.connecting #viewport{cursor:crosshair}
 .ed b{font-weight:650;color:var(--text)}
 .ed mark{background:color-mix(in srgb,var(--c) 28%,transparent);color:inherit;border-radius:var(--r-xs);padding:0 2px;margin:0 -1px}
 .ed s{opacity:.7}
-.ed hr.md-hr{border:0;border-top:1px solid var(--node-b2);margin:9px 0}
+/* a --- inside text is a soft break (dashed); solid lines are kept for the card's own structure */
+.ed hr.md-hr{border:0;border-top:1px dashed color-mix(in srgb,var(--faint) 60%,transparent);margin:12px 0}
 .ed .md-small{font-size:.8em;line-height:1.45;color:var(--muted)}
 .ed .md-li{position:relative;padding-left:14px}
-.ed .md-li::before{content:"";position:absolute;left:3px;top:.68em;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.55}
+.ed .md-li::before{content:"";position:absolute;left:3px;top:.68em;width:4px;height:4px;border-radius:0;background:currentColor;opacity:.55}
 .ed a.nlink{color:var(--sel);text-decoration:none;font-weight:550;border-bottom:1px solid color-mix(in srgb,var(--sel) 40%,transparent);cursor:pointer}
 .ed a.nlink:hover{border-bottom-color:var(--sel)}
 /* links are ink-coloured like the selection, so they're marked by their underline */
@@ -605,34 +647,44 @@ body.connecting .node,body.connecting #viewport{cursor:crosshair}
 @keyframes ping{0%,40%{box-shadow:0 0 0 6px var(--sel-soft),0 0 0 1px var(--sel),var(--sh-2)}}
 .menu.scroll{max-height:340px;overflow:auto}
 .menu .mi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lab{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:3px;min-height:0}
+/* block labels ("Conclusion", "Sources", "Scenarios"…) are stencilled like the label above a title */
+.lab{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:6px;min-height:0}
 .lab:empty{min-height:1.2em}
-/* blocks are set apart by rules and spacing, not by boxes inside the node's box */
-.b-hl{padding:2px 0 2px 12px;border-left:2px solid color-mix(in srgb,var(--c) 45%,var(--node-b2))}
+/* three weights of separation inside a card, so text never blends together:
+   solid strips and plates for structure (band, section headings, conclusion), dashed rules for a soft break
+   inside text, and spacing between paragraphs */
+.b-hl{padding:8px 12px 9px;border-left:2px solid var(--c);background:color-mix(in srgb,var(--c) 6%,transparent)}
 .b-hl .b-text{color:var(--text)}
-/* categories read like the sections of an article: a clear heading with a rule under it, the text below,
-   and more room above each one than between paragraphs (--- inside the text still divides within a section) */
-.blk.k-category:not(:first-child){margin-top:10px}
-.cat-h{display:flex;align-items:center;gap:6px;padding-bottom:5px;margin-bottom:8px;border-bottom:1px solid var(--node-b2);transition:margin .25s var(--ease),border-color .2s}
-.cat-h .lab{flex:1;margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;line-height:1.3;color:var(--text)}
-.node[data-type="sub"] .cat-h .lab{font-size:13.5px}
+/* categories are the sections of the card: a strip across its full width, marked with a square in the
+   node's colour, with clear room above each one */
+.blk.k-category:not(:first-child){margin-top:14px}
+.cat-h{display:flex;align-items:center;gap:9px;margin:0 -18px 12px;padding:7px 18px 7px 18px;background:var(--sect);
+  border-top:1px solid var(--node-b);border-bottom:1px solid var(--node-b);transition:margin .25s var(--ease),border-color .2s}
+.cat-h::before{content:"";flex:none;width:6px;height:6px;background:var(--c)}
+.cat-h .lab{flex:1;margin:0;font-family:var(--cond);font-size:13.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:1.3;color:var(--text)}
+.node[data-type="sub"] .cat-h{margin:0 -12px 8px -14px;padding:5px 12px 5px 14px}
+.node[data-type="sub"] .cat-h .lab{font-size:12px}
+.node[data-type="title"] .cat-h{margin-left:-30px;margin-right:-30px;padding-left:30px;padding-right:30px}
+/* in a shape the padding follows the outline, so a section strip stays within the text area */
+.node[data-type="shape"] .cat-h{margin-left:0;margin-right:0;padding-left:8px;padding-right:8px}
 body.viewer .cat-h{cursor:pointer}
 .b-cat .chev{width:20px;height:20px;margin:0 -4px 0 0;color:var(--muted)}
-.b-cat.closed .cat-h{margin-bottom:0;border-bottom-color:var(--node-b)}
+.b-cat.closed .cat-h{margin-bottom:0}
 .b-cat.closed .cat-h .chev{transform:rotate(-90deg)}
 .fold-b{display:grid;grid-template-rows:1fr;transition:grid-template-rows .28s var(--ease),opacity .2s}
 .fold-bi{overflow:hidden;min-height:0}
 .b-cat.closed .fold-b{grid-template-rows:0fr;opacity:0}
-.b-concl{border-top:1px solid var(--node-b2);padding-top:11px}
-.b-concl .b-text{font-weight:600;color:var(--text)}
+/* the conclusion is a plate of its own: the takeaway, marked with the node's colour */
+.b-concl{padding:11px 14px 12px;border:1px solid var(--node-b);border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 6%,var(--band))}
+.b-concl .b-text{font-weight:500;color:var(--text)}
 
 /* scenarios */
-.scn{border-top:1px solid var(--node-b);transition:background .2s}
+.scn{border:1px solid var(--node-b);border-radius:var(--r-s);background:color-mix(in srgb,var(--sect) 60%,transparent);transition:background .2s}
 .scn+.scn{margin-top:6px}
 .scn.open{background:var(--inset)}
 .scn-h{display:flex;align-items:flex-start;gap:8px;padding:8px 8px 8px 10px}
 body.viewer .scn-h{cursor:pointer}
-.scn-n{flex:none;width:19px;height:19px;margin-top:-1px;border-radius:var(--r-xs);display:grid;place-items:center;font-size:11.5px;font-weight:600;
+.scn-n{flex:none;width:19px;height:19px;margin-top:-1px;border-radius:var(--r-xs);display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:500;
   background:var(--inset);border:1px solid var(--node-b);color:var(--muted);cursor:pointer}
 .scn-t{flex:1;font-size:14px;font-weight:600;line-height:1.4;color:var(--text)}
 .scn-c{flex:none;font-size:11.5px;color:var(--faint);padding-top:1px;cursor:pointer}
@@ -713,7 +765,7 @@ body.viewer .chip{padding-right:9px}
 .b-img{margin:0}
 /* an image keeps its own proportions: it fills the node's width only up to its real size and a set height,
    so widening a note doesn't blow it up */
-.b-img img{display:block;width:auto;max-width:100%;max-height:340px;height:auto;margin:0 auto;object-fit:contain;border-radius:var(--r-s);border:1px solid var(--node-b);background:var(--inset);-webkit-user-drag:none}
+.b-img img{display:block;width:auto;max-width:100%;max-height:340px;height:auto;margin:0 auto;object-fit:contain;border-radius:var(--r-s);border:1px solid var(--node-b);background:var(--inset);box-shadow:0 2px 0 var(--slab);-webkit-user-drag:none}
 body.viewer .b-img img{cursor:zoom-in}
 .cap{font-size:12.5px;color:var(--muted);margin-top:6px;text-align:center}
 .img-drop{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:var(--r-s);border:1.5px dashed var(--node-b2);color:var(--muted);transition:border-color .15s,background .15s}
@@ -804,7 +856,7 @@ body.sec-dragging,body.sec-dragging *{cursor:grabbing !important;user-select:non
 .mi kbd{margin-left:auto;padding-left:16px}
 .mi .ic-sp{width:15px}
 .mchk{margin-left:auto;width:15px}
-.mh{font-size:11.5px;font-weight:600;color:var(--muted);padding:8px 10px 3px}
+.mh{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:9px 10px 4px}
 .msep{height:1px;background:var(--panel-b);margin:4px 3px}
 .mfmt{display:flex;align-items:center;gap:2px;padding:3px 5px 5px}
 .fb{width:32px;height:30px;border-radius:var(--r-s);display:grid;place-items:center;color:var(--text2);transition:background .1s,color .1s}
@@ -837,9 +889,10 @@ body.sec-dragging,body.sec-dragging *{cursor:grabbing !important;user-select:non
 @keyframes ovIn{from{opacity:0}} @keyframes ovOut{to{opacity:0}}
 .modal{width:min(560px,100%);max-height:calc(100dvh - 40px);overflow:auto;border-radius:var(--r-l);background:var(--panel-solid);border:1px solid var(--panel-b);box-shadow:var(--hi),var(--sh-menu);animation:modalIn .3s var(--spring);user-select:text;-webkit-user-select:text}
 @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.97)}}
-.mhead{display:flex;align-items:center;gap:10px;padding:18px 18px 6px 22px}
-.mhead h3{flex:1;display:flex;align-items:center;gap:8px;margin:0;font-size:16px;font-weight:650}
-.mbody{padding:4px 22px 22px}
+/* dialogs get the same raised header band as a note */
+.mhead{display:flex;align-items:center;gap:10px;padding:14px 14px 13px 22px;background:linear-gradient(180deg,var(--band-top),var(--band));border-bottom:1px solid var(--panel-b)}
+.mhead h3{flex:1;display:flex;align-items:center;gap:8px;margin:0;font-family:var(--cond);font-size:17px;font-weight:700;letter-spacing:.005em}
+.mbody{padding:8px 22px 22px}
 .mbody section{padding:14px 0;border-bottom:1px solid var(--panel-b)}
 .mbody section:last-child{border-bottom:0;padding-bottom:0}
 .mbody h4{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;font-weight:650}
@@ -1086,8 +1139,8 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
   opacity:0;transition:opacity .22s ease}
 .node.sz:not(.editing):not(.sz-tile)>.n-sz{opacity:1}
 .node:not(.sz)>.n-sz,.node.editing>.n-sz{display:none}
-.node>.n-head,.node>.blocks{transition:opacity .22s ease}
-.node.sz:not(.editing):not(.svgs)>:is(.n-head,.blocks){opacity:0;pointer-events:none}
+.node>:is(.n-head,.n-subtitle,.blocks){transition:opacity .22s ease}
+.node.sz:not(.editing):not(.svgs)>:is(.n-head,.n-subtitle,.blocks){opacity:0;pointer-events:none}
 .sz-i{flex:none;overflow:hidden;opacity:0;transition:height .22s var(--ease),margin .22s var(--ease),opacity .18s ease}
 .sz-i.on{opacity:1}
 .sz-i.follow{transition:opacity .18s ease}
@@ -1097,15 +1150,17 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
 .node[data-type="title"] .sz-i.k-title span{font-weight:700;text-align:center}
 .node[data-type="title"] .sz-i.k-text span{text-align:center;color:var(--muted)}
 .sz-i.k-tag span{font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
-.sz-i.k-head span{font-weight:650;color:var(--text)}
-.sz-i.k-head{border-bottom:1px solid var(--node-b2)}
+/* section headings match the card's own section strips: condensed caps on the strip colour */
+.sz-i.k-head span{font-family:var(--cond);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text)}
+/* (its lines are inset shadows, not borders: the layer sizes each piece by its lines of text) */
+.sz-i.k-head{background:var(--sect);box-shadow:inset 0 1px 0 var(--node-b),inset 0 -1px 0 var(--node-b)}
 .sz-i.concl span{font-weight:600;color:var(--text)}
 .sz-i.quote span{font-style:italic}
 .sz-i.meta span{color:var(--muted)}
 .sz-i.k-img img{display:block;margin:0 auto;max-width:100%;border-radius:var(--r-s)}
 /* far out, a card that can't even hold its title becomes a tile in its colour */
 .node.sz-tile:not(.editing){background:color-mix(in srgb,var(--c) 32%,var(--node))}
-.node.sz-tile:not(.editing)>:is(.n-head,.blocks){opacity:0;pointer-events:none}
+.node.sz-tile:not(.editing)>:is(.n-head,.n-subtitle,.blocks){opacity:0;pointer-events:none}
 /* shapes keep their layout; their label is set at a readable size, kept inside the shape */
 .sz-on #world .node.svgs .sn-title{font-size:min(max(14px,calc(13px * var(--szk))),calc(var(--w) * .14));max-height:calc(var(--w) * .34);overflow:hidden}
 /* panel names and line labels stay readable too (the lines themselves already thicken with --zk) */
@@ -1118,16 +1173,20 @@ body.dragging-nodes .read-glow,body.connecting .read-glow{opacity:0}
   background:var(--panel-solid);border:1px solid var(--panel-b);border-radius:var(--r-l);box-shadow:var(--hi),var(--sh-menu);
   transform:translateX(calc(100% + 20px));transition:transform .28s var(--ease);user-select:text;-webkit-user-select:text}
 #reader.on{transform:none}
-.rd-top{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 16px;border-bottom:1px solid var(--panel-b);font-size:12px;color:var(--muted)}
+.rd-top{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 16px;border-bottom:1px solid var(--panel-b);font-size:12px;color:var(--muted);
+  background:linear-gradient(180deg,var(--band-top),var(--band));border-radius:var(--r-l) var(--r-l) 0 0}
 .rd-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px 16px 24px}
 .rd-toc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--panel-b);border-radius:var(--r-s);background:var(--inset)}
-.rd-toc b{font-size:12px;color:var(--muted);margin-bottom:2px}
+.rd-toc b{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
 .rd-toc button{font-size:13px;color:var(--sel);text-align:left;padding:2px 0}
 .rd-toc button:hover{text-decoration:underline}
 #reader .node{position:relative !important;transform:none !important;left:auto;top:auto;width:auto !important;box-shadow:none;border:0;background:none;padding:0}
 /* in the reader the card has no padding, so the header band goes flat */
-#reader .node[data-type="note"]>.n-head{margin:0;padding:0 0 8px;background:none;border-radius:0}
-#reader .node[data-type="note"]>.blocks{margin-top:12px}
+#reader .node:is([data-type="note"],[data-type="title"])>.n-head{margin:0;padding:0 0 8px;background:none;border-radius:0;box-shadow:none}
+#reader .node>.blocks{margin-top:12px}
+#reader .node>.n-subtitle{margin:4px 0 0}
+/* section strips reach the reader's edges instead of the card's, and always keep both lines */
+#reader .cat-h{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;border-top:1px solid var(--node-b)}
 #reader .node::before,#reader .node::after,#reader .eo{display:none !important}
 #reader .b-cat.closed .fold-b,#reader .src-it .fold-b,#reader .scn .scn-b{grid-template-rows:1fr;opacity:1}
 

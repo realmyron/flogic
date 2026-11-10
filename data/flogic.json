@@ -1315,6 +1315,32 @@
        "text": "Identify what type of argument it is, is it some historical document that supposedly refutes our perspective? Is it an attack to one of our core positions from our framework? Is it an attack on our logic?\n\nA lot of arguments you will see go something like this - a document saying \"An orthodox priest in Minsk from 1562 said he doesn't understand Lithuanian\". In this case, you need to point out that Lithuanian could also refer to the Belarusian dialect, and the priest could've been Ruthenian (Ukrainian).  \nCould also be something like \"A church in Vilnius mentioning it supporting both Lithuanians and Ruthenians\". In this case, Lithuanians here could also refer to Belarusians, while Ruthenians to Ukrainians.\n\nSome arguments might attack our core premises, so you must use the sources I link to defend them."
       }
      ]
+    },
+    {
+     "id": "nxd3hyhtvf",
+     "type": "note",
+     "x": 2520,
+     "y": -3000,
+     "w": 480,
+     "color": "teal",
+     "tag": "",
+     "title": "Union of Lublin 1569",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bwsyhfatvf",
+       "kind": "category",
+       "label": "Explanation",
+       "text": "This argument uses the historical Union of Lublin to prove that Lithuania could not be a Belarusian state, as"
+      },
+      {
+       "id": "bel7qputvf",
+       "kind": "category",
+       "label": "Rebuttal",
+       "text": "This argument can be easily rebutted by the fact Danylo Romanovych (the ruler of Kingdom of Halych-Volhynia) planned to adopt Catholicism. This shows that a confirmed Ruthenian ruler from 1250s also used religion strategically. "
+      }
+     ],
+     "accent": "none"
     }
    ],
    "edges": [
@@ -1569,10 +1595,10 @@
      }
     },
     {
-     "id": "lcj0q18qrh",
-     "from": "nbk7wys53i",
-     "fs": "b",
-     "to": "nk37ztwaly",
+     "id": "lf5m41lwhn",
+     "from": "n2knfc6j4x",
+     "fs": "t",
+     "to": "nxd3hyhtvf",
      "ts": "b",
      "label": "",
      "arrow": true,

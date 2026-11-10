@@ -255,27 +255,27 @@ function demoDoc() {
   const E = (a, fs, b, ts, label = '') => e.edges.push({ id: uid('l'), from: a.id, fs, to: b.id, ts, label, arrow: true, dashed: false });
 
   const t = N('title', -240, -384, { tag: 'Start here', title: 'Welcome to Flogic', subtitle: 'Flow + logic. Right-click anywhere on the board to add a node, then drag from the dots on its sides to connect ideas.' });
-  const a = N('note', -552, -192, { tag: 'Blocks', title: 'Build notes from blocks', blocks: [
+  const a = N('note', -552, -120, { tag: 'Blocks', title: 'Build notes from blocks', blocks: [
     B('text', { text: 'Every node has a + in its corner. Use it to add text, highlights, categories, scenarios, checklists, images and sources.' }),
     B('highlight', { label: 'Tip', text: 'Double-click any text to edit it.' }),
     B('category', { label: 'Move things', text: 'Grab the 6-dot handle beside a block to reorder it, drop it into another node, or pull it onto the board.' }),
     B('conclusion', { text: 'Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely.' }),
   ] });
-  const b = N('note', -168, -192, { tag: 'Scenarios', color: 'violet', title: 'Unroll a chain of events', blocks: [
+  const b = N('note', -168, -120, { tag: 'Scenarios', color: 'violet', title: 'Unroll a chain of events', blocks: [
     B('text', { text: 'Scenarios fold up so a node stays compact. Open one to see how it plays out.' }),
     B('scenarios', { label: 'What could happen', items: [
       { id: uid('s'), title: 'The idea holds up', steps: [S_('First', 'You sketch it on the board.'), S_('Then', 'Connections show how each part leads to the next.'), S_('Result', 'The argument reads top to bottom.')] },
       { id: uid('s'), title: 'Someone pushes back', steps: [S_('They say', 'This step does not follow.', 1), S_('You answer', 'Add a sub-note with the missing link and a source.')] },
     ] }),
   ] });
-  const c = N('note', 216, -192, { tag: 'Controls', color: 'green', title: 'Getting around', blocks: [
+  const c = N('note', 216, -120, { tag: 'Controls', color: 'green', title: 'Getting around', blocks: [
     B('checklist', { label: 'Try these', items: ['Middle-click and drag to pan', 'Scroll to zoom', 'Drag on empty space to box-select', 'Right-click empty space to add a node', 'Ctrl+G groups the selection'].map(text => ({ id: uid('c'), text, done: false })) }),
   ] });
-  const d = N('sub', -504, 264, { title: 'Sources & images', blocks: [
+  const d = N('sub', -504, 456, { title: 'Sources & images', blocks: [
     B('text', { text: 'Attach references so anyone reading can check them.' }),
     B('sources', { items: [{ t: 'GitHub Pages docs', u: 'https://docs.github.com/en/pages' }] }),
   ] });
-  const f = N('sub', 264, 144, { color: 'green', title: 'Publishing', blocks: [
+  const f = N('sub', 264, 240, { color: 'green', title: 'Publishing', blocks: [
     B('text', { text: 'Visitors see the published board, read-only. Only you can edit, after connecting GitHub in Settings.' }),
   ] });
   E(t, 'b', a, 't'); E(t, 'b', b, 't', 'for example'); E(t, 'b', c, 't');

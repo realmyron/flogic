@@ -1,5 +1,5 @@
 'use strict';
-(self.FV = self.FV || {})['js/store.js'] = '2026-11-11i';   // the update this file belongs to (see checkVersions in app.js)
+(self.FV = self.FV || {})['js/store.js'] = '2026-11-11k';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: document model, undo history, local drafts and GitHub publishing. */
 
 const DATA_PATH = 'data/flogic.json';

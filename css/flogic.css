@@ -304,7 +304,7 @@ body.panning #viewport,body.panning *{cursor:grabbing !important}
    --zk (set on #world in render.js) is 1 at 100% and above; zoomed out it grows a little less than the
    board shrinks, so lines, arrowheads, node outlines and colour marks get fuller as you zoom out instead of
    thinning to nothing. Outside the board (previews, pictures) it falls back to 1. */
-.edge .vis{fill:none;stroke:var(--line);stroke-width:calc(1.7px * var(--zk,1));stroke-linecap:butt;stroke-linejoin:miter;transition:stroke .15s}
+.edge .vis{fill:none;stroke:var(--line);stroke-width:calc(1.7px * var(--zkl,1));stroke-linecap:butt;stroke-linejoin:miter;transition:stroke .15s}
 .edge .hit{fill:none;stroke:transparent;stroke-width:calc(18px * var(--zk,1));pointer-events:stroke;cursor:grab}
 body.viewer .edge .hit{cursor:pointer}
 .edge .bend{fill:var(--panel-solid);stroke:var(--sel);stroke-width:2;opacity:0;pointer-events:none;cursor:move;r:calc(5.5px / min(var(--z,1), 1));transition:opacity .12s}
@@ -316,18 +316,40 @@ body.editor .edge .bend:hover,body.bending .edge.sel .bend{fill:var(--sel)}
 .edge.haslabel .bend,.edge.haslabel .bend-hit{display:none}
 body.editor .elabel{cursor:move}
 body.bending,body.bending *{cursor:move !important}
-.edge.dashed .vis{stroke-dasharray:calc(6px * var(--zk,1)) calc(7px * var(--zk,1))}
+.edge.dashed .vis{stroke-dasharray:calc(6px * var(--zkl,1)) calc(7px * var(--zkl,1))}
 .edge:hover .vis{stroke:color-mix(in srgb,var(--sel) 70%,var(--line))}
-.edge.rel .vis{stroke:var(--sel);stroke-dasharray:calc(7px * var(--zk,1)) calc(7px * var(--zk,1));animation:flow .9s linear infinite}
-.edge.sel .vis{stroke:var(--sel);stroke-width:calc(2.6px * var(--zk,1))}
+.edge.rel .vis{stroke:var(--sel);stroke-dasharray:calc(7px * var(--zkl,1)) calc(7px * var(--zkl,1));animation:flow .9s linear infinite}
+.edge.sel .vis{stroke:var(--sel);stroke-width:calc(2.6px * var(--zkl,1))}
 .ah{fill:var(--line)} .ah.hi{fill:var(--sel)}
 /* one dash period per loop, so the marching dashes never jump */
-@keyframes flow{to{stroke-dashoffset:calc(-14px * var(--zk,1))}}
+@keyframes flow{to{stroke-dashoffset:calc(-14px * var(--zkl,1))}}
+/* moving connections (Settings → Comfort, on by default), to give a board a little life. Both kinds move at
+   the same pace (30px a second at 100%) toward the node a line points at:
+   - an arrow's line itself flows: a fine, even, faint stripe runs along its whole length (drawn inside the
+     line at its own width, never wider), so it reads as the line moving, not as something travelling
+     through it, and the line still reads as solid;
+   - a dashed line's dashes move.
+   They pause while the board moves (pan, zoom), are off with reduced motion (body.eflow isn't set then),
+   and on iPhone/iPad they step at about 20 frames a second */
+.edge .flow{display:none;fill:none;pointer-events:none}
+body.eflow .edge.arrow .flow{display:block;stroke:color-mix(in srgb,var(--text) 45%,var(--line));stroke-width:calc(1.7px * var(--zkl,1));stroke-linecap:butt;
+  stroke-dasharray:calc(6px * var(--zkl,1)) calc(6px * var(--zkl,1));opacity:.5;animation:eflow .4s linear infinite}
+body.eflow .edge.arrow.typed .flow{stroke:color-mix(in srgb,var(--text) 40%,var(--ec));stroke-width:calc(2px * var(--zkl,1))}
+/* (selected and related lines have their own look; dashed lines move their dashes instead; a line drawing
+   itself in waits until it's done) */
+body.eflow .edge:is(.sel,.rel,.draw,.dashed) .flow{display:none}
+/* one stripe period (12px) every .4s, one dash period (13px) every .433s: the same 30px a second */
+@keyframes eflow{to{stroke-dashoffset:calc(-12px * var(--zkl,1))}}
+body.eflow .edge.dashed:not(.rel):not(.draw) .vis{animation:creep .433s linear infinite}
+@keyframes creep{to{stroke-dashoffset:calc(-13px * var(--zkl,1))}}
+body.eflow:is(.zk-move,.panning) .edge :is(.flow,.vis){animation-play-state:paused}
+body.ios.eflow .edge .flow{animation-timing-function:steps(8)}
+body.ios.eflow .edge.dashed .vis{animation-timing-function:steps(9)}
 .mdraw{fill:none;stroke:#fff;stroke-width:16;stroke-linecap:round;stroke-dasharray:1 1;stroke-dashoffset:1;animation:drawIn .62s cubic-bezier(.5,0,.2,1) forwards}
 @keyframes drawIn{to{stroke-dashoffset:0}}
 .elabel.lab-in{animation:labIn .3s var(--spring) both;animation-delay:var(--d,0ms)}
 @keyframes labIn{from{opacity:0;filter:blur(2px)}}
-#conn-preview{fill:none;stroke:var(--sel);stroke-width:calc(2.2px * var(--zk,1));stroke-linecap:butt;stroke-dasharray:calc(7px * var(--zk,1)) calc(7px * var(--zk,1));animation:flow .5s linear infinite}
+#conn-preview{fill:none;stroke:var(--sel);stroke-width:calc(2.2px * var(--zkl,1));stroke-linecap:butt;stroke-dasharray:calc(7px * var(--zkl,1)) calc(7px * var(--zkl,1));animation:flow .5s linear infinite}
 #guide-g line{stroke:var(--guide);stroke-width:1;vector-effect:non-scaling-stroke}
 #guide-g line.gap{stroke-dasharray:3 3}
 .elabel{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--r-xs);background:var(--panel-solid);border:1px solid var(--node-b);
@@ -344,8 +366,8 @@ body.bending,body.bending *{cursor:move !important}
 .elabel.typed.notext{padding:3px;border-width:1.5px}
 .elabel.typed.notext .et-tx{display:none}
 .edge.typed .vis,.edge.typed:hover .vis,.edge.typed.rel .vis{stroke:var(--ec)}
-.edge.typed .vis{stroke-width:calc(2px * var(--zk,1))}
-.edge.typed.sel .vis{stroke:var(--ec);stroke-width:calc(3px * var(--zk,1))}
+.edge.typed .vis{stroke-width:calc(2px * var(--zkl,1))}
+.edge.typed.sel .vis{stroke:var(--ec);stroke-width:calc(3px * var(--zkl,1))}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px 5px 4px}
 .tgroup{grid-column:1/-1;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:8px 5px 3px}
 .tt{display:flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 5px;border-radius:var(--r-s);font-size:12px;color:var(--text2);text-align:left;transition:background .1s}

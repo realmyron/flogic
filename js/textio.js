@@ -1,4 +1,5 @@
 'use strict';
+(self.FV = self.FV || {})['js/textio.js'] = '2026-11-11i';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: board text. Nodes become readable Markdown-style text and come back again.
 
    "Copy text" gives clean Markdown for sharing. "Copy text for AI" gives the same text plus each node's

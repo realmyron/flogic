@@ -1,4 +1,5 @@
 'use strict';
+(self.FV = self.FV || {})['js/render.js'] = '2026-11-11i';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: everything that turns the document into DOM. */
 
 const vp = $('#viewport'), world = $('#world'), nodesWrap = $('#nodes'), edgeG = $('#edge-g');
@@ -459,15 +460,20 @@ function applyView() {
    only slightly thinner instead of shrinking with everything else: at 50% a line keeps ~90% of its weight,
    at 30% ~83% (without it: 50%, 30%). ZK_MAX caps it below ~12%, so at 10% it keeps ~60%. */
 const ZK_P = 0.85, ZK_MAX = 6;
-/* connection lines (and their arrowheads, --zkl) ease a touch thinner at the far zoomed-out end: from 30%
-   down to 10% they lose up to ZK_LINE of that extra weight */
-const ZK_LINE = 0.12;
-let ZK = 1, ZK_T = 0;
+/* connection lines and their arrowheads have their own curve (--zkl), so they look about the same weight at
+   any zoom:
+   - zoomed out they keep ZL_OUT (10%) more than the rest (fully by 60%), easing back ZL_FAR (12%) from 30%
+     down to 10%. On screen: 1.7px at 100%, ~1.7 at 50%, ~1.56 at 30%, ~1.0 at 10%;
+   - zoomed in they grow only half as fast as the board (zoom ^ -ZL_IN): ~2.4px at 200% (not 3.4), ~3.4px
+     at 400% (not 6.8). Node outlines and stripes (--zk) still simply scale with the board above 100% */
+const ZL_OUT = 0.10, ZL_FAR = 0.12, ZL_IN = 0.5;
+let ZK = 1, ZKL = 1, ZK_T = 0;
 function zkView() {
-  const k = V.z >= 1 ? 1 : Math.min(ZK_MAX, Math.pow(V.z, -ZK_P));
-  if (Math.abs(k - ZK) < 0.004 && (k !== 1 || ZK === 1)) return;
-  ZK = k;
-  const kl = k * (1 - ZK_LINE * clamp((0.3 - V.z) / 0.2, 0, 1));
+  const z = V.z, k = z >= 1 ? 1 : Math.min(ZK_MAX, Math.pow(z, -ZK_P));
+  const kl = z >= 1 ? Math.pow(z, -ZL_IN) : k * (1 + ZL_OUT * clamp((1 - z) / 0.4, 0, 1)) * (1 - ZL_FAR * clamp((0.3 - z) / 0.2, 0, 1));
+  const same = (a, b) => Math.abs(a - b) < 0.004 && (a !== 1 || b === 1);
+  if (same(k, ZK) && same(kl, ZKL)) return;
+  ZK = k; ZKL = kl;
   world.style.setProperty('--zk', k.toFixed(3));
   world.style.setProperty('--zkl', kl.toFixed(3));
   arrowScale(kl);
@@ -982,20 +988,26 @@ function drawEdges() {
       gEl.dataset.e = ed.id;
       const hit = document.createElementNS(SVGNS, 'path'); hit.setAttribute('class', 'hit');
       const vis = document.createElementNS(SVGNS, 'path'); vis.setAttribute('class', 'vis');
-      const flow = document.createElementNS(SVGNS, 'path'); flow.setAttribute('class', 'flow');   /* the moving pulse (CSS) */
+      /* moving connections (CSS): three copies of the line, a moment apart, fill it with light (a soft front) */
+      const flows = [0, 1, 2].map(i => { const p = document.createElementNS(SVGNS, 'path'); p.setAttribute('class', 'flow fl' + i); p.setAttribute('pathLength', '1'); return p; });
+      /* each line starts its cycle at its own point (fixed per line), so a board doesn't pulse in unison */
+      let hsh = 0;
+      for (const ch of ed.id) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+      gEl.style.setProperty('--fd', (hsh % 5500) + 'ms');   /* within one 5.5s cycle (see .flow in the CSS) */
       const knobHit = document.createElementNS(SVGNS, 'circle'); knobHit.setAttribute('class', 'bend-hit'); knobHit.setAttribute('r', '14');
       const knob = document.createElementNS(SVGNS, 'circle'); knob.setAttribute('class', 'bend'); knob.setAttribute('r', '5.5');
-      gEl.append(hit, vis, flow, knobHit, knob); edgeG.appendChild(gEl);
+      gEl.append(hit, vis, ...flows, knobHit, knob); edgeG.appendChild(gEl);
       /* the label pill: a type badge (icon) and the label text */
       const lab = document.createElement('div'); lab.className = 'elabel'; lab.dataset.e = ed.id;
       const labIc = document.createElement('span'); labIc.className = 'et-ic';
       const labTx = document.createElement('span'); labTx.className = 'et-tx';
       lab.append(labIc, labTx);
       labelsWrap.appendChild(lab);
-      r = { g: gEl, hit, vis, flow, knob, knobHit, lab, labIc, labTx, cls: '', type: '' };
+      r = { g: gEl, hit, vis, flows, knob, knobHit, lab, labIc, labTx, cls: '', type: '' };
       EDGE_EL.set(ed.id, r);
     }
-    r.hit.setAttribute('d', g.d); r.vis.setAttribute('d', g.d); r.flow.setAttribute('d', g.d);
+    r.hit.setAttribute('d', g.d); r.vis.setAttribute('d', g.d);
+    for (const f of r.flows) f.setAttribute('d', g.d);
     if (r.maskPath) r.maskPath.setAttribute('d', g.d);
     for (const c of [r.knob, r.knobHit]) { c.setAttribute('cx', f1(g.mid.x)); c.setAttribute('cy', f1(g.mid.y)); }
     Object.assign(r, { p1, p2, s1: it.s1, s2: it.s2, mid: g.mid });

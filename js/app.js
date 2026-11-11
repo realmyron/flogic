@@ -1,5 +1,5 @@
 'use strict';
-(self.FV = self.FV || {})['js/app.js'] = '2026-11-11i';   // the update this file belongs to (see checkVersions in app.js)
+(self.FV = self.FV || {})['js/app.js'] = '2026-11-11k';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: interaction layer (pointer, keyboard, menus, editing, publishing, boot). */
 
 let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null, EG = null, BEND = null, INK = null;
@@ -2883,7 +2883,7 @@ function comfortHTML() {
     <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'grid') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
     <p class="fm-hint">The dot grid lights up behind the pointer and pulses as you add, drop or paste nodes; new connections send a charge along the line; panels build up and break apart. Pulses only leaves out the pointer trail.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
     <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
-    <label class="tog fm-tog"><input type="checkbox" class="fm-flow"${CFG.edgeFlow !== false ? ' checked' : ''}><span></span>Moving connections: arrows slowly fill with light into the node they point at, and dashed lines drift the same way${RM.matches ? ' (off while your device asks for reduced motion)' : ''}</label>
+    <label class="tog fm-tog"><input type="checkbox" class="fm-flow"${CFG.edgeFlow !== false ? ' checked' : ''}><span></span>Moving connections: light flows slowly through your graph from its first node along the arrows, and dashed lines drift the same way${RM.matches ? ' (off while your device asks for reduced motion)' : ''}</label>
     <label class="tog fm-tog"><input type="checkbox" class="fm-zoom"${CFG.semZoom ? ' checked' : ''}><span></span>Readable zoom: zoomed out, notes re-arrange their text so what they show stays readable (the least important goes first). Hover a note to preview it, click to read it, double-click to zoom in</label>
   </div>`;
 }
@@ -2891,6 +2891,7 @@ function comfortHTML() {
 function applyEdgeFlow() {
   document.body.classList.toggle('eflow', CFG.edgeFlow !== false && !RM.matches);
   document.body.classList.toggle('ios', IOS);
+  flowSync(true);
 }
 RM.addEventListener('change', applyEdgeFlow);
 applyEdgeFlow();

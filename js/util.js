@@ -1,5 +1,5 @@
 'use strict';
-(self.FV = self.FV || {})['js/util.js'] = '2026-11-11i';   // the update this file belongs to (see checkVersions in app.js)
+(self.FV = self.FV || {})['js/util.js'] = '2026-11-11k';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: shared helpers, icons and small UI primitives (menu, toast, modal). */
 
 const $ = (s, r = document) => r.querySelector(s);

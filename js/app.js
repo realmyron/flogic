@@ -1,4 +1,5 @@
 'use strict';
+(self.FV = self.FV || {})['js/app.js'] = '2026-11-11i';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: interaction layer (pointer, keyboard, menus, editing, publishing, boot). */
 
 let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null, EG = null, BEND = null, INK = null;
@@ -2882,7 +2883,7 @@ function comfortHTML() {
     <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'grid') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
     <p class="fm-hint">The dot grid lights up behind the pointer and pulses as you add, drop or paste nodes; new connections send a charge along the line; panels build up and break apart. Pulses only leaves out the pointer trail.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
     <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
-    <label class="tog fm-tog"><input type="checkbox" class="fm-flow"${CFG.edgeFlow !== false ? ' checked' : ''}><span></span>Moving connections: arrows gently flow toward the node they point at, and dashed lines move with them${RM.matches ? ' (off while your device asks for reduced motion)' : ''}</label>
+    <label class="tog fm-tog"><input type="checkbox" class="fm-flow"${CFG.edgeFlow !== false ? ' checked' : ''}><span></span>Moving connections: arrows slowly fill with light into the node they point at, and dashed lines drift the same way${RM.matches ? ' (off while your device asks for reduced motion)' : ''}</label>
     <label class="tog fm-tog"><input type="checkbox" class="fm-zoom"${CFG.semZoom ? ' checked' : ''}><span></span>Readable zoom: zoomed out, notes re-arrange their text so what they show stays readable (the least important goes first). Hover a note to preview it, click to read it, double-click to zoom in</label>
   </div>`;
 }
@@ -3926,6 +3927,19 @@ async function loadDoc() {
   DOC = migrate(DOC);
   if (S.canEdit) saveLocalNow();
 }
+/* Every file says which update it belongs to (FV in each script, --fv in the stylesheet). If some were
+   uploaded and others weren't, the site runs a mix and breaks in odd ways (lines that don't scale, missing
+   animations), so name the files that are behind: as a notice for the owner, in the console for anyone. */
+function checkVersions() {
+  const want = (($('script[src*="js/app.js"]') || {}).src || '').split('v=')[1];
+  if (!want) return;
+  const got = Object.assign({ 'css/flogic.css': getComputedStyle(document.documentElement).getPropertyValue('--fv').replace(/["'\s]/g, '') }, self.FV || {});
+  const files = ['css/flogic.css', 'js/util.js', 'js/store.js', 'js/render.js', 'js/suggest.js', 'js/app.js', 'js/textio.js'];
+  const old = files.filter(f => got[f] !== want);
+  if (!old.length) return;
+  console.warn('Flogic: these files are from an older update than index.html (' + want + '):', old.join(', '));
+  if (S.canEdit) toast(`Some files on the site are from an older update: ${old.join(', ')}. Upload all the files from the latest update together, then reload.`, { type: 'err', ms: 15000 });
+}
 async function boot() {
   fillIcons(); applyTheme();
   VR = vp.getBoundingClientRect();
@@ -3959,5 +3973,6 @@ async function boot() {
   setTimeout(() => bootEl.remove(), 400);
   if (S.preview) toast('Previewing as a visitor');
   else if (!S.canEdit) toast('View only · drag to pan, scroll to zoom', { ms: 3500 });
+  checkVersions();
 }
 boot();

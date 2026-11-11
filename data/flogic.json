@@ -871,7 +871,7 @@
       {
        "id": "boenz9pk20",
        "kind": "scenarios",
-       "label": "Scenarios",
+       "label": "SCENARIOS",
        "items": [
         {
          "id": "s6mw4oyk20",
@@ -887,6 +887,18 @@
            "id": "thxkqh4f55",
            "label": "Addition ",
            "text": "There's no original of the letter, there's a print of it in latin by a Polish historian from the 19th century Tytus Dzialynski or from Antoni Puschachka. \nThe main critique of the contents letter, is it's extremely out of place terminology and context:\n- The letter makes extremely emotional and strong claims towards Samogitia, in spite of the fact Vytautas had previously given it up easily to the Teutonic Knights. \n- Later documents mentioning Samogitia and Lithuania as separated entities, like the states name. And other later documents mentioning Samogitia refuseing to subordinate to Lithuania or Rus.\n- The letter uses terminology of \"Aukstatija\" and the \"lowland/highland\" which have never appeared in any document prior to this nor after this for over 300 years. \n- The letter makes an ethnic argument for the land, something that was extremely unpopular for the period it was written in. ",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "sydisljq8h",
+         "title": "Mathias de Miechow 1517",
+         "steps": [
+          {
+           "id": "ty5i6iiq8h",
+           "label": "Then",
+           "text": "",
            "alt": false
           }
          ]

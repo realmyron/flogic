@@ -900,6 +900,18 @@
            "label": "EXPLANATION",
            "text": "A paper from the 16th century exists talking about the detailed composition of Grand Duchy of Lithuania. It writes \"Lithuania consists of 4 core people: Samogitians, Lithuanians, Yotvingians and Semigallians, who all speak the Lithuanian language, but have some trouble understanding each other without practise. ",
            "alt": false
+          },
+          {
+           "id": "t610bzrcoo",
+           "label": "WHAT IT GETS RIGHT",
+           "text": "This paper does prove that the non-slavic (baltic) peoples of GDL, also used Lithuanian as their endonym.",
+           "alt": false
+          },
+          {
+           "id": "tyj0ghzmgy",
+           "label": "THE NUANCE",
+           "text": "This was a propaganda paper, dedicated to the era of Sarmatism. It mentions that these non-slavic (baltic) peoples of GDL are the real Romans/Italians, who were corrupted by evil Poles and Russians. He claims the state name was \"Litalia\" (Little Italy), but was corrupted by slavs to be Litva. ",
+           "alt": false
           }
          ]
         }
@@ -1163,7 +1175,7 @@
      "id": "nbk7wys53i",
      "type": "shape",
      "x": -792,
-     "y": -2568,
+     "y": -2544,
      "w": 216,
      "color": "slate",
      "tag": "",

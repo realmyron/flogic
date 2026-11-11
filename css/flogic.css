@@ -3,7 +3,7 @@
    ========================================================================== */
 
 /* the update this file belongs to (see checkVersions in app.js) */
-:root{--fv:"2026-11-11i"}
+:root{--fv:"2026-11-11k"}
 :root{
   --font:"IBM Plex Sans",ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif;
   /* small labels and numbers are stencilled in mono; titles use the condensed cut */
@@ -326,30 +326,27 @@ body.bending,body.bending *{cursor:move !important}
 /* one dash period per loop, so the marching dashes never jump */
 @keyframes flow{to{stroke-dashoffset:calc(-14px * var(--zkl,var(--zk,1)))}}
 /* moving connections (Settings → Comfort, on by default), to give a board a little life:
-   - "fill": an arrow's line slowly fills with a faint light from its start into the node it points at, then
-     fades and rests (5.5s a cycle: ~2.5s filling, a fade, ~1.6s of rest). Kept quiet on purpose, about as
-     noticeable as the moving dashes. Nothing travels along it: the light is the line itself, drawn inside it
-     at its own width. Three copies (.fl0-2), each a moment behind the last, give the light a soft front.
-     Each line has its own place in the cycle (--fd, set per line in drawEdges), so a board doesn't pulse
-     in unison;
-   - a dashed line's dashes move slowly toward the node (about 12px a second at 100%).
-   They pause while the board moves (pan, zoom), are off with reduced motion (body.eflow isn't set then),
-   and on iPhone/iPad they step at about 20 frames a second */
+   - arrows: light flows through the graph from its first node outward, filling each arrow into the node it
+     points at, then fading out in place (timing and order: flowSync in render.js). Meant to be barely
+     there: the light only brings a line up to its normal colour from a resting colour just a little dimmer
+     (84%), so a lit arrow looks exactly like a line normally does. It is the line itself, drawn inside it at
+     its own width; three copies (.fl0-2), a moment apart, give the light a soft front;
+   - a dashed line's dashes drift slowly toward the node (about 12px a second at 100%).
+   Only on the board (#edges): copied pictures show plain lines. Off with reduced motion (body.eflow isn't
+   set then). Dashes pause while the board moves and step at about 20 frames a second on iPhone/iPad */
 .edge .flow{display:none;fill:none;pointer-events:none}
-body.eflow .edge.arrow .flow{display:block;stroke:color-mix(in srgb,var(--text) 70%,var(--line));stroke-width:calc(1.7px * var(--zkl,var(--zk,1)));stroke-linecap:butt;
-  stroke-dasharray:1 1;stroke-dashoffset:1;opacity:0;animation:efill 5.5s cubic-bezier(.45,.05,.55,.95) infinite;animation-delay:calc(0s - var(--fd,0ms))}
-body.eflow .edge.arrow .fl1{animation-delay:calc(.14s - var(--fd,0ms))}
-body.eflow .edge.arrow .fl2{animation-delay:calc(.28s - var(--fd,0ms))}
-body.eflow .edge.arrow.typed .flow{stroke:color-mix(in srgb,var(--text) 55%,var(--ec));stroke-width:calc(2px * var(--zkl,var(--zk,1)))}
-@keyframes efill{0%{stroke-dashoffset:1;opacity:.2}45%{stroke-dashoffset:0;opacity:.2}70%,100%{stroke-dashoffset:0;opacity:0}}
+body.eflow #edges .edge.arrow .flow{display:block;stroke:var(--line);stroke-width:calc(1.7px * var(--zkl,var(--zk,1)));stroke-linecap:butt;
+  stroke-dasharray:1 1;stroke-dashoffset:1;opacity:.6}
+body.eflow #edges .edge.arrow.typed .flow{stroke:var(--ec);stroke-width:calc(2px * var(--zkl,var(--zk,1)))}
+body.eflow #edges .edge.arrow:not(.sel,.rel,.dashed,:hover) .vis{stroke:color-mix(in srgb,var(--line) 84%,var(--bg))}
+body.eflow #edges .edge.arrow.typed:not(.sel,.rel,.dashed,:hover) .vis{stroke:color-mix(in srgb,var(--ec) 84%,var(--bg))}
 /* (selected and related lines have their own look; dashed lines move their dashes instead; a line drawing
    itself in waits until it's done) */
 body.eflow .edge:is(.sel,.rel,.draw,.dashed) .flow{display:none}
 /* one dash period (13px) every 1.1s */
 body.eflow .edge.dashed:not(.rel):not(.draw) .vis{animation:creep 1.1s linear infinite}
 @keyframes creep{to{stroke-dashoffset:calc(-13px * var(--zkl,var(--zk,1)))}}
-body.eflow:is(.zk-move,.panning) .edge :is(.flow,.vis){animation-play-state:paused}
-body.ios.eflow .edge .flow{animation-timing-function:steps(110)}
+body.eflow:is(.zk-move,.panning) .edge .vis{animation-play-state:paused}
 body.ios.eflow .edge.dashed .vis{animation-timing-function:steps(22)}
 .mdraw{fill:none;stroke:#fff;stroke-width:16;stroke-linecap:round;stroke-dasharray:1 1;stroke-dashoffset:1;animation:drawIn .62s cubic-bezier(.5,0,.2,1) forwards}
 @keyframes drawIn{to{stroke-dashoffset:0}}

@@ -666,7 +666,7 @@
       {
        "id": "bbboh2fg58",
        "kind": "text",
-       "text": "What is litvinism? Litvinism is a historiographical perspective of the history of Grand Duchy of Lithuania. It establishes that the historical Lithuanian state was Belarusian, while modern Lithuania is the historical Samogitia. "
+       "text": "What is litvinism? Litvinism is a historiographical perspective of the history of Grand Duchy of Lithuania. It establishes that the historical Grand Duchy of Lithuania closer aligns with the modern Belarusian state, rather than the modern Lithuania, which more aligns with the historical Samogitia.\nNote: Both Belarus and Lithuania have claims to the state, with both nations using their versions of \"Lithuania\" as their personal endonyms. "
       }
      ]
     },
@@ -897,8 +897,8 @@
          "steps": [
           {
            "id": "ty5i6iiq8h",
-           "label": "Then",
-           "text": "",
+           "label": "EXPLANATION",
+           "text": "A paper from the 16th century exists talking about the detailed composition of Grand Duchy of Lithuania. It writes \"Lithuania consists of 4 core people: Samogitians, Lithuanians, Yotvingians and Semigallians, who all speak the Lithuanian language, but have some trouble understanding each other without practise. ",
            "alt": false
           }
          ]

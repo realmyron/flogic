@@ -459,13 +459,18 @@ function applyView() {
    only slightly thinner instead of shrinking with everything else: at 50% a line keeps ~90% of its weight,
    at 30% ~83% (without it: 50%, 30%). ZK_MAX caps it below ~12%, so at 10% it keeps ~60%. */
 const ZK_P = 0.85, ZK_MAX = 6;
+/* connection lines (and their arrowheads, --zkl) ease a touch thinner at the far zoomed-out end: from 30%
+   down to 10% they lose up to ZK_LINE of that extra weight */
+const ZK_LINE = 0.12;
 let ZK = 1, ZK_T = 0;
 function zkView() {
   const k = V.z >= 1 ? 1 : Math.min(ZK_MAX, Math.pow(V.z, -ZK_P));
   if (Math.abs(k - ZK) < 0.004 && (k !== 1 || ZK === 1)) return;
   ZK = k;
+  const kl = k * (1 - ZK_LINE * clamp((0.3 - V.z) / 0.2, 0, 1));
   world.style.setProperty('--zk', k.toFixed(3));
-  arrowScale(k);
+  world.style.setProperty('--zkl', kl.toFixed(3));
+  arrowScale(kl);
   /* while the zoom moves, cards drop their transitions, so their outline follows the zoom exactly instead of
      trailing it (and every card isn't restarting an animation each frame); they come back when it settles */
   document.body.classList.add('zk-move');
@@ -977,24 +982,25 @@ function drawEdges() {
       gEl.dataset.e = ed.id;
       const hit = document.createElementNS(SVGNS, 'path'); hit.setAttribute('class', 'hit');
       const vis = document.createElementNS(SVGNS, 'path'); vis.setAttribute('class', 'vis');
+      const flow = document.createElementNS(SVGNS, 'path'); flow.setAttribute('class', 'flow');   /* the moving pulse (CSS) */
       const knobHit = document.createElementNS(SVGNS, 'circle'); knobHit.setAttribute('class', 'bend-hit'); knobHit.setAttribute('r', '14');
       const knob = document.createElementNS(SVGNS, 'circle'); knob.setAttribute('class', 'bend'); knob.setAttribute('r', '5.5');
-      gEl.append(hit, vis, knobHit, knob); edgeG.appendChild(gEl);
+      gEl.append(hit, vis, flow, knobHit, knob); edgeG.appendChild(gEl);
       /* the label pill: a type badge (icon) and the label text */
       const lab = document.createElement('div'); lab.className = 'elabel'; lab.dataset.e = ed.id;
       const labIc = document.createElement('span'); labIc.className = 'et-ic';
       const labTx = document.createElement('span'); labTx.className = 'et-tx';
       lab.append(labIc, labTx);
       labelsWrap.appendChild(lab);
-      r = { g: gEl, hit, vis, knob, knobHit, lab, labIc, labTx, cls: '', type: '' };
+      r = { g: gEl, hit, vis, flow, knob, knobHit, lab, labIc, labTx, cls: '', type: '' };
       EDGE_EL.set(ed.id, r);
     }
-    r.hit.setAttribute('d', g.d); r.vis.setAttribute('d', g.d);
+    r.hit.setAttribute('d', g.d); r.vis.setAttribute('d', g.d); r.flow.setAttribute('d', g.d);
     if (r.maskPath) r.maskPath.setAttribute('d', g.d);
     for (const c of [r.knob, r.knobHit]) { c.setAttribute('cx', f1(g.mid.x)); c.setAttribute('cy', f1(g.mid.y)); }
     Object.assign(r, { p1, p2, s1: it.s1, s2: it.s2, mid: g.mid });
     const T = EDGE_TYPES[ed.type], sel = S.edgeSel === ed.id, rel = !sel && !r.drawing && (S.sel.has(ed.from) || S.sel.has(ed.to));
-    const cls = 'edge' + (sel ? ' sel' : '') + (rel ? ' rel' : '') + (ed.dashed ? ' dashed' : '') + (ed.label || T ? ' haslabel' : '') + (ed.bend ? ' bent' : '') + (T ? ' typed' : '') + (r.drawing ? ' draw' : '');
+    const cls = 'edge' + (sel ? ' sel' : '') + (rel ? ' rel' : '') + (ed.dashed ? ' dashed' : '') + (ed.label || T ? ' haslabel' : '') + (ed.bend ? ' bent' : '') + (T ? ' typed' : '') + (r.drawing ? ' draw' : '') + (ed.arrow ? ' arrow' : '');
     if (r.cls !== cls) { r.g.setAttribute('class', cls); r.cls = cls; }
     if (r.type !== (ed.type || '')) {
       r.type = ed.type || '';

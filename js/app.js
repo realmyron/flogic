@@ -521,7 +521,7 @@ async function nodesPng(ids) {
   g.setAttribute('transform', `translate(${-x1},${-y1})`);
   edges.forEach(x => {
     const r = EDGE_EL.get(x.id), c = r.g.cloneNode(true);
-    $$('.hit, .bend, .bend-hit', c).forEach(k => k.remove());
+    $$('.hit, .flow, .bend, .bend-hit', c).forEach(k => k.remove());
     c.classList.remove('sel', 'rel', 'draw');
     const vis = c.querySelector('.vis');
     vis.removeAttribute('mask');
@@ -2138,7 +2138,9 @@ window.addEventListener('keydown', e => {
   if (e.shiftKey && e.code === 'Digit1') { e.preventDefault(); fitAll(); return; }
   if (e.shiftKey && e.code === 'Digit2') { e.preventDefault(); if (S.sel.size) zoomToNodes([...S.sel]); return; }
   if (mod && e.altKey && e.code === 'KeyC') { e.preventDefault(); copyText(); return; }
-  if (e.key === 'Escape') { if (S.tool === 'draw') setTool('select'); closeReader(); clearSel(); closePanels(); return; }
+  /* with the pen: Escape first clears the marks, then (pressed again) puts the pen away; Backspace takes back the last mark */
+  if (e.key === 'Escape') { if (S.tool === 'draw') { if (inkAny()) { clearInk(true); return; } setTool('select'); } closeReader(); clearSel(); closePanels(); return; }
+  if (S.tool === 'draw' && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); undoInk(); return; }
   if (k === 'a' && !mod && !e.altKey) { setTool(S.tool === 'draw' ? 'select' : 'draw'); return; }
   if (e.key === '?') { openHelp(); return; }
   if (k === 'f' && !mod && !e.altKey) { e.preventDefault(); toggleFocus(); return; }
@@ -2487,16 +2489,41 @@ function fxPanelOut(el) {
   setTimeout(() => el.remove(), 260);
 }
 
-/* ---- annotate: a pencil for pointing things out. Strokes are drawn on the board (they move and zoom with
-   it) but aren't saved and can't be undone: they're for the moment. Each one fades away slowly once you've
-   drawn a few more after it, or once the pointer has been away from it for a little while.
-   Smoothing: the pointer is followed with a little lag (which irons out the jitter of a hand), and the
-   points are joined with curves through their midpoints, so lines come out smooth but still hand-drawn. */
-const INK_KEEP = 3, INK_AWAY = 150, INK_WAIT = 1400, INK_FADE = 1600;
+/* ---- annotate: a pen for explaining a board to someone next to you: underline a sentence, ring a node,
+   draw an arrow from one node to another. Strokes live on the board (they move and zoom with it) but are
+   never saved: they're for the moment.
+
+   How it behaves, and why (from how people annotate while they talk):
+   - ink drawn while explaining works like a hand gesture: it means something while you talk about it and
+     goes stale after, and stale marks clutter the view. So nothing lingers once you've moved on, but
+     nothing vanishes while you're still on it;
+   - strokes made close together in time and place are one "moment" (ring a node, underline two words in
+     it, draw an arrow out of it). A moment lives and fades as one, like tldraw's grouped laser, with a
+     slow-then-quick (ease-in) fade;
+   - a moment stays while the pointer stays near it (you're still explaining). Once you leave it, it lasts a
+     little while, longer the more time you spent on it: a quick underline goes after ~2.5s, a long
+     explanation lingers up to 10s, so the other person can catch up;
+   - starting a new moment somewhere else (moving on) dims the previous one at once and fades it. Panning
+     it off screen, or putting the pen away, ends it too;
+   - when you lift the pen, the stroke is tidied to what it most likely meant: a flat stroke under text
+     becomes a clean underline under exactly those words; a loop around cards becomes an outline of them,
+     around a few words a box round those words, anywhere else a clean ellipse; a stroke that ends on a card
+     becomes a smooth arrow that follows your curve, edge to edge. Anything else stays freehand. Hold Alt to
+     keep a stroke freehand;
+   - Backspace takes back the last mark; Escape clears them all (Escape again puts the pen away).
+   While drawing, the pointer is followed with a little lag (which irons out the jitter of a hand) and the
+   points are joined with curves through their midpoints, so lines are smooth but still hand-drawn. */
+const INK_NEAR = 120;    // px on screen: the pointer this close to a moment means you're still on it
+const INK_JOIN = 240;    // px on screen: a stroke starting this close to the current moment joins it...
+const INK_GAP = 7000;    // ms: ...if it comes within this long of the last stroke, or you stayed near it
+const INK_TTL = [2500, 10000], INK_TTL_K = 0.5;   // once left: 2.5s + half the time spent on it, at most 10s
+const INK_MAX = 12;      // strokes in one moment before the oldest makes room
+const INK_FADE = 900;    // ms: fading out (ease-in: slowly at first, then quickly)
 const inkG = svgNew('g', { id: 'ink-g' });
 OVL.prepend(inkG);
-const INKS = [];   // finished strokes: { el, bb, at, far }
-let inkTimer = 0;
+const MOMENTS = [];      // { g, strokes: [{ el, bb }], bb, last, engaged, away, off, dim, fading } (bb in board units)
+let inkTimer = 0, inkTouch = false;
+
 function inkPath(pts) {
   if (pts.length < 2) { const p = pts[0]; return `M${f1(p.x)} ${f1(p.y)}l0.01 0`; }
   let d = `M${f1(pts[0].x)} ${f1(pts[0].y)}`;
@@ -2507,16 +2534,38 @@ function inkPath(pts) {
   const l = pts[pts.length - 1];
   return d + `L${f1(l.x)} ${f1(l.y)}`;
 }
+/* board units <-> page (client) pixels */
+const inkScr = p => ({ x: VR.left + V.x + p.x * V.z, y: VR.top + V.y + p.y * V.z });
+const inkWld = p => ({ x: (p.x - VR.left - V.x) / V.z, y: (p.y - VR.top - V.y) / V.z });
+const inkBB = ps => ({ x1: Math.min(...ps.map(p => p.x)), y1: Math.min(...ps.map(p => p.y)), x2: Math.max(...ps.map(p => p.x)), y2: Math.max(...ps.map(p => p.y)) });
+const inkUnion = (a, b) => a ? { x1: Math.min(a.x1, b.x1), y1: Math.min(a.y1, b.y1), x2: Math.max(a.x2, b.x2), y2: Math.max(a.y2, b.y2) } : b;
+const inkBBScr = b => { const p = inkScr({ x: b.x1, y: b.y1 }), q = inkScr({ x: b.x2, y: b.y2 }); return { x1: p.x, y1: p.y, x2: q.x, y2: q.y }; };
+const inkDist = (p, b) => Math.hypot(Math.max(b.x1 - p.x, 0, p.x - b.x2), Math.max(b.y1 - p.y, 0, p.y - b.y2));
+const inkLen = ps => ps.reduce((a, p, i) => i ? a + Math.hypot(p.x - ps[i - 1].x, p.y - ps[i - 1].y) : 0, 0);
+const inkLive = () => { for (let i = MOMENTS.length - 1; i >= 0; i--) if (!MOMENTS[i].fading && !MOMENTS[i].dim) return MOMENTS[i]; return null; };
+
 function startInk(e) {
   capture(e);
+  inkTouch = e.pointerType === 'touch';
+  const now = performance.now(), cp = { x: e.clientX, y: e.clientY };
+  let m = inkLive();
+  /* moving on: a stroke away from the current moment (or long after it, once you'd left it) starts a new one */
+  if (m && !(m.bb && inkDist(cp, inkBBScr(m.bb)) < INK_JOIN && (now - m.last < INK_GAP || !m.away))) { inkDim(m); m = null; }
+  if (!m) {
+    m = { g: svgNew('g', { class: 'ink-m' }), strokes: [], bb: null, last: now, engaged: 0, away: 0, off: 0 };
+    inkG.appendChild(m.g); MOMENTS.push(m);
+  }
   const w = toWorld(e.clientX, e.clientY);
   const el = svgNew('path', { class: 'ink' });
-  inkG.appendChild(el);
-  INK = { el, pts: [w], s: { x: w.x, y: w.y } };
+  m.g.appendChild(el);
+  INK = { el, m, pts: [w], s: { x: w.x, y: w.y }, t0: now, raw: e.altKey };
   el.setAttribute('d', inkPath(INK.pts));
+  if (!inkTimer) inkTimer = setInterval(inkTick, 200);
 }
 function moveInk(e) {
   const w = toWorld(e.clientX, e.clientY), s = INK.s;
+  INK.w = w;
+  if (e.altKey) INK.raw = true;
   /* follow the pointer with a little lag: a light pull smooths the line without making it feel slow */
   s.x += (w.x - s.x) * 0.5; s.y += (w.y - s.y) * 0.5;
   const last = INK.pts[INK.pts.length - 1];
@@ -2527,36 +2576,253 @@ function moveInk(e) {
 function endInk(cancel) {
   const k = INK; INK = null;
   if (!k) return;
-  if (cancel) { k.el.remove(); return; }
-  const last = k.pts[k.pts.length - 1];
-  if (Math.hypot(k.s.x - last.x, k.s.y - last.y) > 0.5) k.pts.push({ x: k.s.x, y: k.s.y });
+  const m = k.m, now = performance.now();
+  const drop = () => { k.el.remove(); if (!m.strokes.length) inkDrop(m); };
+  if (cancel) return drop();
+  /* the stroke ends where the pointer was let go (as it looked while drawing), not where the lag had got to */
+  const last = k.pts[k.pts.length - 1], fin = k.w || k.s;
+  if (Math.hypot(fin.x - last.x, fin.y - last.y) > 0.5) k.pts.push({ x: fin.x, y: fin.y });
+  if (inkLen(k.pts.map(inkScr)) < 6) return drop();   // a tap, not a stroke
+  m.engaged += now - k.t0; m.last = now; m.away = 0;
   k.el.setAttribute('d', inkPath(k.pts));
-  const xs = k.pts.map(p => p.x), ys = k.pts.map(p => p.y);
-  INKS.push({ el: k.el, bb: { x1: Math.min(...xs), y1: Math.min(...ys), x2: Math.max(...xs), y2: Math.max(...ys) }, at: performance.now(), far: 0 });
-  /* a few strokes stay; older ones start to go */
-  while (INKS.filter(s => !s.fading).length > INK_KEEP) fadeInk(INKS.find(s => !s.fading));
-  if (!inkTimer) inkTimer = setInterval(inkTick, 200);
-}
-function fadeInk(s) {
-  if (!s || s.fading) return;
-  s.fading = true;
-  s.el.style.transition = `opacity ${INK_FADE}ms ease`;
-  requestAnimationFrame(() => { s.el.style.opacity = '0'; });
-  setTimeout(() => { s.el.remove(); const i = INKS.indexOf(s); if (i > -1) INKS.splice(i, 1); }, INK_FADE + 100);
-}
-/* strokes the pointer has stayed away from (or that are off screen) for a moment fade away */
-function inkTick() {
-  const now = performance.now(), inside = pointerInVp(), p = toWorld(PTR.x, PTR.y), r = INK_AWAY / V.z;
-  for (const s of INKS) {
-    if (s.fading || INK) continue;
-    const dx = Math.max(s.bb.x1 - p.x, 0, p.x - s.bb.x2), dy = Math.max(s.bb.y1 - p.y, 0, p.y - s.bb.y2);
-    const away = !inside || Math.hypot(dx, dy) > r || S.tool !== 'draw';
-    s.far = away ? (s.far || now) : 0;
-    if (s.far && now - s.far > INK_WAIT && now - s.at > INK_WAIT) fadeInk(s);
+  let el = k.el, bb = inkBB(k.pts);
+  const snap = k.raw ? null : inkSnap(k.pts.map(inkScr));
+  if (snap) {
+    /* the tidy version draws itself in over the stroke you made, which fades out underneath */
+    el = svgNew('path', { class: 'ink snap', d: snap.d });
+    m.g.appendChild(el); inkDrawOn(el); bb = snap.bb;
+    inkFadeEl(k.el, 180);
   }
-  if (!INKS.length) { clearInterval(inkTimer); inkTimer = 0; }
+  m.strokes.push({ el, bb });
+  m.bb = inkUnion(m.bb, bb);
+  while (m.strokes.length > INK_MAX) inkFadeEl(m.strokes.shift().el, 500);
 }
-function clearInk() { INKS.slice().forEach(s => { s.el.remove(); }); INKS.length = 0; if (INK) endInk(true); }
+function inkDrawOn(el) {
+  el.setAttribute('pathLength', '1');
+  el.style.strokeDasharray = '1'; el.style.strokeDashoffset = '1';
+  getComputedStyle(el).strokeDashoffset;   // start from the undrawn state
+  el.style.transition = 'stroke-dashoffset .3s cubic-bezier(.3,.7,.3,1)';
+  el.style.strokeDashoffset = '0';
+}
+function inkFadeEl(el, ms) {
+  el.style.transition = `opacity ${ms}ms ease-in`;
+  getComputedStyle(el).opacity;
+  el.style.opacity = '0';
+  setTimeout(() => el.remove(), ms + 60);
+}
+/* a moment you've moved on from steps back at once, then goes */
+function inkDim(m) {
+  if (m.dim || m.fading) return;
+  m.dim = true;
+  m.g.style.transition = 'opacity .25s ease';
+  m.g.style.opacity = '.45';
+  setTimeout(() => inkFade(m), 900);
+}
+function inkFade(m, ms = INK_FADE) {
+  if (!m || m.fading) return;
+  m.fading = true;
+  m.g.style.transition = `opacity ${ms}ms cubic-bezier(.55,0,1,.45)`;
+  getComputedStyle(m.g).opacity;
+  m.g.style.opacity = '0';
+  setTimeout(() => inkDrop(m), ms + 80);
+}
+function inkDrop(m) { m.g.remove(); const i = MOMENTS.indexOf(m); if (i > -1) MOMENTS.splice(i, 1); }
+/* every 200ms: is each moment still being talked about? */
+function inkTick() {
+  const now = performance.now(), ptr = { x: PTR.x, y: PTR.y }, inVp = pointerInVp();
+  for (const m of MOMENTS) {
+    if (m.fading || m.dim || !m.bb || (INK && INK.m === m)) continue;
+    const b = inkBBScr(m.bb);
+    /* panned or zoomed away from it: done */
+    const onScreen = b.x2 > VR.left && b.x1 < VR.left + VR.width && b.y2 > VR.top && b.y1 < VR.top + VR.height;
+    m.off = onScreen ? 0 : (m.off || now);
+    if (m.off && now - m.off > 800) { inkFade(m); continue; }
+    /* the pointer resting near it means you're still on it (a finger can't rest, so touch counts from the lift) */
+    const near = S.tool === 'draw' && inVp && !inkTouch && inkDist(ptr, b) < INK_NEAR;
+    if (near) { m.engaged += 200; m.away = 0; } else m.away = m.away || now;
+    let ttl = clamp(INK_TTL[0] + INK_TTL_K * m.engaged, INK_TTL[0], INK_TTL[1]) + (inkTouch ? 2000 : 0);
+    if (S.tool !== 'draw') ttl = Math.min(ttl, 1500);   // the pen was put away
+    if (m.away && now - m.away > ttl) inkFade(m);
+  }
+  if (!MOMENTS.length && !INK) { clearInterval(inkTimer); inkTimer = 0; }
+}
+/* Backspace: take back the last mark */
+function undoInk() {
+  for (let i = MOMENTS.length - 1; i >= 0; i--) {
+    const m = MOMENTS[i];
+    if (m.fading || !m.strokes.length) continue;
+    inkFadeEl(m.strokes.pop().el, 160);
+    if (!m.strokes.length) inkFade(m, 160);
+    else m.bb = m.strokes.reduce((a, s) => inkUnion(a, s.bb), null);
+    return true;
+  }
+  return false;
+}
+/* Escape clears them quickly (soft); switching environments removes them at once */
+function clearInk(soft) {
+  if (INK) endInk(true);
+  for (const m of MOMENTS.slice()) soft ? inkFade(m, 250) : inkDrop(m);
+}
+const inkAny = () => !!INK || MOMENTS.some(m => !m.fading);
+
+/* ---- tidying a stroke (all in page pixels; the result is drawn in board units) */
+function inkSnap(sp) {
+  const L = inkLen(sp), b = inkBB(sp), w = b.x2 - b.x1, h = b.y2 - b.y1, big = Math.max(w, h);
+  const s0 = sp[0], s1 = sp[sp.length - 1], chord = Math.hypot(s1.x - s0.x, s1.y - s0.y);
+  /* a loop: it comes back near where it started, after going round */
+  if (big >= 20 && chord < Math.max(18, 0.3 * big) && L > 1.8 * big) return inkLoop(sp, b);
+  /* a flat stroke: an underline */
+  const ang = Math.abs(Math.atan2(s1.y - s0.y, s1.x - s0.x)) * 180 / Math.PI;
+  if (w >= 16 && h <= Math.max(14, 0.25 * w) && chord / L > 0.85 && (ang < 15 || ang > 165)) return inkUnder(sp, b);
+  /* a stroke that ends on a card: an arrow to it */
+  if (L >= 40) { const a = inkArrow(sp); if (a) return a; }
+  /* a straight stroke anywhere else: a clean straight line */
+  if (L >= 40 && chord / L > 0.95) return inkLine(s0, s1);
+  return null;
+}
+/* the card under a point (not previews or the reader); and the nearest card within d px */
+function inkNodeAt(x, y) {
+  for (const el of document.elementsFromPoint(x, y)) { const n = el.closest && el.closest('.node'); if (n && nodesWrap.contains(n)) return n; }
+  return null;
+}
+function inkNodeNear(p, d) {
+  let best = null, bd = d;
+  for (const [, el] of NODE_EL) {
+    if (el.classList.contains('is-hidden') || el.classList.contains('is-folded')) continue;
+    const r = el.getBoundingClientRect(), dd = inkDist(p, { x1: r.left, y1: r.top, x2: r.right, y2: r.bottom });
+    if (dd < bd) { bd = dd; best = el; }
+  }
+  return best;
+}
+/* every word shown in a card, with its box on the page (the zoomed-out layer's words when that is showing) */
+function inkWords(el) {
+  const sz = el.classList.contains('sz') && !el.classList.contains('svgs');
+  const root = sz ? el.querySelector(':scope > .n-sz') : el;
+  const out = [], rg = document.createRange();
+  if (!root) return out;
+  const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: t => {
+    const p = t.parentElement;
+    if (!p || !t.data.trim() || (!sz && p.closest('.n-sz')) || p.closest('.eo, .ports, .n-add, .rz, .grip, .blk-x, .chev')) return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  } });
+  let t;
+  while ((t = tw.nextNode()) && out.length < 1500) {
+    const re = /\S+/g;
+    let m;
+    while ((m = re.exec(t.data))) {
+      rg.setStart(t, m.index); rg.setEnd(t, m.index + m[0].length);
+      for (const r of rg.getClientRects()) if (r.width > 1 && r.height > 1) out.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom, p: t.parentElement, sz });
+    }
+  }
+  return out;
+}
+/* is the word really on show (not folded away or scrolled out of a clipped box)? */
+function inkSeen(w) {
+  if (w.sz) return true;
+  const x = (w.left + w.right) / 2, y = (w.top + w.bottom) / 2;
+  return document.elementsFromPoint(x, y).some(e => e === w.p || w.p.contains(e));
+}
+function inkInside(poly, x, y) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) c = !c;
+  }
+  return c;
+}
+const inkRects = rs => ({ x1: Math.min(...rs.map(r => r.left)), y1: Math.min(...rs.map(r => r.top)), x2: Math.max(...rs.map(r => r.right)), y2: Math.max(...rs.map(r => r.bottom)) });
+function inkLoop(sp, b) {
+  /* cards ringed: their middle inside the loop, and most of the card inside the loop's box */
+  const ring = [];
+  for (const [, el] of NODE_EL) {
+    if (el.classList.contains('is-hidden') || el.classList.contains('is-folded')) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width) continue;
+    const ix = Math.max(0, Math.min(r.right, b.x2) - Math.max(r.left, b.x1)), iy = Math.max(0, Math.min(r.bottom, b.y2) - Math.max(r.top, b.y1));
+    if (inkInside(sp, r.left + r.width / 2, r.top + r.height / 2) && ix * iy > 0.55 * r.width * r.height) ring.push(r);
+  }
+  if (ring.length) return inkBox(inkRects(ring), 8, 8);
+  /* words ringed inside a card */
+  const host = inkNodeAt((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2);
+  if (host) {
+    const ws = inkWords(host).filter(w => inkInside(sp, (w.left + w.right) / 2, (w.top + w.bottom) / 2) && inkSeen(w));
+    if (ws.length) return inkBox(inkRects(ws), 4, 4);
+  }
+  /* a round-ish loop anywhere else: a clean ellipse */
+  const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2, rx = (b.x2 - b.x1) / 2, ry = (b.y2 - b.y1) / 2;
+  if (rx < 8 || ry < 8) return null;
+  const dev = sp.reduce((a, p) => a + Math.abs(Math.hypot((p.x - cx) / rx, (p.y - cy) / ry) - 1), 0) / sp.length;
+  return dev < 0.22 ? inkEllipse(cx, cy, rx, ry) : null;
+}
+function inkUnder(sp, b) {
+  const y = sp.reduce((a, p) => a + p.y, 0) / sp.length, mx = (b.x1 + b.x2) / 2;
+  const host = inkNodeAt(mx, y - 8) || inkNodeAt(mx, y);
+  if (host) {
+    /* the words over the stroke (or just above it), on the nearest line */
+    const ws = inkWords(host).filter(w => w.bottom <= y + 10 && w.bottom >= y - 30 && Math.min(w.right, b.x2 + 4) - Math.max(w.left, b.x1 - 4) >= 0.3 * (w.right - w.left) && inkSeen(w));
+    if (ws.length) {
+      const lb = ws.reduce((best, w) => Math.abs(w.bottom - y) < Math.abs(best - y) ? w.bottom : best, ws[0].bottom);
+      const line = ws.filter(w => Math.abs(w.bottom - lb) < 4);
+      const l = Math.min(...line.map(w => w.left)), r = Math.max(...line.map(w => w.right));
+      return inkLine({ x: l, y: lb + 2 }, { x: r, y: lb + 2 });
+    }
+  }
+  return inkLine({ x: b.x1, y }, { x: b.x2, y });
+}
+function inkArrow(sp) {
+  const s0 = sp[0], s1 = sp[sp.length - 1];
+  const B = inkNodeAt(s1.x, s1.y) || inkNodeNear(s1, 18), A = inkNodeAt(s0.x, s0.y);
+  if (!B || A === B) return null;
+  const rb = B.getBoundingClientRect(), ra = A && A.getBoundingClientRect();
+  const inR = (r, p) => p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
+  /* where the stroke enters the target card (walking back from its end) and leaves the card it started on */
+  let k = sp.length - 1;
+  while (k >= 0 && inR(rb, sp[k])) k--;
+  if (k < 0) return null;
+  let j = 0;
+  if (ra) { while (j < sp.length && inR(ra, sp[j])) j++; if (j >= k) return null; }
+  const cross = (r, out, inn) => {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 12; i++) { const t = (lo + hi) / 2; if (inR(r, { x: out.x + (inn.x - out.x) * t, y: out.y + (inn.y - out.y) * t })) hi = t; else lo = t; }
+    return { x: out.x + (inn.x - out.x) * lo, y: out.y + (inn.y - out.y) * lo };
+  };
+  let P2 = k < sp.length - 1 ? cross(rb, sp[k], sp[k + 1]) : s1;
+  let P0 = ra && j > 0 ? cross(ra, sp[j], sp[j - 1]) : s0;
+  const mid = [P0, ...sp.slice(j, k + 1), P2];
+  if (inkLen(mid) < 30) return null;
+  /* a curve through the middle of what you drew, from edge to edge */
+  let half = inkLen(mid) / 2, M = mid[0];
+  for (let i = 1; i < mid.length; i++) {
+    const d = Math.hypot(mid[i].x - mid[i - 1].x, mid[i].y - mid[i - 1].y);
+    if (d >= half) { const t = half / (d || 1); M = { x: mid[i - 1].x + (mid[i].x - mid[i - 1].x) * t, y: mid[i - 1].y + (mid[i].y - mid[i - 1].y) * t }; break; }
+    half -= d;
+  }
+  const C = { x: 2 * M.x - (P0.x + P2.x) / 2, y: 2 * M.y - (P0.y + P2.y) / 2 };
+  /* stop a few px short of the cards */
+  const toward = (p, q, d) => { const l = Math.hypot(q.x - p.x, q.y - p.y) || 1; return { x: p.x + (q.x - p.x) / l * d, y: p.y + (q.y - p.y) / l * d }; };
+  P2 = toward(P2, C, 5);
+  if (ra) P0 = toward(P0, C, 5);
+  /* the head, along the curve's last direction */
+  const tl = Math.hypot(P2.x - C.x, P2.y - C.y) > 1 ? C : P0, ux = (P2.x - tl.x), uy = (P2.y - tl.y), ul = Math.hypot(ux, uy) || 1;
+  const hl = 13, a = 0.5, cs = Math.cos(a), sn = Math.sin(a), dx = ux / ul, dy = uy / ul;
+  const h1 = { x: P2.x - hl * (dx * cs - dy * sn), y: P2.y - hl * (dy * cs + dx * sn) };
+  const h2 = { x: P2.x - hl * (dx * cs + dy * sn), y: P2.y - hl * (dy * cs - dx * sn) };
+  const [w0, wc, w2, wa, wb] = [P0, C, P2, h1, h2].map(inkWld);
+  return { d: `M${f1(w0.x)} ${f1(w0.y)}Q${f1(wc.x)} ${f1(wc.y)} ${f1(w2.x)} ${f1(w2.y)}M${f1(wa.x)} ${f1(wa.y)}L${f1(w2.x)} ${f1(w2.y)}L${f1(wb.x)} ${f1(wb.y)}`, bb: inkBB([w0, wc, w2, wa, wb]) };
+}
+function inkLine(p, q) {
+  const [a, b] = [p, q].map(inkWld);
+  return { d: `M${f1(a.x)} ${f1(a.y)}L${f1(b.x)} ${f1(b.y)}`, bb: inkBB([a, b]) };
+}
+function inkBox(b, pad, r) {
+  const p = inkWld({ x: b.x1 - pad, y: b.y1 - pad }), q = inkWld({ x: b.x2 + pad, y: b.y2 + pad }), c = r / V.z;
+  const { x: x1, y: y1 } = p, { x: x2, y: y2 } = q;
+  return { d: `M${f1(x1 + c)} ${f1(y1)}H${f1(x2 - c)}Q${f1(x2)} ${f1(y1)} ${f1(x2)} ${f1(y1 + c)}V${f1(y2 - c)}Q${f1(x2)} ${f1(y2)} ${f1(x2 - c)} ${f1(y2)}H${f1(x1 + c)}Q${f1(x1)} ${f1(y2)} ${f1(x1)} ${f1(y2 - c)}V${f1(y1 + c)}Q${f1(x1)} ${f1(y1)} ${f1(x1 + c)} ${f1(y1)}Z`, bb: { x1, y1, x2, y2 } };
+}
+function inkEllipse(cx, cy, rx, ry) {
+  const c = inkWld({ x: cx, y: cy }), a = rx / V.z, b = ry / V.z;
+  return { d: `M${f1(c.x - a)} ${f1(c.y)}A${f1(a)} ${f1(b)} 0 1 0 ${f1(c.x + a)} ${f1(c.y)}A${f1(a)} ${f1(b)} 0 1 0 ${f1(c.x - a)} ${f1(c.y)}Z`, bb: { x1: c.x - a, y1: c.y - b, x2: c.x + a, y2: c.y + b } };
+}
 
 /* ---- reading glow: over a node's text, a soft, round light follows the pointer beneath the words, like
    the faintest highlighter. It lives inside the node (so it never spills past its edges), sits under the
@@ -2616,9 +2882,17 @@ function comfortHTML() {
     <div class="fm-segs">${FX_MODES.map(([k, n]) => `<button class="${(CFG.bgFx || 'grid') === k ? 'on' : ''}" data-fx="${k}">${n}</button>`).join('')}</div>
     <p class="fm-hint">The dot grid lights up behind the pointer and pulses as you add, drop or paste nodes; new connections send a charge along the line; panels build up and break apart. Pulses only leaves out the pointer trail.${RM.matches ? ' Off while your device asks for reduced motion.' : ''}</p>
     <label class="tog fm-tog"><input type="checkbox" class="fm-glow"${CFG.readGlow ? ' checked' : ''}><span></span>Reading glow: a faint light under the text you point at</label>
+    <label class="tog fm-tog"><input type="checkbox" class="fm-flow"${CFG.edgeFlow !== false ? ' checked' : ''}><span></span>Moving connections: arrows gently flow toward the node they point at, and dashed lines move with them${RM.matches ? ' (off while your device asks for reduced motion)' : ''}</label>
     <label class="tog fm-tog"><input type="checkbox" class="fm-zoom"${CFG.semZoom ? ' checked' : ''}><span></span>Readable zoom: zoomed out, notes re-arrange their text so what they show stays readable (the least important goes first). Hover a note to preview it, click to read it, double-click to zoom in</label>
   </div>`;
 }
+/* moving connections (see .flow in the CSS): on unless switched off or the device asks for reduced motion */
+function applyEdgeFlow() {
+  document.body.classList.toggle('eflow', CFG.edgeFlow !== false && !RM.matches);
+  document.body.classList.toggle('ios', IOS);
+}
+RM.addEventListener('change', applyEdgeFlow);
+applyEdgeFlow();
 function bindComfort(root) {
   const range = $('.fm-range', root), val = $('.fm-val', root);
   range.addEventListener('input', () => { setFocusLevel(+range.value); val.textContent = CFG.focus ? CFG.focus + '%' : 'Off'; });
@@ -2629,6 +2903,7 @@ function bindComfort(root) {
     $$('[data-fx]', root).forEach(x => x.classList.toggle('on', x === b));
   });
   $('.fm-glow', root).addEventListener('change', e => setReadGlow(e.target.checked));
+  $('.fm-flow', root).addEventListener('change', e => { CFG.edgeFlow = e.target.checked; saveCfg(); applyEdgeFlow(); });
   $('.fm-zoom', root).addEventListener('change', e => { CFG.semZoom = e.target.checked; saveCfg(); hidePeek(); szView(); });
 }
 

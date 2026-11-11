@@ -1341,30 +1341,23 @@
      ]
     },
     {
-     "id": "nxd3hyhtvf",
+     "id": "npjqcdv1nk",
      "type": "note",
-     "x": 2520,
-     "y": -3000,
-     "w": 480,
-     "color": "teal",
+     "x": 3168,
+     "y": -1482,
+     "w": 408,
+     "color": "red",
      "tag": "",
-     "title": "Union of Lublin 1569",
+     "title": "Concessions",
      "subtitle": "",
      "blocks": [
       {
-       "id": "bwsyhfatvf",
+       "id": "bv7ob01bhv",
        "kind": "category",
-       "label": "Explanation",
-       "text": "This argument uses the historical Union of Lublin to prove that Lithuania could not be a Belarusian state, as"
-      },
-      {
-       "id": "bel7qputvf",
-       "kind": "category",
-       "label": "Rebuttal",
-       "text": "This argument can be easily rebutted by the fact Danylo Romanovych (the ruler of Kingdom of Halych-Volhynia) planned to adopt Catholicism. This shows that a confirmed Ruthenian ruler from 1250s also used religion strategically. "
+       "label": "NON-SLAVIC (BALTIC) INDIVIDUALS USING LITHUANIAN AS THEIR ENDONYM",
+       "text": "There's an abundance of documents and historical evidence to prove that the non-slavic baltic individuals of the GDL (that align with modern Lithuania) used a form of \"Lithuanian\" as their endonym too, that form being - \"lietuviai\".\n\nHowever, the spread of it is unclear. We don't know whether the Samogitians also used it or had their own endonym. "
       }
-     ],
-     "accent": "none"
+     ]
     }
    ],
    "edges": [
@@ -1619,11 +1612,11 @@
      }
     },
     {
-     "id": "lf5m41lwhn",
-     "from": "n2knfc6j4x",
-     "fs": "t",
-     "to": "nxd3hyhtvf",
-     "ts": "b",
+     "id": "l1ovadlrut",
+     "from": "nsnpr7yelf",
+     "fs": "b",
+     "to": "npjqcdv1nk",
+     "ts": "t",
      "label": "",
      "arrow": true,
      "dashed": false

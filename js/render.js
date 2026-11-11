@@ -1,5 +1,5 @@
 'use strict';
-(self.FV = self.FV || {})['js/render.js'] = '2026-11-11i';   // the update this file belongs to (see checkVersions in app.js)
+(self.FV = self.FV || {})['js/render.js'] = '2026-11-11k';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: everything that turns the document into DOM. */
 
 const vp = $('#viewport'), world = $('#world'), nodesWrap = $('#nodes'), edgeG = $('#edge-g');
@@ -988,12 +988,8 @@ function drawEdges() {
       gEl.dataset.e = ed.id;
       const hit = document.createElementNS(SVGNS, 'path'); hit.setAttribute('class', 'hit');
       const vis = document.createElementNS(SVGNS, 'path'); vis.setAttribute('class', 'vis');
-      /* moving connections (CSS): three copies of the line, a moment apart, fill it with light (a soft front) */
+      /* moving connections: three copies of the line, a moment apart, carry the light (a soft front); see flowSync */
       const flows = [0, 1, 2].map(i => { const p = document.createElementNS(SVGNS, 'path'); p.setAttribute('class', 'flow fl' + i); p.setAttribute('pathLength', '1'); return p; });
-      /* each line starts its cycle at its own point (fixed per line), so a board doesn't pulse in unison */
-      let hsh = 0;
-      for (const ch of ed.id) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
-      gEl.style.setProperty('--fd', (hsh % 5500) + 'ms');   /* within one 5.5s cycle (see .flow in the CSS) */
       const knobHit = document.createElementNS(SVGNS, 'circle'); knobHit.setAttribute('class', 'bend-hit'); knobHit.setAttribute('r', '14');
       const knob = document.createElementNS(SVGNS, 'circle'); knob.setAttribute('class', 'bend'); knob.setAttribute('r', '5.5');
       gEl.append(hit, vis, ...flows, knobHit, knob); edgeG.appendChild(gEl);
@@ -1036,12 +1032,78 @@ function drawEdges() {
       r.lab.style.transform = `translate(${g.mid.x}px,${g.mid.y}px) translate(-50%,${centred ? '-50%' : '12px'})`;
     } else r.lab.style.display = 'none';
   }
+  flowSync();
   /* lines that are gone break apart (not the one being pulled off with the mouse, and not dozens at once) */
   const gone = [...EDGE_EL.keys()].filter(id => !seen.has(id)), grabbed = typeof CONN !== 'undefined' && CONN && CONN.detached && CONN.detached.edge.id;
   for (const id of gone) {
     const r = EDGE_EL.get(id);
     if (gone.length <= 30 && id !== grabbed && typeof fxEdgeBreak === 'function') fxEdgeBreak(r.vis.getAttribute('d'), r.type && EDGE_TYPES[r.type] ? EDGE_TYPES[r.type].color : null);
     r.g.remove(); r.lab.remove(); if (r.mask) r.mask.remove(); EDGE_EL.delete(id);
+  }
+}
+/* ---------- moving connections: light flowing through the graph ----------
+   Light starts at the board's first node(s) (those no arrow points into) and fills each arrow from its
+   start into the node it points at; when it reaches a node it carries on along that node's arrows, and so
+   on through the graph. Once it has reached the end, every arrow holds for a moment and then simply fades
+   out where it is (all together, nothing runs down the lines), and after a short rest the next wave starts
+   from the first node again: continuous, and always in the graph's order, never random.
+   It is meant to be barely there: the light only lifts a line to its normal colour from a resting colour
+   just a little dimmer (see the CSS), so a lit arrow looks like any line normally does.
+   Timing: crossing one arrow takes FLOW_T; with D levels of arrows below the first node, a wave is
+   (D+1)·FLOW_T spreading, FLOW_HOLD lit, FLOW_FADE fading, FLOW_REST dark. Every arrow runs on one shared
+   clock (FLOW_T0), so lines added or redrawn later join the wave in step. Dashed lines keep their own slow
+   drift (CSS). */
+const FLOW_T = 2.4, FLOW_HOLD = 1.5, FLOW_FADE = 1.8, FLOW_REST = 1.2, FLOW_LAG = [0, 0.14, 0.28], FLOW_OP = 0.6;
+const FLOW_T0 = (document.timeline ? document.timeline.currentTime : performance.now()) - 3.6e6;
+let FLOW_SIG = '';
+const flowOn = () => document.body.classList.contains('eflow');
+function flowSync(force) {
+  if (!flowOn() || !DOC || !S.envId) {
+    if (FLOW_SIG) { for (const [, r] of EDGE_EL) for (const f of r.flows) if (f._fa) { f._fa.cancel(); f._fa = null; } FLOW_SIG = ''; }
+    return;
+  }
+  const e = env(), F = foldMap();
+  const arrows = e.edges.filter(x => x.arrow && !x.dashed && EDGE_EL.has(x.id));
+  const ends = x => [F.get(x.from) || x.from, F.get(x.to) || x.to];
+  /* how many arrows below the first node(s) each node is */
+  const out = new Map(), into = new Set();
+  for (const x of arrows) { const [a, b] = ends(x); if (!out.has(a)) out.set(a, []); out.get(a).push(b); into.add(b); }
+  const depth = new Map();
+  const walk = roots => {
+    const q = roots.map(id => (depth.set(id, 0), id));
+    for (let i = 0; i < q.length; i++) for (const b of out.get(q[i]) || []) if (!depth.has(b)) { depth.set(b, depth.get(q[i]) + 1); q.push(b); }
+  };
+  walk([...out.keys()].filter(id => !into.has(id)));
+  /* a loop with no start: begin it at its topmost node */
+  const yOf = id => { const n = nodeById(id), p = !n && panelById(id), r = p && panelRect(p); return n ? n.y : r ? r.y : 0; };
+  for (let left; (left = [...out.keys()].filter(id => !depth.has(id))).length;) walk([left.sort((p, q) => yOf(p) - yOf(q))[0]]);
+  const D = Math.max(0, ...arrows.map(x => depth.get(ends(x)[0]) || 0));
+  const spread = (D + 1) * FLOW_T, C = spread + FLOW_HOLD + FLOW_FADE + FLOW_REST;
+  const sig = C + '|' + arrows.map(x => x.id + ':' + (depth.get(ends(x)[0]) || 0)).join(',');
+  if (sig === FLOW_SIG && !force) return;
+  FLOW_SIG = sig;
+  const ease = 'cubic-bezier(.45,.05,.55,.95)';
+  /* one arrow's cycle, counted from when the light reaches the node it leaves from (d levels down): it fills
+     in, stays lit until the whole graph has filled and held, then fades out in place with all the others */
+  const keysFor = d => {
+    const fadeAt = (spread + FLOW_HOLD - d * FLOW_T) / C, fadeEnd = fadeAt + FLOW_FADE / C;
+    return [
+      { strokeDashoffset: 1, opacity: FLOW_OP, offset: 0, easing: ease },   // dark: the light comes in from the line's start
+      { strokeDashoffset: 0, opacity: FLOW_OP, offset: FLOW_T / C },        // lit end to end
+      { strokeDashoffset: 0, opacity: FLOW_OP, offset: fadeAt, easing: 'ease-in-out' },
+      { strokeDashoffset: 0, opacity: 0, offset: fadeEnd },                  // faded out where it is
+      { strokeDashoffset: 0, opacity: 0, offset: 1 },
+    ];
+  };
+  const lit = new Map(arrows.map(x => [x.id, x]));
+  for (const [id, r] of EDGE_EL) {
+    const x = lit.get(id), d = x ? depth.get(ends(x)[0]) || 0 : 0, keys = x && keysFor(d);
+    r.flows.forEach((f, i) => {
+      if (f._fa) { f._fa.cancel(); f._fa = null; }
+      if (!x) return;
+      f._fa = f.animate(keys, { duration: C * 1000, iterations: Infinity });
+      f._fa.startTime = FLOW_T0 + (d * FLOW_T + FLOW_LAG[i]) * 1000;
+    });
   }
 }
 /* Lines draw themselves in, one after another, after the nodes pop in (used when switching environments).

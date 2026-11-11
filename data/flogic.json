@@ -1188,13 +1188,13 @@
        "text": "Creating the framework of Litvinism."
       }
      ],
-     "shape": "rect"
+     "shape": "pill"
     },
     {
      "id": "nv00q6dux9",
      "type": "shape",
      "x": 72,
-     "y": -2855,
+     "y": -2830,
      "w": 288,
      "color": "slate",
      "tag": "",
@@ -1207,7 +1207,7 @@
        "text": "Using the framework to address the mainstream historiographical perspective and potential counter arguemnts"
       }
      ],
-     "shape": "rect"
+     "shape": "pill"
     },
     {
      "id": "n2knfc6j4x",
@@ -1416,16 +1416,6 @@
      }
     },
     {
-     "id": "l3kl2tdq2l",
-     "from": "nx5bzbn8ii",
-     "fs": "r",
-     "to": "no42nofzek",
-     "ts": "l",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
      "id": "l6d27awu0g",
      "from": "nxbt882380",
      "fs": "b",
@@ -1495,8 +1485,8 @@
      "arrow": true,
      "dashed": false,
      "bend": {
-      "dx": 1374,
-      "dy": 1475
+      "dx": 1452,
+      "dy": 1655
      }
     },
     {
@@ -1616,6 +1606,16 @@
      "from": "nsnpr7yelf",
      "fs": "b",
      "to": "npjqcdv1nk",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l6lfl90oq7",
+     "from": "nx5bzbn8ii",
+     "fs": "r",
+     "to": "no42nofzek",
      "ts": "t",
      "label": "",
      "arrow": true,

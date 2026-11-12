@@ -1,5 +1,5 @@
 'use strict';
-(self.FV = self.FV || {})['js/render.js'] = '2026-11-11k';   // the update this file belongs to (see checkVersions in app.js)
+(self.FV = self.FV || {})['js/render.js'] = '2026-11-12a';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: everything that turns the document into DOM. */
 
 const vp = $('#viewport'), world = $('#world'), nodesWrap = $('#nodes'), edgeG = $('#edge-g');
@@ -467,21 +467,28 @@ const ZK_P = 0.85, ZK_MAX = 6;
    - zoomed in they grow only half as fast as the board (zoom ^ -ZL_IN): ~2.4px at 200% (not 3.4), ~3.4px
      at 400% (not 6.8). Node outlines and stripes (--zk) still simply scale with the board above 100% */
 const ZL_OUT = 0.10, ZL_FAR = 0.12, ZL_IN = 0.5;
-let ZK = 1, ZKL = 1, ZK_T = 0;
+let ZK = 1, ZKL = 1, ZK_T = 0, ZK_AT = 0, ZK_DUE = false;
 function zkView() {
   const z = V.z, k = z >= 1 ? 1 : Math.min(ZK_MAX, Math.pow(z, -ZK_P));
   const kl = z >= 1 ? Math.pow(z, -ZL_IN) : k * (1 + ZL_OUT * clamp((1 - z) / 0.4, 0, 1)) * (1 - ZL_FAR * clamp((0.3 - z) / 0.2, 0, 1));
   const same = (a, b) => Math.abs(a - b) < 0.004 && (a !== 1 || b === 1);
   if (same(k, ZK) && same(kl, ZKL)) return;
   ZK = k; ZKL = kl;
-  world.style.setProperty('--zk', k.toFixed(3));
+  /* lines follow the zoom on every frame (they're redrawn while zooming anyway) */
   world.style.setProperty('--zkl', kl.toFixed(3));
   arrowScale(kl);
+  /* card outlines and stripes (--zk) make every card redraw, so while the zoom moves they update at most
+     about 8 times a second, and take the exact value as soon as it settles */
+  const now = performance.now();
+  if (now - ZK_AT > 120) { world.style.setProperty('--zk', k.toFixed(3)); ZK_AT = now; ZK_DUE = false; } else ZK_DUE = true;
   /* while the zoom moves, cards drop their transitions, so their outline follows the zoom exactly instead of
      trailing it (and every card isn't restarting an animation each frame); they come back when it settles */
   document.body.classList.add('zk-move');
   clearTimeout(ZK_T);
-  ZK_T = setTimeout(() => document.body.classList.remove('zk-move'), 160);
+  ZK_T = setTimeout(() => {
+    if (ZK_DUE) { world.style.setProperty('--zk', ZK.toFixed(3)); ZK_AT = performance.now(); ZK_DUE = false; }
+    document.body.classList.remove('zk-move');
+  }, 160);
 }
 /* arrowheads are SVG markers sized in board units, which CSS can't reach: resize them with the lines.
    `root` is the <defs> holding them (the board's, or a copy made for a picture) */
@@ -988,8 +995,8 @@ function drawEdges() {
       gEl.dataset.e = ed.id;
       const hit = document.createElementNS(SVGNS, 'path'); hit.setAttribute('class', 'hit');
       const vis = document.createElementNS(SVGNS, 'path'); vis.setAttribute('class', 'vis');
-      /* moving connections: three copies of the line, a moment apart, carry the light (a soft front); see flowSync */
-      const flows = [0, 1, 2].map(i => { const p = document.createElementNS(SVGNS, 'path'); p.setAttribute('class', 'flow fl' + i); p.setAttribute('pathLength', '1'); return p; });
+      /* moving connections: a copy of the line carries the light; see flowSync */
+      const flows = [0].map(i => { const p = document.createElementNS(SVGNS, 'path'); p.setAttribute('class', 'flow fl' + i); p.setAttribute('pathLength', '1'); return p; });
       const knobHit = document.createElementNS(SVGNS, 'circle'); knobHit.setAttribute('class', 'bend-hit'); knobHit.setAttribute('r', '14');
       const knob = document.createElementNS(SVGNS, 'circle'); knob.setAttribute('class', 'bend'); knob.setAttribute('r', '5.5');
       gEl.append(hit, vis, ...flows, knobHit, knob); edgeG.appendChild(gEl);
@@ -1053,7 +1060,10 @@ function drawEdges() {
    (D+1)·FLOW_T spreading, FLOW_HOLD lit, FLOW_FADE fading, FLOW_REST dark. Every arrow runs on one shared
    clock (FLOW_T0), so lines added or redrawn later join the wave in step. Dashed lines keep their own slow
    drift (CSS). */
-const FLOW_T = 2.4, FLOW_HOLD = 1.5, FLOW_FADE = 1.8, FLOW_REST = 1.2, FLOW_LAG = [0, 0.14, 0.28], FLOW_OP = 0.6;
+/* It is also kept cheap: one copy of each arrow carries the light, and it changes about 30 times a second
+   (stepped), not every frame. That is plenty for something this slow and this faint, and it leaves the
+   browser free between steps (a smooth version redrew the board 60 to 144 times a second, all the time). */
+const FLOW_T = 2.4, FLOW_HOLD = 1.5, FLOW_FADE = 1.8, FLOW_REST = 1.2, FLOW_LAG = [0], FLOW_OP = 0.9, FLOW_FPS = 30;
 const FLOW_T0 = (document.timeline ? document.timeline.currentTime : performance.now()) - 3.6e6;
 let FLOW_SIG = '';
 const flowOn = () => document.body.classList.contains('eflow');
@@ -1082,16 +1092,16 @@ function flowSync(force) {
   const sig = C + '|' + arrows.map(x => x.id + ':' + (depth.get(ends(x)[0]) || 0)).join(',');
   if (sig === FLOW_SIG && !force) return;
   FLOW_SIG = sig;
-  const ease = 'cubic-bezier(.45,.05,.55,.95)';
+  const stepsFor = s => `steps(${Math.max(1, Math.round(s * FLOW_FPS))}, end)`;
   /* one arrow's cycle, counted from when the light reaches the node it leaves from (d levels down): it fills
      in, stays lit until the whole graph has filled and held, then fades out in place with all the others */
   const keysFor = d => {
     const fadeAt = (spread + FLOW_HOLD - d * FLOW_T) / C, fadeEnd = fadeAt + FLOW_FADE / C;
     return [
-      { strokeDashoffset: 1, opacity: FLOW_OP, offset: 0, easing: ease },   // dark: the light comes in from the line's start
-      { strokeDashoffset: 0, opacity: FLOW_OP, offset: FLOW_T / C },        // lit end to end
-      { strokeDashoffset: 0, opacity: FLOW_OP, offset: fadeAt, easing: 'ease-in-out' },
-      { strokeDashoffset: 0, opacity: 0, offset: fadeEnd },                  // faded out where it is
+      { strokeDashoffset: 1, opacity: FLOW_OP, offset: 0, easing: stepsFor(FLOW_T) },   // dark: the light comes in from the line's start
+      { strokeDashoffset: 0, opacity: FLOW_OP, offset: FLOW_T / C },                    // lit end to end
+      { strokeDashoffset: 0, opacity: FLOW_OP, offset: fadeAt, easing: stepsFor(FLOW_FADE) },
+      { strokeDashoffset: 0, opacity: 0, offset: fadeEnd },                              // faded out where it is
       { strokeDashoffset: 0, opacity: 0, offset: 1 },
     ];
   };
@@ -1117,8 +1127,14 @@ function animateEdgesIn(baseDelay = 160) {
       const m = document.createElementNS(SVGNS, 'mask');
       m.id = 'mk-' + id;
       m.setAttribute('maskUnits', 'userSpaceOnUse');
-      ['x', 'y'].forEach(k => m.setAttribute(k, '-60000'));
-      ['width', 'height'].forEach(k => m.setAttribute(k, '120000'));
+      /* the mask only covers the line itself (plus room for its width and arrowhead). A huge mask region
+         makes the browser build a huge offscreen image for every line drawing in, which made the whole
+         site flicker (and parts go black) when an environment opened */
+      let bb;
+      try { bb = r.vis.getBBox(); } catch (_) { bb = { x: -60000, y: -60000, width: 120000, height: 120000 }; }
+      const pad = 40 * Math.max(1, ZKL);
+      m.setAttribute('x', f1(bb.x - pad)); m.setAttribute('y', f1(bb.y - pad));
+      m.setAttribute('width', f1(bb.width + pad * 2)); m.setAttribute('height', f1(bb.height + pad * 2));
       const mp = document.createElementNS(SVGNS, 'path');
       mp.setAttribute('class', 'mdraw'); mp.setAttribute('pathLength', '1'); mp.setAttribute('d', r.vis.getAttribute('d') || '');
       m.appendChild(mp); defs.appendChild(m);

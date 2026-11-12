@@ -1,5 +1,5 @@
 'use strict';
-(self.FV = self.FV || {})['js/app.js'] = '2026-11-11k';   // the update this file belongs to (see checkVersions in app.js)
+(self.FV = self.FV || {})['js/app.js'] = '2026-11-12a';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: interaction layer (pointer, keyboard, menus, editing, publishing, boot). */
 
 let PTR = { x: -1, y: -1 }, DRAG = null, PAN = null, MQ = null, CONN = null, BD = null, RZ = null, TB = null, PINCH = null, EG = null, BEND = null, INK = null;
@@ -2240,7 +2240,11 @@ function applyFocusLevel() {
   const inner = 68 - 50 * Math.pow(f, 0.6);   // % of the way to the corners that stays sharp
   const at = k => (inner + (100 - inner) * k).toFixed(1) + '%';
   veil.style.display = 'block';
-  veil.style.backdropFilter = veil.style.webkitBackdropFilter = `blur(${blur.toFixed(2)}px) saturate(${sat.toFixed(2)})`;
+  /* a full-screen backdrop blur is expensive (it's redone whenever anything under it moves, and Chrome can
+     flash black under it while lots animates), so it's only used once the blur is big enough to see
+     (about 9% and up); below that the veil is just the soft tint at the edges, which looks the same */
+  const bf = blur >= 0.75 ? `blur(${blur.toFixed(2)}px) saturate(${sat.toFixed(2)})` : 'none';
+  veil.style.backdropFilter = veil.style.webkitBackdropFilter = bf;
   veil.style.background = `color-mix(in srgb,var(--bg) ${dim.toFixed(1)}%,transparent)`;
   veil.style.maskImage = veil.style.webkitMaskImage =
     `radial-gradient(ellipse at 50% 50%,transparent ${inner.toFixed(1)}%,rgba(0,0,0,.12) ${at(0.22)},rgba(0,0,0,.43) ${at(0.45)},rgba(0,0,0,.78) ${at(0.7)},#000 100%)`;
@@ -3105,7 +3109,7 @@ function switchEnv(id) {
   try { history.replaceState(null, '', location.pathname + location.search + '#e=' + id); } catch (_) {}
   for (const [, el] of NODE_EL) { RO.unobserve(el); el.remove(); }
   NODE_EL.clear(); SIZE.clear(); DISP.clear();
-  for (const [, r] of EDGE_EL) { r.g.remove(); r.lab.remove(); }
+  for (const [, r] of EDGE_EL) { r.g.remove(); r.lab.remove(); if (r.mask) r.mask.remove(); clearTimeout(r.drawT); }   // (a line still drawing in leaves no mask behind)
   EDGE_EL.clear();
   for (const M of [PANEL_EL, GROUP_EL]) { for (const [, el] of M) el.remove(); M.clear(); }
   S.sel.clear(); S.edgeSel = null; S.panelSel = null;

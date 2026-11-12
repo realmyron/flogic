@@ -3,7 +3,7 @@
    ========================================================================== */
 
 /* the update this file belongs to (see checkVersions in app.js) */
-:root{--fv:"2026-11-11k"}
+:root{--fv:"2026-11-12a"}
 :root{
   --font:"IBM Plex Sans",ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif;
   /* small labels and numbers are stencilled in mono; titles use the condensed cut */
@@ -246,12 +246,10 @@ kbd{font-family:var(--mono);font-size:11px;color:var(--faint)}
 .meta{font-family:var(--mono);font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
 
 /* ---------- floating chrome ---------- */
+/* the floating bars are solid. (They used to be frosted, a 14px backdrop blur at ~75% opacity, which looked
+   almost the same but had to be redone every time anything under them moved: with moving connections that
+   is all the time, and it made the board lag and could flash black.) */
 .panel{background:var(--panel);border:1px solid var(--panel-b);box-shadow:var(--hi),var(--sh-1)}
-/* with a mouse, the floating bars are frosted over the board. On touch screens they stay solid: blurring
-   a board that's being pinched costs phones memory and battery */
-@media (hover:hover) and (pointer:fine){
-  .panel,.pill,.tbtn{background:var(--glass);-webkit-backdrop-filter:blur(14px) saturate(1.15);backdrop-filter:blur(14px) saturate(1.15)}
-}
 .float{position:absolute;z-index:20}
 #toolbar{bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:4px;border-radius:var(--r-m)}
 .tb{position:relative;height:32px;min-width:32px;padding:0 8px;border-radius:var(--r-s);display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);transition:background .12s,color .12s,transform .12s}
@@ -294,6 +292,10 @@ body.panning #viewport,body.panning *{cursor:grabbing !important}
 #world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
 #nodes,#groups,#edge-labels{position:absolute;left:0;top:0}
 #edges,#overlay{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+/* on computers the lines get their own drawing layer, so the moving light only redraws the lines, not the
+   dot grid, panels and everything else on the board. (Opacity, not transform: a transform hint would freeze
+   the lines' sharpness while zooming. Not on iPhone/iPad, where every extra layer costs memory; see util.js) */
+body:not(.ios) #edges{will-change:opacity}
 #overlay{z-index:500000}
 #marquee{position:absolute;display:none;border:1px solid var(--sel);background:var(--sel-soft);border-radius:var(--r-xs);pointer-events:none;z-index:10}
 #empty-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;color:var(--muted);pointer-events:none;animation:fadeUp .4s var(--ease)}
@@ -330,7 +332,7 @@ body.bending,body.bending *{cursor:move !important}
      points at, then fading out in place (timing and order: flowSync in render.js). Meant to be barely
      there: the light only brings a line up to its normal colour from a resting colour just a little dimmer
      (84%), so a lit arrow looks exactly like a line normally does. It is the line itself, drawn inside it at
-     its own width; three copies (.fl0-2), a moment apart, give the light a soft front;
+     its own width (one copy, .fl0, stepped at ~30 frames a second to stay cheap);
    - a dashed line's dashes drift slowly toward the node (about 12px a second at 100%).
    Only on the board (#edges): copied pictures show plain lines. Off with reduced motion (body.eflow isn't
    set then). Dashes pause while the board moves and step at about 20 frames a second on iPhone/iPad */

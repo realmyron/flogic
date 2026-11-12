@@ -1,5 +1,5 @@
 'use strict';
-(self.FV = self.FV || {})['js/suggest.js'] = '2026-11-11k';   // the update this file belongs to (see checkVersions in app.js)
+(self.FV = self.FV || {})['js/suggest.js'] = '2026-11-12a';   // the update this file belongs to (see checkVersions in app.js)
 /* Flogic: visitor suggestions.
    A static site can't accept anonymous writes, so a suggestion becomes a GitHub issue on the board's
    repository: the visitor fills in a short form here and GitHub opens pre-filled for them to submit.

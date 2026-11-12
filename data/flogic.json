@@ -1004,6 +1004,473 @@
    "groups": [],
    "panels": [],
    "folder": "f3949hz1g4"
+  },
+  {
+   "id": "e1li34gvrq",
+   "name": "Rusyns",
+   "nodes": [
+    {
+     "id": "n1llq3jvrq",
+     "type": "title",
+     "x": -456,
+     "y": -744,
+     "w": 816,
+     "color": "p-peach",
+     "tag": "",
+     "title": "Rusyn-identifying individuals of the Carpthian Region should be considered a part of the Ukrainian ethnicity",
+     "subtitle": "My framework covering the historical context, the logical framework of ethnicity, and the nuance of this topic. Analyzing arguments from both sides and making the strongest case. ",
+     "blocks": []
+    },
+    {
+     "id": "nkcb9cvvrq",
+     "type": "note",
+     "x": -1152,
+     "y": 48,
+     "w": 336,
+     "color": "default",
+     "tag": "",
+     "title": "Ethnic Framework",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "ba7lgygzu1",
+       "kind": "text",
+       "text": "Before getting into the details of the people themselves, we must first define the terms we are arguing. This is a TL;DR version of my existing logical framework on ethnicity. "
+      },
+      {
+       "id": "b7kzdtcjdl",
+       "kind": "category",
+       "label": "DEFINING ETHNICITY",
+       "text": ""
+      },
+      {
+       "id": "b9voykuvrq",
+       "kind": "category",
+       "label": "MOVE THINGS",
+       "text": "Grab the 6-dot handle beside a block to reorder it, drop it into another node, or pull it onto the board."
+      },
+      {
+       "id": "bf65o24vrq",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
+      }
+     ]
+    },
+    {
+     "id": "nw9sb6h22c",
+     "type": "shape",
+     "x": -1092,
+     "y": -192,
+     "w": 216,
+     "color": "default",
+     "tag": "",
+     "title": "Defining the terms",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bwgrtj2vty",
+       "kind": "text",
+       "text": "This thesis relies on my existing logical framework on ethnicity, which can be found in the environments tab."
+      }
+     ],
+     "shape": "round"
+    },
+    {
+     "id": "nlbbeq6se9",
+     "type": "note",
+     "x": -1608,
+     "y": 120,
+     "w": 336,
+     "color": "default",
+     "tag": "",
+     "title": "Language Framework",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b2uljrg9g6",
+       "kind": "category",
+       "label": "DEFINING LANGUAGE",
+       "text": ""
+      },
+      {
+       "id": "bbpak7dg3w",
+       "kind": "category",
+       "label": "DEFINING DIALECT",
+       "text": ""
+      },
+      {
+       "id": "bgb9zl7psf",
+       "kind": "category",
+       "label": "DIALECT VS LANGUAGE",
+       "text": ""
+      }
+     ]
+    },
+    {
+     "id": "nkr81q8k24",
+     "type": "shape",
+     "x": 552,
+     "y": -192,
+     "w": 216,
+     "color": "default",
+     "tag": "",
+     "title": "Historical Context of the Endonym",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bijvrlpk24",
+       "kind": "text",
+       "text": "Showing the historical context of the endonym Rusyn. "
+      }
+     ],
+     "shape": "round"
+    },
+    {
+     "id": "n2ur5nhlgq",
+     "type": "shape",
+     "x": -216,
+     "y": 672,
+     "w": 216,
+     "color": "default",
+     "tag": "",
+     "title": "Self Identification ",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bd7jditlgq",
+       "kind": "text",
+       "text": "This thesis relies on my existing logical framework on ethnicity, which can be found in the environments tab."
+      }
+     ],
+     "shape": "round"
+    }
+   ],
+   "edges": [
+    {
+     "id": "l4y0zk21av",
+     "from": "nkcb9cvvrq",
+     "fs": "l",
+     "to": "nlbbeq6se9",
+     "ts": "r",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "la0qvutt8u",
+     "from": "nw9sb6h22c",
+     "fs": "b",
+     "to": "nkcb9cvvrq",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "ljqz215zaz",
+     "from": "n1llq3jvrq",
+     "fs": "b",
+     "to": "nw9sb6h22c",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "le45otta1o",
+     "from": "n1llq3jvrq",
+     "fs": "b",
+     "to": "nkr81q8k24",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "ljg5jv3ske",
+     "from": "nkcb9cvvrq",
+     "fs": "b",
+     "to": "n2ur5nhlgq",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    }
+   ],
+   "groups": [],
+   "panels": [],
+   "folder": "f3949hz1g4"
+  },
+  {
+   "id": "eulk9u0s8t",
+   "name": "Ethnicity",
+   "nodes": [
+    {
+     "id": "nczrpz9s8t",
+     "type": "title",
+     "x": -240,
+     "y": -408,
+     "w": 480,
+     "color": "default",
+     "tag": "Start here",
+     "title": "Welcome to Flogic",
+     "subtitle": "Flow + logic. Right-click anywhere on the board to add a node, then drag from the dots on its sides to connect ideas.",
+     "blocks": []
+    },
+    {
+     "id": "nfox30ks8t",
+     "type": "note",
+     "x": -552,
+     "y": -120,
+     "w": 336,
+     "color": "default",
+     "tag": "Blocks",
+     "title": "Build notes from blocks",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b8wwl0zs8t",
+       "kind": "text",
+       "text": "Every node has a + in its corner. Use it to add text, highlights, categories, scenarios, checklists, images and sources."
+      },
+      {
+       "id": "br88aots8t",
+       "kind": "highlight",
+       "label": "Tip",
+       "text": "Double-click any text to edit it."
+      },
+      {
+       "id": "b9lpmiys8t",
+       "kind": "category",
+       "label": "Move things",
+       "text": "Grab the 6-dot handle beside a block to reorder it, drop it into another node, or pull it onto the board."
+      },
+      {
+       "id": "bolvfn3s8t",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
+      }
+     ]
+    },
+    {
+     "id": "npb3w2vs8t",
+     "type": "note",
+     "x": -168,
+     "y": -120,
+     "w": 336,
+     "color": "violet",
+     "tag": "Scenarios",
+     "title": "Unroll a chain of events",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b7wvc30s8t",
+       "kind": "text",
+       "text": "Scenarios fold up so a node stays compact. Open one to see how it plays out."
+      },
+      {
+       "id": "blxrfz7s8t",
+       "kind": "scenarios",
+       "label": "What could happen",
+       "items": [
+        {
+         "id": "slf8sdjs8t",
+         "title": "The idea holds up",
+         "steps": [
+          {
+           "id": "tnk591ns8t",
+           "label": "First",
+           "text": "You sketch it on the board.",
+           "alt": false
+          },
+          {
+           "id": "thegc3ys8t",
+           "label": "Then",
+           "text": "Connections show how each part leads to the next.",
+           "alt": false
+          },
+          {
+           "id": "te3284os8t",
+           "label": "Result",
+           "text": "The argument reads top to bottom.",
+           "alt": false
+          }
+         ]
+        },
+        {
+         "id": "swxf3tgs8t",
+         "title": "Someone pushes back",
+         "steps": [
+          {
+           "id": "t8r3v9ds8t",
+           "label": "They say",
+           "text": "This step does not follow.",
+           "alt": true
+          },
+          {
+           "id": "tiwzzqgs8t",
+           "label": "You answer",
+           "text": "Add a sub-note with the missing link and a source.",
+           "alt": false
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "nm3139gs8t",
+     "type": "note",
+     "x": 216,
+     "y": -120,
+     "w": 336,
+     "color": "green",
+     "tag": "Controls",
+     "title": "Getting around",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "btxfxt0s8t",
+       "kind": "checklist",
+       "label": "Try these",
+       "items": [
+        {
+         "id": "cl9s4fls8t",
+         "text": "Middle-click and drag to pan",
+         "done": false
+        },
+        {
+         "id": "cpdveyls8t",
+         "text": "Scroll to zoom",
+         "done": false
+        },
+        {
+         "id": "ceahveis8t",
+         "text": "Drag on empty space to box-select",
+         "done": false
+        },
+        {
+         "id": "cbx8jbds8t",
+         "text": "Right-click empty space to add a node",
+         "done": false
+        },
+        {
+         "id": "cq3psacs8t",
+         "text": "Ctrl+G groups the selection",
+         "done": false
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "njofiofs8t",
+     "type": "sub",
+     "x": -504,
+     "y": 456,
+     "w": 216,
+     "color": "default",
+     "tag": "",
+     "title": "Sources & images",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "brcutm1s8t",
+       "kind": "text",
+       "text": "Attach references so anyone reading can check them."
+      },
+      {
+       "id": "b7zg6its8t",
+       "kind": "sources",
+       "label": "Sources",
+       "items": [
+        {
+         "t": "GitHub Pages docs",
+         "u": "https://docs.github.com/en/pages",
+         "id": "rkx90k0s8t",
+         "note": ""
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "no0ht0ss8t",
+     "type": "sub",
+     "x": 264,
+     "y": 240,
+     "w": 216,
+     "color": "green",
+     "tag": "",
+     "title": "Publishing",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bc8pwvls8t",
+       "kind": "text",
+       "text": "Visitors see the published board, read-only. Only you can edit, after connecting GitHub in Settings."
+      }
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "id": "ltgxvgvs8t",
+     "from": "nczrpz9s8t",
+     "fs": "b",
+     "to": "nfox30ks8t",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lwctzb9s8t",
+     "from": "nczrpz9s8t",
+     "fs": "b",
+     "to": "npb3w2vs8t",
+     "ts": "t",
+     "label": "for example",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lupqac0s8t",
+     "from": "nczrpz9s8t",
+     "fs": "b",
+     "to": "nm3139gs8t",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lqhk6zns8t",
+     "from": "nfox30ks8t",
+     "fs": "b",
+     "to": "njofiofs8t",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l1i8f54s8t",
+     "from": "nm3139gs8t",
+     "fs": "b",
+     "to": "no0ht0ss8t",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    }
+   ],
+   "groups": [],
+   "panels": [],
+   "folder": "fce03sjtya"
   }
  ],
  "lineStyle": "geometric",
@@ -1011,6 +1478,10 @@
   {
    "id": "f3949hz1g4",
    "name": "History"
+  },
+  {
+   "id": "fce03sjtya",
+   "name": "Logical Frameworks"
   }
  ],
  "icons": [

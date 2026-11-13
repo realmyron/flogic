@@ -125,7 +125,7 @@
        "id": "bep7gs12hb",
        "kind": "category",
        "label": "PETER VON KOPPEN STUDIES 1860",
-       "text": "On top of his observation, he also conducted many censuses on the self identification of European Russian empire, from the censuses we can see the identification of many cities:\n- Lutsk: 620 belarusians, 2621 lithuanians (litvins)\n- Radomyshyl: 452 belarusians, 32252 lithuanians (litvins)\n- Novograd-Volynsk: 2381 belarusians, 1153 lithuanians (litvins)\n- Ostroh: 1777 lithuanians, Ovruch: 5293 lithuanians\n- Kyiv and Volyn Governates: 40233 belarusians, 49269 lithuanians (litvins)\n--- \n- Brest district: 1205 belarusians, 7210 lithuanians (litvins)\n- Pruzhany district: - belarusians, 27610 lithuanians (litvins)\n- Kobryn district: 2614 belarusians, 22725 yatviags"
+       "text": "On top of his observation, he also conducted many censuses on the self identification of European Russian empire, from the censuses we can see the identification of many cities:\n- Lutsk: 620 belarusians, 2621 lithuanians (litvins)\n- Radomyshyl: 452 belarusians, 32252 lithuanians (litvins)\n- Novograd-Volynsk: 2381 belarusians, 1153 lithuanians (litvins)\n- Ostroh: 1777 lithuanians, Ovruch: 5293 lithuanians\n- Kyiv and Volyn Governates: 40233 belarusians, 49269 lithuanians (litvins)\n--- \n- Brest district: 1205 belarusians, 7210 lithuanians (litvins)\n- Pruzhany district: - belarusians, 27610 lithuanians (litvins)\n- Kobryn district: 2614 belarusians, 22725 yatviags\n- Grodno: 128640 lithuanians (litvins) and orthodox"
       },
       {
        "id": "bxqu9twxy",
@@ -179,6 +179,12 @@
          "t": "Peter von Koppens Studies",
          "u": "https://cyberleninka.ru/article/n/naselenie-belarusi-na-rubezhe-1850-1860-godov-etnicheskie-sotsialnye-konfessionalnye-i-regionalnye-parametry/viewer",
          "note": ""
+        },
+        {
+         "id": "rij8xc5fqy",
+         "t": "Grodno 128k",
+         "u": "https://www.google.com/search?q=Lebedkin%2C+c.+1860+%28pp.+57%E2%80%9359%29&sxsrf=AKL5yDh8f1JLfEPDNyZIXT736h3yUPmQOQ%3A1794572062825",
+         "note": "Lebedkin, c. 1860 (pp. 57–59): he counted 201,897 “Lithuanians” in Grodno governorate, 64.75% of them Orthodox. Merkys explains this by former Uniate clergy who “by old habit called themselves Lithuanians”."
         }
        ]
       }
@@ -1015,7 +1021,7 @@
      "x": -456,
      "y": -744,
      "w": 816,
-     "color": "p-peach",
+     "color": "teal",
      "tag": "",
      "title": "Rusyn-identifying individuals of the Carpthian Region should be considered a part of the Ukrainian ethnicity",
      "subtitle": "My framework covering the historical context, the logical framework of ethnicity, and the nuance of this topic. Analyzing arguments from both sides and making the strongest case. ",
@@ -1025,9 +1031,9 @@
      "id": "nkcb9cvvrq",
      "type": "note",
      "x": -1152,
-     "y": 48,
+     "y": 96,
      "w": 336,
-     "color": "default",
+     "color": "p-lilac",
      "tag": "",
      "title": "Ethnic Framework",
      "subtitle": "",
@@ -1038,22 +1044,10 @@
        "text": "Before getting into the details of the people themselves, we must first define the terms we are arguing. This is a TL;DR version of my existing logical framework on ethnicity. "
       },
       {
-       "id": "b7kzdtcjdl",
-       "kind": "category",
-       "label": "DEFINING ETHNICITY",
-       "text": ""
-      },
-      {
-       "id": "b9voykuvrq",
-       "kind": "category",
-       "label": "MOVE THINGS",
-       "text": "Grab the 6-dot handle beside a block to reorder it, drop it into another node, or pull it onto the board."
-      },
-      {
        "id": "bf65o24vrq",
        "kind": "conclusion",
        "label": "Conclusion",
-       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
+       "text": "A group of people who share language, self-identification and have a shared historical trajectory"
       }
      ]
     },
@@ -1063,7 +1057,7 @@
      "x": -1092,
      "y": -192,
      "w": 216,
-     "color": "default",
+     "color": "g-candy",
      "tag": "",
      "title": "Defining the terms",
      "subtitle": "",
@@ -1074,15 +1068,16 @@
        "text": "This thesis relies on my existing logical framework on ethnicity, which can be found in the environments tab."
       }
      ],
-     "shape": "round"
+     "shape": "round",
+     "accent": "top"
     },
     {
      "id": "nlbbeq6se9",
      "type": "note",
      "x": -1608,
-     "y": 120,
+     "y": 96,
      "w": 336,
-     "color": "default",
+     "color": "violet",
      "tag": "",
      "title": "Language Framework",
      "subtitle": "",
@@ -1090,20 +1085,14 @@
       {
        "id": "b2uljrg9g6",
        "kind": "category",
-       "label": "DEFINING LANGUAGE",
-       "text": ""
+       "label": "AXIOMS AND ANALOGIES",
+       "text": "1) If a speech cannot be understood, it is not a dialect. \n2) If a speech can be somewhat understood, it has the potency to be categorized as a dialect.\n3) If a speech is fully understandable and has minor differences, it has a potency to be categorized as a separate language.\n___\nFor example, the Samogitian dialect of Lithuanian has a way lower mutual intelligibility than Ukrainian and Belarusian, yet one is considered a dialect and one a language. "
       },
       {
-       "id": "bbpak7dg3w",
-       "kind": "category",
-       "label": "DEFINING DIALECT",
-       "text": ""
-      },
-      {
-       "id": "bgb9zl7psf",
-       "kind": "category",
-       "label": "DIALECT VS LANGUAGE",
-       "text": ""
+       "id": "b18mghx89q",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Political context is what drives the difference between language and dialect after a certain point of mutual intelligibility. "
       }
      ]
     },
@@ -1113,9 +1102,9 @@
      "x": 552,
      "y": -192,
      "w": 216,
-     "color": "default",
+     "color": "g-candy",
      "tag": "",
-     "title": "Historical Context of the Endonym",
+     "title": "Historical Context",
      "subtitle": "",
      "blocks": [
       {
@@ -1124,26 +1113,131 @@
        "text": "Showing the historical context of the endonym Rusyn. "
       }
      ],
-     "shape": "round"
+     "shape": "round",
+     "accent": "top"
     },
     {
      "id": "n2ur5nhlgq",
      "type": "shape",
-     "x": -216,
-     "y": 672,
-     "w": 216,
-     "color": "default",
+     "x": -552,
+     "y": 1272,
+     "w": 312,
+     "color": "g-candy",
      "tag": "",
-     "title": "Self Identification ",
+     "title": "The Pillars",
      "subtitle": "",
      "blocks": [
       {
        "id": "bd7jditlgq",
        "kind": "text",
-       "text": "This thesis relies on my existing logical framework on ethnicity, which can be found in the environments tab."
+       "text": "Now that we established what an ethnicity is, we must analyze the 2 pillars: self identification and historical trajectory. Language versus dialect is drawn on the conclusion of those 2 pillars. "
+      },
+      {
+       "id": "bthwli3js8",
+       "kind": "text",
+       "text": ""
       }
      ],
-     "shape": "round"
+     "shape": "round",
+     "accent": "top"
+    },
+    {
+     "id": "nfno76hht1",
+     "type": "note",
+     "x": 288,
+     "y": 1302,
+     "w": 336,
+     "color": "default",
+     "tag": "",
+     "title": "Self-Identification",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "b2bruhqht1",
+       "kind": "text",
+       "text": ""
+      }
+     ]
+    },
+    {
+     "id": "ne3i95h10u",
+     "type": "note",
+     "x": 216,
+     "y": 34,
+     "w": 336,
+     "color": "default",
+     "tag": "",
+     "title": "Rusyn Endonym Pre Empire",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bx612simdr",
+       "kind": "category",
+       "label": "USAGE",
+       "text": "Rusyn was an endonym of east slavs "
+      },
+      {
+       "id": "b7jz8c1ikd",
+       "kind": "category",
+       "label": "STATISTICAL SOURCES",
+       "text": ""
+      },
+      {
+       "id": "bwxhbbl2v3",
+       "kind": "category",
+       "label": "REPORTS SOURCES",
+       "text": ""
+      }
+     ]
+    },
+    {
+     "id": "njuu3grkh2",
+     "type": "note",
+     "x": 756,
+     "y": 48,
+     "w": 336,
+     "color": "default",
+     "tag": "",
+     "title": "Rusyn Endonym Post Empire",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bzuccbwjr6",
+       "kind": "category",
+       "label": "Category",
+       "text": ""
+      }
+     ]
+    },
+    {
+     "id": "nnfs450dk4",
+     "type": "note",
+     "x": -168,
+     "y": 1536,
+     "w": 336,
+     "color": "default",
+     "tag": "",
+     "title": "Historical Trajectory",
+     "subtitle": "",
+     "blocks": [
+      {
+       "id": "bt1lp52dk4",
+       "kind": "text",
+       "text": ""
+      }
+     ]
+    },
+    {
+     "id": "nc0a2l3o22",
+     "type": "title",
+     "x": 1536,
+     "y": 1302,
+     "w": 480,
+     "color": "default",
+     "tag": "",
+     "title": "",
+     "subtitle": "",
+     "blocks": []
     }
    ],
    "edges": [
@@ -1196,6 +1290,80 @@
      "label": "",
      "arrow": true,
      "dashed": false
+    },
+    {
+     "id": "l1gm41qs7t",
+     "from": "n2ur5nhlgq",
+     "fs": "r",
+     "to": "nfno76hht1",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lj9kcufn3z",
+     "from": "ne3i95h10u",
+     "fs": "b",
+     "to": "n2ur5nhlgq",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lmtq2mcpy4",
+     "from": "nkr81q8k24",
+     "fs": "b",
+     "to": "ne3i95h10u",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "ld8fhmhrno",
+     "from": "nkr81q8k24",
+     "fs": "b",
+     "to": "njuu3grkh2",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "l2zmdymudc",
+     "from": "njuu3grkh2",
+     "fs": "b",
+     "to": "n2ur5nhlgq",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "bend": {
+      "dx": -24,
+      "dy": 96
+     }
+    },
+    {
+     "id": "lylgpz4jur",
+     "from": "n2ur5nhlgq",
+     "fs": "b",
+     "to": "nnfs450dk4",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
+    },
+    {
+     "id": "lqrp5gwpxb",
+     "from": "nfno76hht1",
+     "fs": "r",
+     "to": "nc0a2l3o22",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
     }
    ],
    "groups": [],
@@ -1204,265 +1372,94 @@
   },
   {
    "id": "eulk9u0s8t",
-   "name": "Ethnicity",
+   "name": "Ethnolinguistic",
    "nodes": [
     {
-     "id": "nczrpz9s8t",
+     "id": "n75ibxlmij",
      "type": "title",
-     "x": -240,
-     "y": -408,
+     "x": -1080,
+     "y": -384,
      "w": 480,
      "color": "default",
-     "tag": "Start here",
-     "title": "Welcome to Flogic",
-     "subtitle": "Flow + logic. Right-click anywhere on the board to add a node, then drag from the dots on its sides to connect ideas.",
+     "tag": "",
+     "title": "Ethnic Framework",
+     "subtitle": "s ",
      "blocks": []
     },
     {
-     "id": "nfox30ks8t",
+     "id": "n4gngu4nfj",
      "type": "note",
-     "x": -552,
-     "y": -120,
+     "x": -360,
+     "y": -72,
      "w": 336,
-     "color": "default",
-     "tag": "Blocks",
-     "title": "Build notes from blocks",
+     "color": "p-lilac",
+     "tag": "",
+     "title": "Defining Ethnicity",
      "subtitle": "",
      "blocks": [
       {
-       "id": "b8wwl0zs8t",
-       "kind": "text",
-       "text": "Every node has a + in its corner. Use it to add text, highlights, categories, scenarios, checklists, images and sources."
-      },
-      {
-       "id": "br88aots8t",
-       "kind": "highlight",
-       "label": "Tip",
-       "text": "Double-click any text to edit it."
-      },
-      {
-       "id": "b9lpmiys8t",
+       "id": "byoouvpsb6",
        "kind": "category",
-       "label": "Move things",
-       "text": "Grab the 6-dot handle beside a block to reorder it, drop it into another node, or pull it onto the board."
+       "label": "PROBLEMS OF THE MAINSTREAM",
+       "text": "The mainstream definition - \"An ethnicity is a group of humans who share language, culture, traditions, religion, history and have a common self identification\"\n___\n1. Culture & Tradition: this is a baseless term that has no definition and shouldnt be used as a factor for ethnicities. Cultures are really region dependent and many ethnicities have tens or even hundreds of different cultures.\n___\n2. Religion: while religion can divide ethnicities it is not universal, for example with western Ukrainians following Catholicism while the rest Orthodoxy. \n___\n3. History: I believe the history part needs to be expanded towards shared historical trajectory, to accommodate for intent and plans.  "
       },
       {
-       "id": "bolvfn3s8t",
+       "id": "bps9uued2b",
        "kind": "conclusion",
        "label": "Conclusion",
-       "text": "Everything snaps to the grid so the board stays tidy. Hold Ctrl to place freely."
+       "text": "Based on the critique, I rewrite the definition of ethnicity to be - \n==\"A group of people who share language, self-identification and have a shared historical trajectory\"=="
       }
      ]
     },
     {
-     "id": "npb3w2vs8t",
+     "id": "nqv62mqrkv",
      "type": "note",
-     "x": -168,
+     "x": 168,
      "y": -120,
      "w": 336,
-     "color": "violet",
-     "tag": "Scenarios",
-     "title": "Unroll a chain of events",
+     "color": "p-lilac",
+     "tag": "",
+     "title": "Language vs Dialect",
      "subtitle": "",
      "blocks": [
       {
-       "id": "b7wvc30s8t",
-       "kind": "text",
-       "text": "Scenarios fold up so a node stays compact. Open one to see how it plays out."
+       "id": "b2alke3ad4",
+       "kind": "category",
+       "label": "AXIOMS",
+       "text": "1) If a speech cannot be understood, it is not a dialect. \n2) If a speech can be somewhat understood, it has the potency to be categorized as a dialect.\n3) If a speech is fully understandable and has minor differences, it has a potency to be categorized as a separate language.\n___\nFor example, the Samogitian dialect of Lithuanian has a way lower mutual intelligibility than Ukrainian and Belarusian, yet one is considered a dialect and one a language. "
       },
       {
-       "id": "blxrfz7s8t",
-       "kind": "scenarios",
-       "label": "What could happen",
-       "items": [
-        {
-         "id": "slf8sdjs8t",
-         "title": "The idea holds up",
-         "steps": [
-          {
-           "id": "tnk591ns8t",
-           "label": "First",
-           "text": "You sketch it on the board.",
-           "alt": false
-          },
-          {
-           "id": "thegc3ys8t",
-           "label": "Then",
-           "text": "Connections show how each part leads to the next.",
-           "alt": false
-          },
-          {
-           "id": "te3284os8t",
-           "label": "Result",
-           "text": "The argument reads top to bottom.",
-           "alt": false
-          }
-         ]
-        },
-        {
-         "id": "swxf3tgs8t",
-         "title": "Someone pushes back",
-         "steps": [
-          {
-           "id": "t8r3v9ds8t",
-           "label": "They say",
-           "text": "This step does not follow.",
-           "alt": true
-          },
-          {
-           "id": "tiwzzqgs8t",
-           "label": "You answer",
-           "text": "Add a sub-note with the missing link and a source.",
-           "alt": false
-          }
-         ]
-        }
-       ]
-      }
-     ]
-    },
-    {
-     "id": "nm3139gs8t",
-     "type": "note",
-     "x": 216,
-     "y": -120,
-     "w": 336,
-     "color": "green",
-     "tag": "Controls",
-     "title": "Getting around",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "btxfxt0s8t",
-       "kind": "checklist",
-       "label": "Try these",
-       "items": [
-        {
-         "id": "cl9s4fls8t",
-         "text": "Middle-click and drag to pan",
-         "done": false
-        },
-        {
-         "id": "cpdveyls8t",
-         "text": "Scroll to zoom",
-         "done": false
-        },
-        {
-         "id": "ceahveis8t",
-         "text": "Drag on empty space to box-select",
-         "done": false
-        },
-        {
-         "id": "cbx8jbds8t",
-         "text": "Right-click empty space to add a node",
-         "done": false
-        },
-        {
-         "id": "cq3psacs8t",
-         "text": "Ctrl+G groups the selection",
-         "done": false
-        }
-       ]
-      }
-     ]
-    },
-    {
-     "id": "njofiofs8t",
-     "type": "sub",
-     "x": -504,
-     "y": 456,
-     "w": 216,
-     "color": "default",
-     "tag": "",
-     "title": "Sources & images",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "brcutm1s8t",
-       "kind": "text",
-       "text": "Attach references so anyone reading can check them."
+       "id": "bkns5j857i",
+       "kind": "category",
+       "label": "DIFFERENTIATION",
+       "text": "Axioms 2 and 3 show that these moments have the potency to be but not automatically are. \n\nThe reasoning for this, is the only way to  decide whether a speech should be categorized a dialect or a language at this level of mutual intelligibility, is via a political examination."
       },
       {
-       "id": "b7zg6its8t",
-       "kind": "sources",
-       "label": "Sources",
-       "items": [
-        {
-         "t": "GitHub Pages docs",
-         "u": "https://docs.github.com/en/pages",
-         "id": "rkx90k0s8t",
-         "note": ""
-        }
-       ]
-      }
-     ]
-    },
-    {
-     "id": "no0ht0ss8t",
-     "type": "sub",
-     "x": 264,
-     "y": 240,
-     "w": 216,
-     "color": "green",
-     "tag": "",
-     "title": "Publishing",
-     "subtitle": "",
-     "blocks": [
-      {
-       "id": "bc8pwvls8t",
-       "kind": "text",
-       "text": "Visitors see the published board, read-only. Only you can edit, after connecting GitHub in Settings."
+       "id": "bq23qnx42d",
+       "kind": "conclusion",
+       "label": "CONCLUSION",
+       "text": "Political context is what drives the difference between language and dialect after a certain point of mutual intelligibility. "
       }
      ]
     }
    ],
    "edges": [
     {
-     "id": "ltgxvgvs8t",
-     "from": "nczrpz9s8t",
+     "id": "ll720oidaa",
+     "from": "n75ibxlmij",
      "fs": "b",
-     "to": "nfox30ks8t",
+     "to": "n4gngu4nfj",
      "ts": "t",
      "label": "",
      "arrow": true,
      "dashed": false
     },
     {
-     "id": "lwctzb9s8t",
-     "from": "nczrpz9s8t",
-     "fs": "b",
-     "to": "npb3w2vs8t",
-     "ts": "t",
-     "label": "for example",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lupqac0s8t",
-     "from": "nczrpz9s8t",
-     "fs": "b",
-     "to": "nm3139gs8t",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "lqhk6zns8t",
-     "from": "nfox30ks8t",
-     "fs": "b",
-     "to": "njofiofs8t",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false
-    },
-    {
-     "id": "l1i8f54s8t",
-     "from": "nm3139gs8t",
-     "fs": "b",
-     "to": "no0ht0ss8t",
-     "ts": "t",
+     "id": "lk1rfqmr7n",
+     "from": "n4gngu4nfj",
+     "fs": "r",
+     "to": "nqv62mqrkv",
+     "ts": "l",
      "label": "",
      "arrow": true,
      "dashed": false

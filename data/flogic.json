@@ -840,7 +840,11 @@
      "ts": "t",
      "label": "",
      "arrow": true,
-     "dashed": false
+     "dashed": false,
+     "bend": {
+      "dx": 0,
+      "dy": -21
+     }
     },
     {
      "id": "lzcig4tebb",
@@ -940,8 +944,8 @@
      "arrow": true,
      "dashed": false,
      "bend": {
-      "dx": -6,
-      "dy": 48
+      "dx": -54,
+      "dy": 54
      }
     },
     {

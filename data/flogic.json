@@ -720,8 +720,8 @@
     {
      "id": "npjqcdv1nk",
      "type": "note",
-     "x": 3960,
-     "y": -1982,
+     "x": 3984,
+     "y": -2064,
      "w": 408,
      "color": "slate",
      "tag": "",
@@ -733,6 +733,12 @@
        "kind": "category",
        "label": "NON-SLAVIC (BALTIC) INDIVIDUALS USING LITHUANIAN AS THEIR ENDONYM",
        "text": "There's an abundance of documents and historical evidence to prove that the non-slavic baltic individuals of the GDL (that align with modern Lithuania) used a form of \"Lithuanian\" as their endonym too, that form being - \"lietuviai\".\n\nThe spread of it is unclear. We don't know whether the Samogitians also used it or had their own endonym. "
+      },
+      {
+       "id": "b4rd558rmp",
+       "kind": "category",
+       "label": "EARLY LITHUANIA",
+       "text": "The early usage of the term Lithuania does indeed refer to the non-slavic speakers of the modern Lithuania, as per the Polotsk records, which mention Polotsk recruiting Liv (Latvia) and Litva (lithuania"
       }
      ]
     }
@@ -959,20 +965,6 @@
      "dashed": false
     },
     {
-     "id": "l14hpm0l2p",
-     "from": "nsnpr7yelf",
-     "fs": "r",
-     "to": "npjqcdv1nk",
-     "ts": "l",
-     "label": "",
-     "arrow": true,
-     "dashed": false,
-     "bend": {
-      "dx": 36,
-      "dy": 165
-     }
-    },
-    {
      "id": "l3wi2l78bb",
      "from": "n94baxx9ee",
      "fs": "r",
@@ -1009,6 +1001,16 @@
       "dx": 198,
       "dy": -143
      }
+    },
+    {
+     "id": "lmhi664lvf",
+     "from": "nsnpr7yelf",
+     "fs": "r",
+     "to": "npjqcdv1nk",
+     "ts": "l",
+     "label": "",
+     "arrow": true,
+     "dashed": false
     }
    ],
    "groups": [],

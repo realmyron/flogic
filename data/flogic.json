@@ -438,7 +438,7 @@
        "id": "bhwu6xmhpl",
        "kind": "category",
        "label": "Archeological Evidence",
-       "text": "Archeological research in many modern Lithuanian cities helps us reveal the ethnic distribution of them as far back as the 13th century:\n- Vilnius: in around the 1270s, large waves of Ruthenians started arriving in the city, originating from the Kingdom of Galicia-Volhynia (Rus). Founding the cities first settlements - Civitas Ruthenica.\n- Kernave: following Vilnius, a wave of Ruthenians arrived in Kernave too, at around 1290s. \n- Trakai: it is unclear when exactly Ruthenians arrived in Trakai, but they were continuously mentioned through history and remained majority even up to the 19th century. "
+       "text": "Archeological research in many modern Lithuanian cities helps us reveal the ethnic distribution of them as far back as the 13th century:\n- Vilnius: in around the 1270s, large waves of Rusyns started arriving in the city, originating from the Kingdom of Galicia-Volhynia (Rus). Founding the cities first settlements - Civitas Ruthenica.\n- Kernave: following Vilnius, a wave of Rusyns arrived in Kernave too, at around 1290s. \n- Trakai: it is unclear when exactly Rusyns arrived in Trakai, but they were continuously mentioned through history and remained majority even up to the 19th century. "
       },
       {
        "id": "b8nodlgaz1",
@@ -495,6 +495,12 @@
          "note": ""
         }
        ]
+      },
+      {
+       "id": "bh0sxfjpg8",
+       "kind": "conclusion",
+       "label": "Conclusion",
+       "text": "Rusyns (Ruthenians) began colonizing the cities of Lithuania proper and assimilating the/with local populations."
       }
      ]
     },
@@ -506,20 +512,26 @@
      "w": 384,
      "color": "slate",
      "tag": "",
-     "title": "12th Century",
+     "title": "1201 State of Kyivan Rus",
      "subtitle": "",
      "blocks": [
       {
        "id": "btw3qarvid",
        "kind": "category",
-       "label": "List of Rus cities Far and Near",
-       "text": "This is a list crafted by Ruthenians of Novgorod, the content of which documents every orthodox settlement that had a Ruthenian delegation."
+       "label": "ETHNO-CULTURAL IDENTIFICATION OF RUS",
+       "text": "This map features the political and ethnic identity of each settlement group inside each Rus' Principality. Most of modern Belarus were Slavic-Baltic peoples which identified as Litva in their local baltic-like languages (in the north) and the ones to the south began transitioning to slavic and to a slavic version of their endonym - Litvin.  \n\nIt also visualizes the political leaning of each Principality, with Polotsk leaning towards Lithuania, while Smolensk was leaning towards both Rus and Lithuania identities. "
       },
       {
-       "id": "bp3lvgjqy7",
+       "id": "bg60w5j8yn",
        "kind": "image",
-       "src": "data/assets/8132a0a5f133c20be14b9956.webp",
-       "caption": "Blue dots are mentioned cities."
+       "src": "data/assets/a142b09fc8d3eaf69c1bb650.webp",
+       "caption": ""
+      },
+      {
+       "id": "b299fkd9r4",
+       "kind": "category",
+       "label": "POLOTSK'S REJECTION OF RUS",
+       "text": "Since 1001 Polotsk had already been distancing itself from the Ruthenian influence over the land. In 1044 it's independence status was asserted. Lithuanians and Latvians were in union with Polotsk and served it's army, until 1183, after which Polotsk stopped being a unified entity, and split into many small ones.  By 1198, Polotsk and Lithuania started to become a unified entity, becoming fully unified by 1227 when Smolensk ceded it. "
       },
       {
        "id": "bj7ewmz6o7",
@@ -533,6 +545,12 @@
          "note": ""
         }
        ]
+      },
+      {
+       "id": "bj3f5nc93i",
+       "kind": "conclusion",
+       "label": "CONCLUSION",
+       "text": "Polotsk, like Novgorod, was never an integral part of Rus, and was rather a vassal state. It's political policy leaned towards non-slavic baltic speakers and the Lithuanian identity. \nWhile Smolensk retained a dual identity, with the Ruthenian one dominating. "
       }
      ]
     },

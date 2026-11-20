@@ -44,9 +44,9 @@
     {
      "id": "n5pz20wxuo",
      "type": "note",
-     "x": -2424,
+     "x": -2472,
      "y": -1736,
-     "w": 456,
+     "w": 552,
      "color": "slate",
      "tag": "",
      "title": "Non-statistical Sources",
@@ -113,9 +113,9 @@
     {
      "id": "nac0e9wbf4",
      "type": "note",
-     "x": -1656,
-     "y": -1736,
-     "w": 624,
+     "x": -1752,
+     "y": -1787,
+     "w": 792,
      "color": "slate",
      "tag": "",
      "title": "Statistical Sources",
@@ -138,6 +138,12 @@
        "kind": "category",
        "label": "LITVINS OF THE SEVERIA",
        "text": "In parts Chernigov, Smolensk, Starodub and nearby regions, the common identification was \"Litvin\". Those who identified as such were Belarusian-speaking, but referred to as Lithuanian-speaking back then.\n___\n1920 studies record 120k individuals potentially identified as Litvins in the Novozibovsk area."
+      },
+      {
+       "id": "bhoe52abx2",
+       "kind": "image",
+       "src": "data/assets/f0a5156e10aa68544223c019.webp",
+       "caption": "Rough Endonym situation in the 19th century. (Poles and Jews excluded)"
       },
       {
        "id": "bngsr8dbf4",
@@ -377,7 +383,7 @@
      "id": "nx5bzbn8ii",
      "type": "title",
      "x": -1344,
-     "y": 168,
+     "y": 312,
      "w": 480,
      "color": "g-aurora",
      "tag": "",
@@ -389,7 +395,7 @@
      "id": "no42nofzek",
      "type": "note",
      "x": -696,
-     "y": 552,
+     "y": 696,
      "w": 336,
      "color": "slate",
      "tag": "",
@@ -427,7 +433,7 @@
      "id": "nxbt882380",
      "type": "note",
      "x": -1320,
-     "y": 432,
+     "y": 576,
      "w": 456,
      "color": "slate",
      "tag": "",
@@ -508,7 +514,7 @@
      "id": "nl2d6iof98",
      "type": "note",
      "x": -1848,
-     "y": 288,
+     "y": 432,
      "w": 384,
      "color": "slate",
      "tag": "",
@@ -959,20 +965,6 @@
      }
     },
     {
-     "id": "l8run1wlzw",
-     "from": "n5pz20wxuo",
-     "fs": "b",
-     "to": "nx5bzbn8ii",
-     "ts": "t",
-     "label": "",
-     "arrow": true,
-     "dashed": false,
-     "bend": {
-      "dx": -54,
-      "dy": 54
-     }
-    },
-    {
      "id": "l6lfl90oq7",
      "from": "nx5bzbn8ii",
      "fs": "r",
@@ -1029,6 +1021,20 @@
      "label": "",
      "arrow": true,
      "dashed": false
+    },
+    {
+     "id": "ldub7smgx7",
+     "from": "n5pz20wxuo",
+     "fs": "b",
+     "to": "nx5bzbn8ii",
+     "ts": "t",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "bend": {
+      "dx": -197,
+      "dy": 209
+     }
     }
    ],
    "groups": [],

@@ -819,7 +819,7 @@
      "dashed": false,
      "bend": {
       "dx": -24,
-      "dy": 14
+      "dy": 112
      }
     },
     {
@@ -994,8 +994,8 @@
      "arrow": true,
      "dashed": false,
      "bend": {
-      "dx": 198,
-      "dy": -143
+      "dx": -138,
+      "dy": -47
      }
     },
     {

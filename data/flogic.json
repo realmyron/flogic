@@ -887,20 +887,6 @@
      "dashed": false
     },
     {
-     "id": "ljdfo2enxg",
-     "from": "nxbt882380",
-     "fs": "b",
-     "to": "n94baxx9ee",
-     "ts": "b",
-     "label": "",
-     "arrow": true,
-     "dashed": false,
-     "bend": {
-      "dx": 1452,
-      "dy": 1655
-     }
-    },
-    {
      "id": "lbel9ntzgd",
      "from": "nk37ztwaly",
      "fs": "b",
@@ -1034,6 +1020,20 @@
      "bend": {
       "dx": -197,
       "dy": 209
+     }
+    },
+    {
+     "id": "ldm8g71ytp",
+     "from": "nxbt882380",
+     "fs": "b",
+     "to": "n94baxx9ee",
+     "ts": "b",
+     "label": "",
+     "arrow": true,
+     "dashed": false,
+     "bend": {
+      "dx": 1548,
+      "dy": 1856
      }
     }
    ],

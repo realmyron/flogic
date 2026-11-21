@@ -430,6 +430,24 @@
            "alt": false
           }
          ]
+        },
+        {
+         "id": "sc5lugw3p4",
+         "title": "Orthodoxy Map",
+         "steps": [
+          {
+           "id": "t1ud3on3p4",
+           "label": "EXPLANATION",
+           "text": "The opposing side sometimes brings up a map of religion of former GDL lands in the Russian empire, which shows most of Lithuania proper was Catholic. They assert that this means Lithuania proper was not Belarusian, as they were orthodox. ",
+           "alt": false
+          },
+          {
+           "id": "tooxo4bmim",
+           "label": "REBUTTAL",
+           "text": "This can be easily refuted using the Union of Brest and Synod of Polotsk. Most of Western Belarus was greek-catholic by faith after 1569. When the Russian empire took over they banned greek- catholicism and promoted Orthodoxy. However, many Belarusians stayed Catholic and chose Roman Catholicism. (source down below)",
+           "alt": false
+          }
+         ]
         }
        ]
       },
@@ -442,6 +460,12 @@
          "id": "rbpju4godg",
          "t": "Map Source (by Me)",
          "u": "https://www.reddit.com/r/MapPorn/comments/1tyabsg/ethnic_map_of_grand_duchy_of_lithuania_using_19th/",
+         "note": ""
+        },
+        {
+         "id": "r8cre4cvt7",
+         "t": "Catholic Belarusians",
+         "u": "https://cyberleninka.ru/article/n/naselenie-belarusi-na-rubezhe-1850-1860-godov-etnicheskie-sotsialnye-konfessionalnye-i-regionalnye-parametry/viewer",
          "note": ""
         }
        ]

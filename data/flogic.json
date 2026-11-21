@@ -311,7 +311,7 @@
      "w": 552,
      "color": "slate",
      "tag": "Note",
-     "title": "Lithuania",
+     "title": "Lithuania & Ruthenia",
      "subtitle": "",
      "blocks": [
       {
@@ -413,6 +413,25 @@
        "kind": "image",
        "src": "data/assets/a4773c34980ed0077cb9df3c.webp",
        "caption": "What's interesting is the correlation of the Treaty of Radnots border and the ethnic distribution of Lithuanians."
+      },
+      {
+       "id": "bi5bxjmk8a",
+       "kind": "scenarios",
+       "label": "Scenarios",
+       "items": [
+        {
+         "id": "subqpubk8a",
+         "title": "1867 Census Shows Vilna Governate as Lithuanian",
+         "steps": [
+          {
+           "id": "t2vm62hk8a",
+           "label": "REBUTTAL",
+           "text": "The census had many issues with how it identified Lithuanians, Peter Koppen in his work mentions priests from Vilnius thought (Lithuanian meant Belarusian)[Non-statistical Sources].",
+           "alt": false
+          }
+         ]
+        }
+       ]
       },
       {
        "id": "bj4tcjl4zt",
